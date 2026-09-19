@@ -181,7 +181,10 @@ aborts if the active context is anything else.
 
 ## Contributing
 
-Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks
+Issues and pull requests are welcome: the [bug report](https://github.com/kubermeister/kubermeister/issues/new?template=bug_report.yml)
+form asks for what a fix needs, and the open issues labelled
+[`good first issue`](https://github.com/kubermeister/kubermeister/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
+are a place to start. [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks
 a change has to pass and the branch and commit conventions; [`CLAUDE.md`](CLAUDE.md) documents the
 architecture and the rules the codebase holds itself to. Security problems go through
 [SECURITY.md](SECURITY.md), never a public issue.

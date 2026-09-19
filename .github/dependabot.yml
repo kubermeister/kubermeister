@@ -25,6 +25,8 @@ updates:
     commit-message:
       prefix: chore(deps)
       prefix-development: chore(deps)
+    # Only labels .github/labels.yml knows; without this Dependabot adds its own "javascript".
+    labels: [dependencies]
 
   - package-ecosystem: github-actions
     directory: /
@@ -35,3 +37,4 @@ updates:
         patterns: ['*']
     commit-message:
       prefix: chore(deps)
+    labels: [dependencies]

@@ -12,6 +12,27 @@ and how it lands. Everything here applies to every contributor, the maintainer i
   one on screen), and a short conversation up front saves work on both sides.
 - **Security problems**: follow [SECURITY.md](SECURITY.md) instead of opening an issue.
 
+### Issues
+
+One problem or one request per issue. The bug and feature forms ask for what a maintainer needs to
+act; a blank issue is fine when neither fits. Issues are the whole plan: there is no board and no
+separate roadmap, so what the open issues and milestones say is what is going to happen.
+
+- **Type** (Bug, Feature, Task) says what an issue is; the forms set it.
+- **Milestones** are themes, not releases: a milestone gathers the work that makes one part of the
+  app whole, and closes when it is empty. Bugs join a milestone only when they belong to its theme.
+- **Labels** come in groups, all defined in [`.github/labels.yml`](.github/labels.yml): one
+  `area:` per issue, a `priority:` and a `size:` set at triage (a size is an estimate, not a
+  promise), and a status word. `needs-triage` means nobody has looked yet, `needs-info` means the
+  reporter is being asked for something (the only state that ever goes stale), `blocked` names a
+  dependency, and `ready` means the issue is scoped and anyone may start. Being worked on is an
+  assignee plus a linked pull request, not a label.
+- **Where to start**: [`ready`](https://github.com/kubermeister/kubermeister/issues?q=is%3Aissue%20is%3Aopen%20label%3Aready)
+  and [`good first issue`](https://github.com/kubermeister/kubermeister/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22).
+  Say so on the issue before starting, so two people do not build the same thing.
+- **Linking**: a pull request that resolves an issue ends its body with one line, `Closes #N.`,
+  which closes the issue on merge and puts its number in the commit history.
+
 ## Setup
 
 You need Node.js 24 and npm 11.19 or newer. Older npm versions silently drop optional lockfile
@@ -87,7 +108,8 @@ comments only for _why_, and no `any` in TypeScript.
 - Keep PR titles at 66 characters or fewer; GitHub appends the PR number.
 - Write each paragraph of the PR body as one unwrapped line. Say why the change is needed and what a
   reader of the history could not learn from the diff.
-- No trailers: no `Co-Authored-By`, no `Signed-off-by`.
+- No trailers: no `Co-Authored-By`, no `Signed-off-by`. `Closes #N.` as the last paragraph is a
+  sentence, not a trailer, and is how a pull request names the issue it resolves.
 - Mark a breaking change with `!` after the scope: `feat(ipc)!: rename stream channels`.
 
 A pull request is reviewed once its checks pass. Reviews are about the change, not the person, and
@@ -97,5 +119,6 @@ questions in a review are questions, not verdicts.
 
 Releases are cut by the maintainer: a `vX.Y.Z` tag ships a release once its `chore(release): X.Y.Z`
 PR has merged, and releases are frequent, so a merged fix reaches users quickly. Release notes
-are generated from the merged pull request titles, which is one more reason the title has to read
-well on its own.
+are generated from the merged pull request titles, sorted into sections by the label the title's
+type earns (`feat` under Features, `fix` under Fixes, and so on), which is one more reason the title
+has to read well on its own.

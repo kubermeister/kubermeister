@@ -1,0 +1,48 @@
+name: PR labels
+
+# Sets the one label .github/release.yml sorts release notes by, derived from the title's
+# Conventional Commit type that pr-title.yml has already validated. Runs on pull_request_target so
+# the token can write labels on pull requests from forks, and checks nothing out, so no code from
+# the pull request runs here.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pr-labels:
+    name: pr-labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const RELEASE_LABELS = ['feature', 'bug', 'performance', 'documentation', 'dependencies', 'release', 'chore'];
+            const BY_TYPE = { feat: 'feature', fix: 'bug', perf: 'performance', docs: 'documentation' };
+            const BY_SCOPE = { deps: 'dependencies', release: 'release' };
+
+            const pr = context.payload.pull_request;
+            const match = /^([a-z]+)(?:\(([^)]+)\))?!?:/.exec(pr.title);
+            if (!match) {
+              core.info(`Title "${pr.title}" has no type; pr-title reports that, nothing to label.`);
+              return;
+            }
+            const [, type, scope] = match;
+            const wanted = BY_SCOPE[scope] ?? BY_TYPE[type] ?? 'chore';
+
+            const current = pr.labels.map((label) => label.name);
+            const kept = current.filter((name) => !RELEASE_LABELS.includes(name));
+            const next = [...kept, wanted];
+            if (current.length === next.length && current.every((name) => next.includes(name))) {
+              core.info(`Already labelled ${wanted}.`);
+              return;
+            }
+            await github.rest.issues.setLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: next,
+            });
+            core.info(`Labelled ${wanted}.`);
