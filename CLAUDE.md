@@ -28,8 +28,8 @@ Desktop Kubernetes client (Electron).
   paragraph as one unwrapped line. GitHub appends ` (#N)` to the title: keep PR titles at 66
   characters or fewer.
 - Enable the hook once per clone: `git config core.hooksPath .githooks`.
-- **Issues are the plan.** There is no board and no other backlog: the open milestones (themes,
-  not releases) and their issues are what is going to happen, and a session resumes from
+- **Issues are the plan.** There is no board and no other backlog: the open milestones (one per
+  upcoming minor version) and their issues are what is going to happen, and a session resumes from
   `gh issue list` filtered by milestone or by the `ready` label. A bug found in real use gets an
   issue before its fix, and a PR that resolves an issue ends its body with the one-line paragraph
   `Closes #N.` (a sentence, not a trailer). File work with `gh issue create` giving `--type`, one
@@ -406,9 +406,10 @@ shows. Icons regenerate from `resources/icon.svg` with `resources/build-icon.sh`
   `electron` and other runtime packages at the module boundary with `vi.mock`; shared schemas are
   tested directly. Pure renderer logic lives in `src/renderer/lib` so Vitest can reach it without a
   DOM.
-- **Coverage** (`npm run test:coverage`, V8) covers `src/main` and `src/shared` except the window
-  bootstrap in `src/main/index.ts`. Thresholds in `vitest.config.ts` fail CI when missed and only
-  ever go up. Bootstrap, preload and DOM code are covered end to end.
+- **Coverage** (`npm run test:coverage`, V8) covers `src/main`, `src/shared` and the renderer except
+  the process bootstraps, the generated route tree, the route files and the shadcn primitives.
+  Thresholds in `vitest.config.ts` fail CI when missed and only ever go up. Bootstrap, preload and
+  route code are covered end to end.
 - **No test ever touches a real cluster or the developer's kubeconfig.** Unit tests mock the
   Kubernetes client at the module boundary and never open a network connection. End-to-end tests
   run against a disposable k3s container started by Testcontainers, with a kubeconfig written for
