@@ -85,7 +85,7 @@ it that way: a test that needs a cluster uses the harness.
 
 ## Architecture
 
-[CLAUDE.md](CLAUDE.md) holds the architecture rules the codebase is built on: the process boundary,
+[AGENTS.md](AGENTS.md) holds the architecture rules the codebase is built on: the process boundary,
 the IPC contract, the design-system templates, how a new kind is added, the write path, streams,
 and the release model. Read the section that covers the area you are changing before you change it.
 The rules there are load-bearing, and a pull request that works around one will be asked to follow

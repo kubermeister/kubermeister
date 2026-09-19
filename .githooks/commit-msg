@@ -1,7 +1,7 @@
 #!/bin/sh
 # Validates the commit header against the project's Conventional Commits rules.
 # Enable once per clone: git config core.hooksPath .githooks
-# Rules and the scope list are documented in CLAUDE.md; keep the two in sync.
+# Rules and the scope list are documented in AGENTS.md; keep the two in sync.
 
 header=$(sed -n '1p' "$1")
 
