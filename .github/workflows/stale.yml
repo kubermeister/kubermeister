@@ -1,0 +1,36 @@
+name: Stale
+
+# Only issues waiting on their reporter (needs-info) ever go stale: three weeks without a reply
+# marks them, two more close them. Bugs and requests that are simply old are left alone, and pull
+# requests are never touched. debug-only stays on until the first scheduled run's log looks right.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    name: stale
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          only-labels: needs-info
+          exempt-all-milestones: true
+          days-before-stale: 21
+          days-before-close: 14
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          stale-issue-label: stale
+          stale-issue-message: >
+            This issue is waiting on more information from its reporter and has had no reply for
+            three weeks. It closes in two more unless someone answers; a comment reopens the
+            conversation at any time.
+          close-issue-message: >
+            Closed for lack of the information needed to act on it. If the problem is still there,
+            comment with the details asked for above and it will be reopened.
+          close-issue-reason: not_planned
+          debug-only: true

@@ -1,6 +1,7 @@
 name: Bug report
 description: Something the app does wrong, or does not do at all.
-labels: [bug]
+type: Bug
+labels: [needs-triage]
 body:
   - type: markdown
     attributes:

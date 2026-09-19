@@ -28,6 +28,15 @@ Desktop Kubernetes client (Electron).
   paragraph as one unwrapped line. GitHub appends ` (#N)` to the title: keep PR titles at 66
   characters or fewer.
 - Enable the hook once per clone: `git config core.hooksPath .githooks`.
+- **Issues are the plan.** There is no board and no other backlog: the open milestones (themes,
+  not releases) and their issues are what is going to happen, and a session resumes from
+  `gh issue list` filtered by milestone or by the `ready` label. A bug found in real use gets an
+  issue before its fix, and a PR that resolves an issue ends its body with the one-line paragraph
+  `Closes #N.` (a sentence, not a trailer). File work with `gh issue create` giving `--type`, one
+  `area:` label, a `size:` label and the milestone; the labels are defined in `.github/labels.yml`
+  and change only through that file, which the `labels.yml` workflow syncs on merge. PR labels for
+  the release notes come from the title's type (`pr-labels.yml`, `.github/release.yml`); never set
+  them by hand.
 
 ### Commit messages (Conventional Commits 1.0)
 

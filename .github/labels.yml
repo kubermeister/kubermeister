@@ -1,0 +1,146 @@
+# Every label on the repository, as code. .github/workflows/labels.yml syncs this file on every push
+# to main that changes it and deletes any label not listed here, so a label change is a pull request.
+# Groups share a colour: area (one per issue), priority and size (set at triage), status, the
+# pull-request labels the title workflow sets for release notes, and resolution words.
+
+# Area: which part of the app. Exactly one per issue.
+- name: 'area: overview'
+  color: 1d76db
+  description: Cluster summary, nodes, namespaces, events, quotas, limits
+- name: 'area: workloads'
+  color: 1d76db
+  description: Pods, controllers, jobs, cron jobs, autoscalers and their actions
+- name: 'area: logs'
+  color: 1d76db
+  description: Log console, snapshots, follow, multi-pod logs, download
+- name: 'area: shell'
+  color: 1d76db
+  description: Exec sessions and the terminal
+- name: 'area: port-forward'
+  color: 1d76db
+  description: Port forwards to pods and services
+- name: 'area: network'
+  color: 1d76db
+  description: Services, ingresses, endpoints, network policies
+- name: 'area: storage'
+  color: 1d76db
+  description: Volumes, claims, storage classes, CSI, snapshots
+- name: 'area: access'
+  color: 1d76db
+  description: Service accounts, roles, bindings
+- name: 'area: helm'
+  color: 1d76db
+  description: Helm releases and charts
+- name: 'area: custom-resources'
+  color: 1d76db
+  description: CRDs and the custom resource browser
+- name: 'area: manifests'
+  color: 1d76db
+  description: Manifest tab, editor, create, apply, the write path
+- name: 'area: settings'
+  color: 1d76db
+  description: Settings file and screen
+- name: 'area: updates'
+  color: 1d76db
+  description: In-app updates and the release feed
+- name: 'area: connection'
+  color: 1d76db
+  description: Kubeconfig, contexts, credential plugins, timeouts
+- name: 'area: ui'
+  color: 1d76db
+  description: Layout, navigation, palette, design system
+- name: 'area: build'
+  color: 1d76db
+  description: Packaging, CI, tests, tooling
+
+# Priority: set at triage. No priority label means nobody has looked yet.
+- name: 'priority: critical'
+  color: b60205
+  description: Wrong-cluster write, data loss or crash on launch. Fix and release now
+- name: 'priority: high'
+  color: d93f0b
+  description: Goes into the next release
+- name: 'priority: normal'
+  color: fbca04
+  description: Scheduled work
+- name: 'priority: low'
+  color: c5def5
+  description: Nice to have, no schedule
+
+# Size: an estimate, not a promise.
+- name: 'size: S'
+  color: d4c5f9
+  description: A day or less, one pull request
+- name: 'size: M'
+  color: d4c5f9
+  description: Several days, one large pull request
+- name: 'size: L'
+  color: d4c5f9
+  description: Several pull requests, tracked with sub-issues
+
+# Status. In progress is an assignee plus a linked pull request, not a label.
+- name: needs-triage
+  color: ededed
+  description: New, not yet looked at by a maintainer
+- name: needs-info
+  color: fef2c0
+  description: Waiting on the reporter. The only label the stale bot acts on
+- name: stale
+  color: fef2c0
+  description: No reply from the reporter for three weeks; closes in two more without one
+- name: blocked
+  color: e99695
+  description: Waits on another issue or an outside change
+- name: ready
+  color: 0e8a16
+  description: Triaged and scoped, anyone may start
+
+# Pull requests only. .github/workflows/pr-labels.yml sets exactly one from the title's type, and
+# .github/release.yml sorts the release notes by them.
+- name: feature
+  color: 006b75
+  description: Pull request from a feat title
+- name: bug
+  color: 006b75
+  description: Pull request from a fix title
+- name: performance
+  color: 006b75
+  description: Pull request from a perf title
+- name: documentation
+  color: 006b75
+  description: Pull request from a docs title
+- name: dependencies
+  color: 006b75
+  description: Pull request with the deps scope
+- name: release
+  color: 006b75
+  description: Version bump pull request, left out of the release notes
+- name: chore
+  color: 006b75
+  description: Pull request of any other type
+
+# Resolution and community.
+- name: regression
+  color: d73a4a
+  description: Worked in an earlier release
+- name: duplicate
+  color: cfd3d7
+  description: Already tracked elsewhere
+- name: wontfix
+  color: ffffff
+  description: Out of scope for this app
+- name: parked
+  color: bfdadc
+  description: Out of the plan, reviewed in the far future
+- name: deferred
+  color: c2e0c6
+  description: Not scheduled, waits for users to need it
+- name: good first issue
+  color: 7057ff
+  description: Small, self-contained, well described
+- name: help wanted
+  color: '008672'
+  description: Maintainer welcomes a pull request
+- name: question
+  color: d876e3
+  description: A question, not a change

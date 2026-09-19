@@ -1,0 +1,56 @@
+name: Issues
+
+# Two triage rules, no bot comments. A new issue from anyone without write access is marked
+# needs-triage; when the reporter answers on an issue marked needs-info, the mark goes back to
+# needs-triage so the answer is not missed. Everything else about an issue is a maintainer's call.
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    name: triage
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.issue.pull_request }}
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue = context.payload.issue;
+            const labels = issue.labels.map((label) => label.name);
+
+            async function hasWriteAccess(username) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username });
+                return data.permission === 'admin' || data.permission === 'write';
+              } catch (error) {
+                core.info(`Could not read ${username}'s permission (${error.message}); treating as a reporter.`);
+                return false;
+              }
+            }
+
+            if (context.eventName === 'issues') {
+              if (labels.includes('needs-triage')) return;
+              if (await hasWriteAccess(issue.user.login)) {
+                core.info('Opened by a maintainer; no triage mark.');
+                return;
+              }
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issue.number, labels: ['needs-triage'] });
+              core.info('Marked needs-triage.');
+              return;
+            }
+
+            const comment = context.payload.comment;
+            if (comment.user.login !== issue.user.login || !labels.includes('needs-info')) return;
+            await github.rest.issues.removeLabel({ owner, repo, issue_number: issue.number, name: 'needs-info' });
+            if (labels.includes('stale')) {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: issue.number, name: 'stale' });
+            }
+            await github.rest.issues.addLabels({ owner, repo, issue_number: issue.number, labels: ['needs-triage'] });
+            core.info('Reporter answered; back to needs-triage.');
