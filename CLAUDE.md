@@ -28,6 +28,10 @@ Desktop Kubernetes client (Electron).
   paragraph as one unwrapped line. GitHub appends ` (#N)` to the title: keep PR titles at 66
   characters or fewer.
 - Enable the hook once per clone: `git config core.hooksPath .githooks`.
+- - CI runs on pull requests against `main` only, so a PR stacked on another branch gets nothing but
+    the title check until it is retargeted. Retarget every child to `main` before merging its parent,
+    because GitHub closes a PR whose base branch is deleted and never reopens it, and push after
+    retargeting, since a base change alone starts no checks.
 - **Issues are the plan.** There is no board and no other backlog: the open milestones (themes,
   not releases) and their issues are what is going to happen, and a session resumes from
   `gh issue list` filtered by milestone or by the `ready` label. A bug found in real use gets an
@@ -82,7 +86,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   `list_.$name.tsx` naming so it renders as a sibling, not inside the list's outlet), TanStack Query through `useIpcQuery` in `src/renderer/lib/query.ts`, Tailwind 4
   with shadcn primitives in `src/renderer/components/ui` (add them with the shadcn CLI, do not hand
   roll). `@/` aliases `src/renderer`. Main-to-renderer pushes go through `subscribe` on the bridge,
-  allowlisted in `src/shared/ipc-channels.ts` with payload schemas in `ipc-subscriptions.ts`.
+  allowlisted in `src/shared/ipc-channels.ts` with payload schemas in `ipc-subscriptions.ts`. A hook
+  mirroring a push keeps a push that arrives before its initial read answers, since the read is the
+  older of the two. `eslint-plugin-react-hooks` v7 rules apply: no `setState` inside an effect
+  (derived state resets from a tracked key during render) and no mutation of an object a hook handed
+  out.
 - **Design system:** screens are compositions of templates, not bespoke markup. Lists render
   through `ResourceListPage` (`src/renderer/components/templates`) with columns from the
   `list-columns` factories (`nameColumn`, `statusColumn` with the kind's tone map, `ageColumn`,
@@ -109,15 +117,21 @@ null` under "All namespaces"; the label is the renderer's, never a value handed 
   every refresh. Pods are listed only where a detail needs them and scoped to that object: a
   namespace's own screen lists its namespace, a node's screen and describe select on `spec.nodeName`,
   a workload's screen selects its own. The Pods screen's own list and its informer are the only
-  whole-cluster pod lists. `@tanstack/react-table` stays on v8 (v9 is a different API; Dependabot ignores the major).
+  whole-cluster pod lists. `@tanstack/react-table` stays on v8 (v9 is a different API) and `@vitejs/plugin-react` on v5 (v6 needs Vite 8, which electron-vite 5 refuses); `dependabot.yml` ignores those majors and says why. Status vocabularies are per domain (`PodStatus`, `DeploymentStatus`, `NetworkStatus`, ...), never one shared enum.
   Charts use recharts through the shadcn `chart` wrapper; the summary dashboard is the reference.
   The shadcn CLI writes `import { cn } from "cn"`, installs a `cn` package and puts new packages
   under `dependencies`: fix the import to `@/lib/utils`, uninstall `cn` and move the package to
-  `devDependencies`.
+  `devDependencies`. It also rewrites primitives it added earlier (`button.tsx`, `card.tsx`): diff and
+  restore them. Its `sonner` primitive assumes next-themes; ours reads `ThemeProvider`.
 - **Streams** (`src/shared/streams.ts`, `src/main/ipc/streams.ts`) push many messages over time:
   the preload's `stream()` mints a `sub.<subId>` event and drives `stream.start/send/stop`; main
   keys every stream by window so one window can never address another's, and sweeps them on
-  reload or destroy. One informer serves every screen watching the same kind and namespace (`src/main/k8s/watch.ts`):
+  reload or destroy. A stream's `stop` sends `end` itself rather than waiting for the in-flight
+  request to notice, or a hung request leaves the renderer watching a cancelled stream. The client
+  library's log call pipes an undici body into the sink, and aborting it fails that source with an
+  `AbortError` nobody listens to: an uncaught exception in main, which Electron answers with a modal
+  dialog that keeps `app.quit()` from completing. So `logs.ts` hears the source through the sink's
+  `pipe` event and `will-quit` calls `stopAllStreams`. One informer serves every screen watching the same kind and namespace (`src/main/k8s/watch.ts`):
   a second screen on the same list replays the informer's cache instead of opening a second watch and
   re-listing, the informer stops when its last subscriber goes, and `stopAllInformers` runs when the
   connection changes. Lists render only the rows in view (`DataTable` over `@tanstack/react-virtual`),
@@ -346,7 +360,10 @@ null` under "All namespaces"; the label is the renderer's, never a value handed 
   because a pod deleted on its own comes back unchanged.
 - **Kubernetes access** lives in `src/main/k8s`. The kubeconfig is read-only: switching context
   or namespace changes memory and the app's own settings, never the file. Every cluster call goes
-  through `withK8s` (timeout plus `[kind]`-prefixed `K8sError`). The kubeconfig loads with
+  through `withK8s` (timeout plus `[kind]`-prefixed `K8sError`). `errors.ts` classifies them:
+  `timeout` is only `withK8s`'s own ceiling, and a connect failure is `unreachable`, including
+  undici's `UND_ERR_CONNECT_TIMEOUT`, which the client library nests under a bare `TypeError: fetch
+failed` and which fires before the ceiling does. The kubeconfig loads with
   `onInvalidEntry: 'filter'`: an entry with no name, an empty `cluster:` or a cluster without a
   server is dropped, as kubectl tolerates it, instead of failing the whole file and every other
   context with it. The ceiling is the
@@ -365,7 +382,8 @@ null` under "All namespaces"; the label is the renderer's, never a value handed 
   `/settings` edits them through `settings.set`; the application menu (`src/main/menu.ts`) opens it
   with `Cmd+,` on macOS by pushing `open-settings`. Theme lives in renderer `localStorage`, not here,
   because it must apply before first paint. The renderer can never
-  set the kubeconfig path; that goes through the native dialog channel `kubeconfig.pick`.
+  set the kubeconfig path; that goes through the native dialog channel `kubeconfig.pick`, and it
+  cannot set `window.bounds` either: `settingsInputSchema` omits the section, main writes it alone.
   `KUBERMEISTER_USER_DATA` redirects `userData`, which is how tests isolate the app.
 
 ## Release model
@@ -379,7 +397,13 @@ package.json, then `git tag vX.Y.Z && git push origin vX.Y.Z`. There is no night
 build; a fix reaches users through the next release.
 
 Asset names, the app id and the product name are load-bearing for the updater and the Homebrew cask;
-change them together with the workflow. Packaging runs through `.github/actions/package`: with the
+change them together with the workflow. The repositories live under the `kubermeister` organization
+and moved there from the maintainer's own account; GitHub redirects the old URLs, which is what keeps
+the feed embedded in older installs updating, so no repository named `kubermeister` may ever be
+created under the old owner. The cask is rendered from `packaging/homebrew/kubermeister.rb.tmpl` and
+pushed to `kubermeister/homebrew-tap` with `HOMEBREW_TAP_TOKEN`, a fine-grained token whose resource
+owner must be the organization. Every `setup-node` step passes `check-latest: true`, because a
+runner's cached Node 24 can bundle an npm older than the engine gate. Packaging runs through `.github/actions/package`: with the
 `CSC_*` and `APPLE_*` secrets macOS is Developer ID signed and notarized, otherwise ad-hoc signed;
 never export an empty `CSC_LINK`. In-app updates: `src/main/updater.ts` (electron-updater) reads the
 feed electron-builder embeds at package time; macOS
@@ -420,13 +444,25 @@ shows. Icons regenerate from `resources/icon.svg` with `resources/build-icon.sh`
   `harness/isolation.ts` is the guard, `harness/launch.ts` launches the app with a throwaway
   `KUBERMEISTER_USER_DATA` and `KUBERMEISTER_SHOW_INACTIVE`, so the window never takes focus and
   keystrokes typed during a local run stay in the terminal. Needs Docker; ubuntu only in CI.
-  `KM_E2E_KEEP_CLUSTER=1` keeps the container between local runs.
+  `KM_E2E_KEEP_CLUSTER=1` keeps the container between local runs; its id is kept in
+  `tests/e2e/.cluster.json`. A kept cluster ages out its seeded events after about an hour, so remove
+  the container and that file before trusting a failing local run. The seed applies in two passes,
+  since a CRD and its instances cannot land together: the harness waits for `Established`, then
+  applies `fixtures/seed-custom.yaml`. Traefik is disabled, so Helm coverage comes from two encoded
+  release Secrets in the seed rather than a chart the cluster installed, and the seeded
+  PodDisruptionBudget selects nothing, because one covering running pods would block the eviction
+  spec on a one-node cluster. Playwright's `getByRole` matches names by substring: pass `exact: true`,
+  or 'Nodes' also finds CSINodes.
 - **Component tests** (`tests/unit/renderer`, jsdom project) use Testing Library; mock `@/lib/ipc`
   at the module boundary and render through `renderWithQuery`, or `renderRoutes` for anything that
   needs the router or the shell (both wrap the theme, query and tooltip providers). Radix menus and
-  popovers open under jsdom thanks to the ResizeObserver and pointer-capture stubs in
-  `tests/setup-renderer.ts`. Hooks use block bodies: a mock returned from
-  `beforeEach(() => fn.mockReset())` is treated as a teardown and called with no arguments.
+  popovers open under jsdom thanks to the ResizeObserver, pointer-capture and `Range.getClientRects`
+  stubs in `tests/setup-renderer.ts`. Hooks use block bodies: a mock returned from
+  `beforeEach(() => fn.mockReset())` is treated as a teardown and called with no arguments. `vi.fn`
+  arrow mocks are not constructible; mock a class with a class. Attach a `rejects` matcher before
+  advancing fake timers, or the rejection goes unhandled. Assert a Radix tooltip on focus, not hover,
+  which never opens it under CI's jsdom. `DetailCard` forwards no `data-testid`, so a unit test
+  asserts the test id an end-to-end spec reads before that spec relies on it.
 - Run one file: `npx vitest run tests/unit/main/updater.test.ts`. Watch: `npm run test:watch`.
 
 ## Code style
