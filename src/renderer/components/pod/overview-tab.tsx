@@ -6,7 +6,7 @@ import type { RestartKind } from '../../../shared/k8s/registry';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ComingSoonButton } from '@/components/coming-soon-button';
+import { UnavailableButton } from '@/components/unavailable-button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DetailMetrics } from '@/components/templates/detail-cards';
 import { ContainerRow } from '@/components/pod/container-row';
@@ -100,10 +100,10 @@ function RestartOwnerButton({ chain }: { chain: OwnerChain }) {
 
     if (!owner) {
         return (
-            <ComingSoonButton variant="ghost" size="xs" tip="This pod has no workload to roll">
+            <UnavailableButton variant="ghost" size="xs" reason="This pod has no workload to roll">
                 <RefreshCwIcon />
                 Restart
-            </ComingSoonButton>
+            </UnavailableButton>
         );
     }
 

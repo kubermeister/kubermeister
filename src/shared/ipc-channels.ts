@@ -92,9 +92,6 @@ export const STREAM_CHANNELS = [
     'nodes.drain',
 ] as const;
 
-/** Control channels the preload's `stream()` uses; the renderer never calls them directly. */
-export const STREAM_CONTROL_CHANNELS = ['stream.start', 'stream.send', 'stream.stop'] as const;
-
 export type AllowedChannel = (typeof IPC_CHANNELS)[number];
 export type AllowedSubscription = (typeof SUBSCRIPTION_CHANNELS)[number];
 export type AllowedStream = (typeof STREAM_CHANNELS)[number];
