@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Regenerate the app icon sets from their SVG sources: icon.svg (stable) and icon-tip.svg (nightly).
+# Regenerate the app icon set (png, icns, ico) from icon.svg.
 # Requires: rsvg-convert, iconutil (macOS), magick (ImageMagick).
 set -euo pipefail
 cd "$(dirname "$0")"
 
-for base in icon icon-tip; do
+for base in icon; do
     # 1024 master PNG (Linux icon)
     rsvg-convert -w 1024 -h 1024 "$base.svg" -o "$base.png"
 

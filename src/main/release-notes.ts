@@ -2,8 +2,8 @@
  * electron-updater reads a stable release's notes from GitHub's Atom feed, where the body arrives as
  * the HTML GitHub rendered for the releases page. The popover shows notes as text, so the markup is
  * flattened here, in main, before it crosses the bridge: headings and paragraphs become lines, list
- * items become bullets, every other tag is dropped and the entities GitHub escapes are decoded. Plain
- * text, which is what tip builds carry, passes through unchanged.
+ * items become bullets, every other tag is dropped and the entities GitHub escapes are decoded. Notes
+ * that carry no markup pass through unchanged.
  */
 
 const BLOCK_END = /<\/(?:p|div|h[1-6]|li|ul|ol|blockquote|pre|tr)\s*>|<br\s*\/?>|<hr\s*\/?>/gi;

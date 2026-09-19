@@ -26,7 +26,11 @@ const savedAppImage = process.env.APPIMAGE;
 let platform: NodeJS.Platform = 'darwin';
 vi.spyOn(process, 'platform', 'get').mockImplementation(() => platform);
 
-const found = { version: '0.3.0', releaseDate: '2026-09-16T06:48:44.854Z', releaseNotes: 'Nightly build #51.' };
+const found = {
+    version: '0.3.0',
+    releaseDate: '2026-09-16T06:48:44.854Z',
+    releaseNotes: 'Fixes the namespace selector.',
+};
 
 async function loadUpdater() {
     vi.resetModules();
@@ -110,7 +114,7 @@ describe('startUpdater', () => {
             status: 'available',
             version: '0.3.0',
             releaseDate: found.releaseDate,
-            notes: 'Nightly build #51.',
+            notes: 'Fixes the namespace selector.',
             checkedAt: '2026-09-16T07:00:00.000Z',
         });
         expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
@@ -142,7 +146,7 @@ describe('startUpdater', () => {
             status: 'downloading',
             version: '0.3.0',
             releaseDate: found.releaseDate,
-            notes: 'Nightly build #51.',
+            notes: 'Fixes the namespace selector.',
             percent: 42,
         });
         autoUpdater.emit('update-downloaded', found);
@@ -150,7 +154,7 @@ describe('startUpdater', () => {
             status: 'downloaded',
             version: '0.3.0',
             releaseDate: found.releaseDate,
-            notes: 'Nightly build #51.',
+            notes: 'Fixes the namespace selector.',
         });
     });
 

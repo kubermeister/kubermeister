@@ -138,7 +138,6 @@ describe('registerHandlers', () => {
         await expect(invoke('app.info', {})).resolves.toEqual({
             name: 'Kubermeister',
             version: '0.1.1',
-            channel: 'stable',
             electron: '44.3.0',
             chrome: '152.0.0.0',
             node: process.versions.node,

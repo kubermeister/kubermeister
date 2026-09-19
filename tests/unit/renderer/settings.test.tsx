@@ -27,9 +27,8 @@ const settings = {
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date', checkedAt: new Date(Date.now() - 5 * 60_000).toISOString() },
     'app.info': {
-        name: 'Kubermeister Tip',
-        version: '0.2.1-tip.50',
-        channel: 'tip',
+        name: 'Kubermeister',
+        version: '0.2.1',
         electron: '44.3.0',
         chrome: '152.0.0.0',
         node: '24.21.0',
@@ -133,17 +132,16 @@ describe('settings screen', () => {
         expect(select).toHaveTextContent('Download in the background');
     });
 
-    it('shows this install, its channel and the last check, and runs a check on demand', async () => {
+    it('shows this install and the last check, and runs a check on demand', async () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.check'
-                ? { status: 'available', version: '0.2.1-tip.51', notes: 'Nightly build #51 from abc1234.' }
+                ? { status: 'available', version: '0.2.2', notes: 'Fixes the namespace selector.' }
                 : data[channel],
         );
         renderRoutes(routeTree, '/settings');
         const about = await screen.findByTestId('about-card');
-        await waitFor(() => expect(about).toHaveTextContent('Kubermeister Tip'));
-        expect(about).toHaveTextContent('0.2.1-tip.50');
-        expect(about).toHaveTextContent('Tip channel');
+        await waitFor(() => expect(about).toHaveTextContent('Kubermeister'));
+        expect(about).toHaveTextContent('0.2.1');
         expect(about).toHaveTextContent('Electron 44.3.0 · Chrome 152.0.0.0 · Node 24.21.0');
         const status = screen.getByTestId('update-status');
         await waitFor(() => expect(status).toHaveTextContent("You're on the latest version."));
@@ -151,8 +149,8 @@ describe('settings screen', () => {
 
         await userEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('update.check', {}));
-        await waitFor(() => expect(status).toHaveTextContent('Version 0.2.1-tip.51 is available.'));
-        expect(status).toHaveTextContent('Nightly build #51 from abc1234.');
+        await waitFor(() => expect(status).toHaveTextContent('Version 0.2.2 is available.'));
+        expect(status).toHaveTextContent('Fixes the namespace selector.');
         await userEvent.click(screen.getByRole('button', { name: 'Download update' }));
         expect(invoke).toHaveBeenCalledWith('update.download', {});
     });

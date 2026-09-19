@@ -95,7 +95,7 @@ questions in a review are questions, not verdicts.
 
 ## Releases
 
-Releases are cut by the maintainer. Every push to `main` ships as the rolling **Tip** build; a
-`vX.Y.Z` tag ships a stable release once its `chore(release): X.Y.Z` PR has merged. Release notes
+Releases are cut by the maintainer: a `vX.Y.Z` tag ships a release once its `chore(release): X.Y.Z`
+PR has merged, and releases are frequent, so a merged fix reaches users quickly. Release notes
 are generated from the merged pull request titles, which is one more reason the title has to read
 well on its own.

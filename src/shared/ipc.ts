@@ -85,8 +85,6 @@ const noInput = z.object({});
 const appInfoSchema = z.object({
     name: z.string(),
     version: z.string(),
-    /** Which release feed this build follows; derived from the version's prerelease tag. */
-    channel: z.enum(['stable', 'tip']),
     electron: z.string(),
     chrome: z.string(),
     node: z.string(),

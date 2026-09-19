@@ -105,13 +105,9 @@ A few rules hold everywhere:
 
 ## Installation
 
-Kubermeister ships in two channels. Both can be installed side by side; they are separate apps
-with separate settings.
-
-| Channel    | App name         | What it is                                                   | Where                                                                        |
-| ---------- | ---------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| **Stable** | Kubermeister     | Versioned releases, `vX.Y.Z`                                 | [Releases](https://github.com/kubermeister/kubermeister/releases)            |
-| **Tip**    | Kubermeister Tip | Nightly build, rebuilt on every change to `main`. May break. | [Tip release](https://github.com/kubermeister/kubermeister/releases/tag/tip) |
+Every version is a `vX.Y.Z` tag on the
+[Releases](https://github.com/kubermeister/kubermeister/releases) page, with installers for each
+platform attached.
 
 ### macOS
 
@@ -124,8 +120,7 @@ once before anything from them can be installed:
 
 ```sh
 brew trust kubermeister/tap
-brew install --cask kubermeister/tap/kubermeister        # stable
-brew install --cask kubermeister/tap/kubermeister@tip    # tip
+brew install --cask kubermeister/tap/kubermeister
 ```
 
 ### Windows
@@ -155,10 +150,9 @@ The app checks for updates shortly after launch and every few hours. When a new 
 pill appears in the top bar and a notification offers to update; the download runs in the background
 and a restart finishes it (quitting the app installs it too). Settings › Updates chooses between
 being asked first (the default), downloading silently, or never checking automatically, and its
-About card shows the installed version, its channel and a **Check for updates** button; the same
-check is in the application menu and the ⌘K palette. Stable follows stable releases; Tip follows the
-nightly build. Installing a newer download over the existing app also works; settings are kept.
-Homebrew users can run `brew upgrade` as well.
+About card shows the installed version and a **Check for updates** button; the same check is in the
+application menu and the ⌘K palette. Installing a newer download over the existing app also works;
+settings are kept. Homebrew users can run `brew upgrade` as well.
 
 ## Building from source
 

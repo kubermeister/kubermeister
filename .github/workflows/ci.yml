@@ -3,7 +3,9 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  # Pushes to main run through tip.yml, which calls this workflow as its gate.
+  push:
+    branches: [main]
+  # release.yml calls this workflow as its gate before packaging.
   workflow_call:
 
 permissions:

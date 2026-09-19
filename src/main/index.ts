@@ -15,9 +15,9 @@ import { usableBounds } from './window-bounds.js';
 // installation is never read or written.
 if (process.env.KUBERMEISTER_USER_DATA) app.setPath('userData', process.env.KUBERMEISTER_USER_DATA);
 
-// Packaged builds take their name from electron-builder's productName ("Kubermeister" or
-// "Kubermeister Tip"), which also separates their settings folders. Only development, which runs
-// from Electron's own bundle, needs the name set by hand.
+// Packaged builds take their name from electron-builder's productName, which also names their
+// settings folder. Only development, which runs from Electron's own bundle, needs the name set by
+// hand.
 if (!app.isPackaged) app.setName('Kubermeister');
 
 // A kubeconfig written by `aws eks update-kubeconfig` names its credential plugin by bare command,
