@@ -14,9 +14,9 @@ Only the maintainer sees the report. Include what you found, how to reproduce it
 attacker could do with it. A proof of concept against a disposable cluster is welcome; one against
 a cluster you do not own is not.
 
-You will get an acknowledgement within a week. Once the problem is confirmed, a fix ships in a
-stable release and in the tip build, the advisory is published with credit to the reporter unless
-they prefer otherwise, and the report is closed.
+You will get an acknowledgement within a week. Once the problem is confirmed, a fix ships in a new
+release, the advisory is published with credit to the reporter unless they prefer otherwise, and the
+report is closed.
 
 ## What counts
 
@@ -34,7 +34,7 @@ lower priority than anything that crosses a boundary.
 
 ## Supported versions
 
-Fixes go into the latest stable release and into tip. Older stable releases are not patched;
+Fixes go into the latest release. Older releases are not patched;
 the in-app updater and Homebrew make moving to the latest release a one-step operation.
 
 ## Design notes

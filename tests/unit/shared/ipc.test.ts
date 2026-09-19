@@ -19,7 +19,6 @@ describe('IPC contract', () => {
         const valid = {
             name: 'x',
             version: '1',
-            channel: 'stable',
             electron: '44',
             chrome: '152',
             node: '24',
@@ -28,7 +27,6 @@ describe('IPC contract', () => {
         expect(ipcSchemas['app.info'].output.safeParse(valid).success).toBe(true);
         const { node: _node, ...missingNode } = valid;
         expect(ipcSchemas['app.info'].output.safeParse(missingNode).success).toBe(false);
-        expect(ipcSchemas['app.info'].output.safeParse({ ...valid, channel: 'nightly' }).success).toBe(false);
     });
 
     it('update.state accepts every status and bounds the progress percentage', () => {
@@ -56,7 +54,7 @@ describe('IPC contract', () => {
         const found = {
             status: 'available',
             version: '0.3.0',
-            notes: 'Nightly build #51.',
+            notes: 'Fixes the namespace selector.',
             releaseDate: '2026-09-16T06:48:44.854Z',
             checkedAt: '2026-09-16T07:00:00.000Z',
         };

@@ -8,19 +8,6 @@ inputs:
   release-tag:
     description: Release tag to upload to (must already exist).
     required: true
-  metadata-channel:
-    description: electron-updater metadata file prefix ("latest" for stable, "tip" for nightly).
-    required: true
-  prune:
-    description: >
-      After the feed names this build, delete this OS's installer assets from earlier builds. Only
-      for a rolling release that accumulates builds under one tag; a versioned release holds one.
-    required: false
-    default: 'false'
-  flags:
-    description: Extra electron-builder -c overrides, one per line.
-    required: false
-    default: ''
   github-token:
     required: true
   csc-link:
@@ -56,11 +43,8 @@ runs:
         IN_APPLE_ID: ${{ inputs.apple-id }}
         IN_APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.apple-app-specific-password }}
         IN_APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
-        EXTRA_FLAGS: ${{ inputs.flags }}
       run: |
         flags=()
-        # Strip a trailing carriage return: on Windows runners the multi-line input arrives CRLF.
-        while IFS= read -r line; do line=${line%$'\r'}; [ -n "$line" ] && flags+=("$line"); done <<< "$EXTRA_FLAGS"
         if [ "$RUNNER_OS" = macOS ]; then
           if [ -n "$IN_CSC_LINK" ]; then
             # Developer ID signing; hardened runtime stays on (electron-builder.yml default).
@@ -80,30 +64,27 @@ runs:
         fi
         npm run package -- "${flags[@]}"
 
-    # The installer names carry the version, so a new build never overwrites the assets a
-    # published feed still points at; the previous build stays whole until the feed has moved.
+    # The installer names carry the version, so a rerun of a failed release never overwrites an
+    # asset a published feed still points at; the previous release stays whole until its own
+    # feed has moved.
     - name: Name this OS's installers
       id: files
       shell: bash
-      env:
-        CHANNEL: ${{ inputs.metadata-channel }}
       run: |
         shopt -s nullglob
         case "$RUNNER_OS" in
-          macOS)   files=(release/*.dmg release/*.dmg.blockmap release/*.zip release/*.zip.blockmap); feed="release/${CHANNEL}-mac.yml"; marker='-mac-' ;;
-          Windows) files=(release/*.exe release/*.exe.blockmap); feed="release/${CHANNEL}.yml"; marker='-win-' ;;
-          Linux)   files=(release/*.AppImage release/*.deb); feed="release/${CHANNEL}-linux.yml"; marker='-linux-' ;;
+          macOS)   files=(release/*.dmg release/*.dmg.blockmap release/*.zip release/*.zip.blockmap); feed="release/latest-mac.yml" ;;
+          Windows) files=(release/*.exe release/*.exe.blockmap); feed="release/latest.yml" ;;
+          Linux)   files=(release/*.AppImage release/*.deb); feed="release/latest-linux.yml" ;;
         esac
         [ "${#files[@]}" -gt 0 ] || { echo "::error::no installers under release/"; exit 1; }
         test -f "$feed" || { echo "::error::missing updater metadata $feed"; exit 1; }
-        for f in "${files[@]}"; do case "$f" in *"$marker"*) ;; *) echo "::error::$f does not carry the $marker marker the prune step relies on"; exit 1 ;; esac; done
         printf 'installers<<EOL\n%s\nEOL\n' "$(printf '%s\n' "${files[@]}")" >> "$GITHUB_OUTPUT"
         echo "feed=$feed" >> "$GITHUB_OUTPUT"
-        echo "marker=$marker" >> "$GITHUB_OUTPUT"
 
     # One file per call, retried with backoff: GitHub's upload service fails a large asset now
     # and then with a 5xx, and one such failure must not cost the whole build. `--clobber` only
-    # ever meets an asset of this same build, left by a failed attempt or an earlier run of it.
+    # ever meets an asset of this same version, left by a failed attempt or a rerun of the job.
     - name: Upload installers
       shell: bash
       env:
@@ -169,26 +150,3 @@ runs:
           done
         }
         retry gh release upload "$TAG" "$FEED" --repo "$GITHUB_REPOSITORY" --clobber
-
-    # Only this OS's assets, only once its feed points elsewhere, and best effort: a leftover
-    # asset costs nothing, a deleted one the feed still names costs an update.
-    - name: Prune this OS's earlier builds
-      if: inputs.prune == 'true'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.github-token }}
-        TAG: ${{ inputs.release-tag }}
-        INSTALLERS: ${{ steps.files.outputs.installers }}
-        MARKER: ${{ steps.files.outputs.marker }}
-      run: |
-        keep=$(while IFS= read -r f; do [ -n "$f" ] && basename "$f"; done <<< "$INSTALLERS")
-        gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' \
-          | while IFS= read -r name; do
-              case "$name" in *.yml) continue ;; *"$MARKER"*) ;; *) continue ;; esac
-              grep -qxF "$name" <<< "$keep" && continue
-              if gh release delete-asset "$TAG" "$name" --repo "$GITHUB_REPOSITORY" --yes < /dev/null; then
-                echo "pruned $name"
-              else
-                echo "::warning::could not prune $name; it stays on the release"
-              fi
-            done

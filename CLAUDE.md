@@ -352,7 +352,7 @@ null` under "All namespaces"; the label is the renderer's, never a value handed 
   non-zero surfaces as `unauthorized` with a sentence naming the plugin, not as the CLI's stderr
   under "Something went wrong".
 - **Settings** (`src/shared/settings.ts`, `src/main/settings/store.ts`) are a versioned JSON file
-  in Electron's `userData`, so the stable and tip apps never share state. The settings screen at
+  in Electron's `userData`. The settings screen at
   `/settings` edits them through `settings.set`; the application menu (`src/main/menu.ts`) opens it
   with `Cmd+,` on macOS by pushing `open-settings`. Theme lives in renderer `localStorage`, not here,
   because it must apply before first paint. The renderer can never
@@ -361,27 +361,19 @@ null` under "All namespaces"; the label is the renderer's, never a value handed 
 
 ## Release model
 
-Two channels, two apps that install side by side:
+One channel, released often. `ci.yml` runs on every pull request and every push to `main`, and
+`release.yml` calls it as its gate. A release (`.github/workflows/release.yml`) is a `vX.Y.Z` tag
+whose version matches package.json: draft release, package on three OSes, upload installers named
+`Kubermeister-<version>-<os>-<arch>.<ext>` plus electron-updater metadata (`latest*.yml`,
+blockmaps), publish as latest. Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps
+package.json, then `git tag vX.Y.Z && git push origin vX.Y.Z`. There is no nightly or pre-release
+build; a fix reaches users through the next release.
 
-- **Tip** (`.github/workflows/tip.yml`): every push to `main`, after `ci.yml` passes as the gate.
-  Ships as `Kubermeister Tip` (`io.kubermeister.tip`, badged icon, own settings folder, version
-  `<package.json>-tip.<build number>`). The `tip` tag is force-moved and the build's assets,
-  named `Kubermeister-<version>-<os>-<arch>.<ext>` like stable's, join the single rolling
-  pre-release; the previous build's are pruned only after the feed names the new one. Its update
-  feed is the generic URL of that release. Moving the tag is best effort: `GITHUB_TOKEN` cannot
-  move a ref across a workflow change, so the `TIP_TAG_TOKEN` secret (a token with workflow
-  permission) is what keeps the tag on the latest commit; without it the build still publishes.
-- **Stable** (`.github/workflows/release.yml`): a `vX.Y.Z` tag whose version matches package.json.
-  Draft release, package on three OSes, upload installers plus electron-updater metadata
-  (`latest*.yml`, blockmaps), publish as latest. Cutting a release: merge a
-  `chore(release): X.Y.Z` PR that bumps package.json, then `git tag vX.Y.Z && git push origin
-vX.Y.Z`.
-
-Asset names, app ids and product names are load-bearing for the updater and the Homebrew casks;
-change them together with the workflows. Packaging runs through `.github/actions/package`: with the
+Asset names, the app id and the product name are load-bearing for the updater and the Homebrew cask;
+change them together with the workflow. Packaging runs through `.github/actions/package`: with the
 `CSC_*` and `APPLE_*` secrets macOS is Developer ID signed and notarized, otherwise ad-hoc signed;
 never export an empty `CSC_LINK`. In-app updates: `src/main/updater.ts` (electron-updater) reads the
-feed electron-builder embeds at package time, so each app only follows its own channel; macOS
+feed electron-builder embeds at package time; macOS
 updates need the `zip` target next to the dmg. The library never downloads on its own: the
 `updates.mode` setting (`check` by default, `download`, `off`) is read the moment a version is found,
 and main pushes every transition as `update.state`, which `useUpdater` in `src/renderer/lib/updates.ts`
@@ -392,10 +384,9 @@ fail-proof:** GitHub's upload service does fail a large asset now and then, so t
 uploads one file at a time with retries, reads every asset back and checks its size and checksum,
 and only then uploads the `*.yml` feed. Installer names carry the version, so a new build never
 overwrites the files a live feed points at, and any failure leaves the previous build complete;
-the feed file is the one asset written in place. Tip builds carry their build number in
-`releaseInfo.releaseNotes`, which the popover shows; a stable release's notes arrive from GitHub's Atom
-feed as rendered HTML, which `src/main/release-notes.ts` flattens to text before the bridge. Icons
-regenerate from `resources/icon.svg` and `resources/icon-tip.svg` with `resources/build-icon.sh`.
+the feed file is the one asset written in place. A release's notes arrive from GitHub's Atom feed as
+rendered HTML, which `src/main/release-notes.ts` flattens to text before the bridge and the popover
+shows. Icons regenerate from `resources/icon.svg` with `resources/build-icon.sh`.
 
 ## Testing
 

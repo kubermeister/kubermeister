@@ -26,9 +26,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: App version and channel
-      description: From Settings › About. Tip builds carry their build number.
-      placeholder: 0.3.0 stable, or 0.3.0-tip.95
+      label: App version
+      description: From Settings › About.
+      placeholder: 0.4.3
     validations:
       required: true
   - type: dropdown

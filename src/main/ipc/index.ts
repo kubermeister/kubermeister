@@ -1,7 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import type { IpcChannel, IpcInput, IpcOutput, IpcResult } from '../../shared/ipc.js';
 import { ipcSchemas } from '../../shared/ipc.js';
-import { channelOfVersion } from '../../shared/updates.js';
 import { reloadKubeConfig } from '../k8s/client.js';
 import { getCurrentContext, listContexts, setContext, setNamespace } from '../k8s/context.js';
 import { K8sError, setReadTimeoutSec } from '../k8s/errors.js';
@@ -110,7 +109,6 @@ const handlers: Handlers = {
     'app.info': async () => ({
         name: app.getName(),
         version: app.getVersion(),
-        channel: channelOfVersion(app.getVersion()),
         electron: process.versions.electron,
         chrome: process.versions.chrome,
         node: process.versions.node,

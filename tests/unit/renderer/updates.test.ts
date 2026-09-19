@@ -70,9 +70,11 @@ describe('describeUpdate', () => {
     });
 
     it('prefers release notes over the release date for a found version', () => {
-        expect(describeUpdate({ status: 'available', version: '0.3.0', notes: 'Nightly build #51.' })).toEqual({
+        expect(
+            describeUpdate({ status: 'available', version: '0.3.0', notes: 'Fixes the namespace selector.' }),
+        ).toEqual({
             title: 'Version 0.3.0 is available.',
-            detail: 'Nightly build #51.',
+            detail: 'Fixes the namespace selector.',
         });
         const dated = describeUpdate({
             status: 'available',

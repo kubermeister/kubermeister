@@ -1,20 +1,11 @@
 /**
- * What the renderer needs to know about releases without asking the network: which channel a
- * version belongs to and where its release page lives. Tip builds are versioned
- * `<next stable>-tip.<build>`, so the prerelease tag is the channel.
+ * What the renderer needs to know about releases without asking the network: where a version's
+ * release page lives. Every release is tagged `vX.Y.Z`, so the page follows from the version alone.
  */
 
 export const REPOSITORY_URL = 'https://github.com/kubermeister/kubermeister';
 
-export type UpdateChannel = 'stable' | 'tip';
-
-export function channelOfVersion(version: string): UpdateChannel {
-    return /-tip(\.|$)/.test(version) ? 'tip' : 'stable';
-}
-
-/** The GitHub release page for a version: the rolling tip release, or the `vX.Y.Z` tag. */
+/** The GitHub release page for a version: its `vX.Y.Z` tag. */
 export function releasePageUrl(version: string): string {
-    return channelOfVersion(version) === 'tip'
-        ? `${REPOSITORY_URL}/releases/tag/tip`
-        : `${REPOSITORY_URL}/releases/tag/v${version}`;
+    return `${REPOSITORY_URL}/releases/tag/v${version}`;
 }

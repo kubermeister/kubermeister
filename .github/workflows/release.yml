@@ -74,7 +74,6 @@ jobs:
       - uses: ./.github/actions/package
         with:
           release-tag: ${{ github.ref_name }}
-          metadata-channel: latest
           github-token: ${{ secrets.GITHUB_TOKEN }}
           csc-link: ${{ secrets.CSC_LINK }}
           csc-key-password: ${{ secrets.CSC_KEY_PASSWORD }}

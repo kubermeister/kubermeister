@@ -22,8 +22,8 @@ describe('releaseNotesText', () => {
     });
 
     it('leaves plain text alone', () => {
-        expect(releaseNotesText('Nightly build #51.')).toBe('Nightly build #51.');
-        expect(releaseNotesText('  Nightly build #51.  ')).toBe('Nightly build #51.');
+        expect(releaseNotesText('Fixes the namespace selector.')).toBe('Fixes the namespace selector.');
+        expect(releaseNotesText('  Fixes the namespace selector.  ')).toBe('Fixes the namespace selector.');
     });
 
     it('decodes the entities GitHub escapes', () => {

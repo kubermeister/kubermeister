@@ -9,9 +9,9 @@ import { mergeSettings, parseSettings } from '../../shared/settings.js';
  * update is written eagerly with an atomic write-temp-then-rename, and a write failure is logged
  * but never thrown, so a settings problem cannot break the read paths that depend on `getSettings`.
  *
- * The file lives in Electron's `userData`, which is per product name, so Kubermeister and
- * Kubermeister Tip keep separate settings. `src/main/index.ts` lets `KUBERMEISTER_USER_DATA`
- * redirect that directory, which is how tests keep the real settings out of reach.
+ * The file lives in Electron's `userData`, which is per product name. `src/main/index.ts` lets
+ * `KUBERMEISTER_USER_DATA` redirect that directory, which is how tests keep the real settings out
+ * of reach.
  */
 
 let current: Settings | null = null;

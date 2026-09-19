@@ -12,7 +12,6 @@ import {
 } from '../../shared/settings';
 import { SettingsPage } from '@/components/templates/settings-page';
 import { Field, FormCard, FormSelect, Toggle } from '@/components/templates/settings-form';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTheme, type Theme } from '@/components/theme-provider';
 import { useIpcQuery } from '@/lib/query';
@@ -239,7 +238,7 @@ function SettingsScreen() {
     );
 }
 
-/** This install's version and channel, and the updater's outcome, with the check the user can start. */
+/** This install's version and the updater's outcome, with the check the user can start. */
 function AboutCard() {
     const info = useIpcQuery('app.info', {});
     const { state, check } = useUpdater();
@@ -274,11 +273,6 @@ function AboutCard() {
                 <div className="flex items-center gap-2 text-lead font-medium">
                     <span>{info.data?.name ?? 'Kubermeister'}</span>
                     <span className="font-mono text-body text-text-2">{info.data?.version ?? '—'}</span>
-                    {info.data && (
-                        <Badge variant={info.data.channel === 'tip' ? 'warn' : 'neutral'}>
-                            {info.data.channel === 'tip' ? 'Tip channel' : 'Stable channel'}
-                        </Badge>
-                    )}
                 </div>
                 {info.data && (
                     <div className="text-meta text-text-muted">

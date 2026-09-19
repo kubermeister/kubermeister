@@ -54,7 +54,7 @@ describe('UpdatePill', () => {
         answer({ status: 'up-to-date' });
         render(<UpdatePill />);
         await act(async () => {});
-        const found: UpdateState = { status: 'available', version: '0.3.0', notes: 'Nightly build #51 from abc1234.' };
+        const found: UpdateState = { status: 'available', version: '0.3.0', notes: 'Fixes the namespace selector.' };
         act(() => push?.(found));
         const pill = screen.getByTestId('update-pill');
         expect(pill).toHaveTextContent('Update available');
@@ -62,7 +62,7 @@ describe('UpdatePill', () => {
         expect(toast).toHaveBeenCalledOnce();
         expect(toast).toHaveBeenCalledWith(
             'Version 0.3.0 is available.',
-            expect.objectContaining({ description: 'Nightly build #51 from abc1234.' }),
+            expect.objectContaining({ description: 'Fixes the namespace selector.' }),
         );
         // The same version pushed again (a later scheduled check) is not announced twice.
         act(() => push?.({ ...found, checkedAt: '2026-09-16T11:00:00.000Z' }));
@@ -71,7 +71,7 @@ describe('UpdatePill', () => {
         await userEvent.click(pill);
         const popover = await screen.findByTestId('update-popover');
         expect(popover).toHaveTextContent('Version 0.3.0 is available.');
-        expect(popover).toHaveTextContent('Nightly build #51 from abc1234.');
+        expect(popover).toHaveTextContent('Fixes the namespace selector.');
         expect(screen.getByRole('link', { name: /What's new/ })).toHaveAttribute(
             'href',
             'https://github.com/kubermeister/kubermeister/releases/tag/v0.3.0',
@@ -86,23 +86,23 @@ describe('UpdatePill', () => {
     });
 
     it('shows download progress and then the restart, announcing readiness', async () => {
-        answer({ status: 'downloading', version: '0.3.0-tip.51', percent: 10 });
+        answer({ status: 'downloading', version: '0.3.1', percent: 10 });
         render(<UpdatePill />);
         const pill = await screen.findByTestId('update-pill');
         expect(pill).toHaveTextContent('Downloading 10%');
         await userEvent.click(pill);
         expect(await screen.findByRole('progressbar')).toHaveAttribute('aria-valuenow', '10');
-        act(() => push?.({ status: 'downloading', version: '0.3.0-tip.51', percent: 65 }));
+        act(() => push?.({ status: 'downloading', version: '0.3.1', percent: 65 }));
         expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '65');
         expect(screen.getByRole('link', { name: /What's new/ })).toHaveAttribute(
             'href',
-            'https://github.com/kubermeister/kubermeister/releases/tag/tip',
+            'https://github.com/kubermeister/kubermeister/releases/tag/v0.3.1',
         );
 
-        act(() => push?.({ status: 'downloaded', version: '0.3.0-tip.51' }));
+        act(() => push?.({ status: 'downloaded', version: '0.3.1' }));
         expect(pill).toHaveTextContent('Restart to update');
         expect(toast).toHaveBeenCalledWith(
-            'Version 0.3.0-tip.51 is ready to install.',
+            'Version 0.3.1 is ready to install.',
             expect.objectContaining({ action: expect.objectContaining({ label: 'Restart' }) }),
         );
         await userEvent.click(screen.getByRole('button', { name: 'Restart now' }));

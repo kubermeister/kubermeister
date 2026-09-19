@@ -38,9 +38,9 @@ function carry(current: UpdateState): Pick<UpdateState, 'version' | 'releaseDate
 }
 
 /**
- * Why the updater cannot run in this build, or `null` when it can. The update feed (GitHub releases
- * for stable, the tip download URL for nightly) is embedded by electron-builder at package time, so
- * development builds have nothing to check against. Linux deb packages are managed by apt and only
+ * Why the updater cannot run in this build, or `null` when it can. The update feed (the GitHub
+ * releases of this repository) is embedded by electron-builder at package time, so development
+ * builds have nothing to check against. Linux deb packages are managed by apt and only
  * the AppImage can replace itself.
  */
 function unsupportedReason(): string | null {
