@@ -19,8 +19,8 @@ act; a blank issue is fine when neither fits. Issues are the whole plan: there i
 separate roadmap, so what the open issues and milestones say is what is going to happen.
 
 - **Type** (Bug, Feature, Task) says what an issue is; the forms set it.
-- **Milestones** are themes, not releases: a milestone gathers the work that makes one part of the
-  app whole, and closes when it is empty. Bugs join a milestone only when they belong to its theme.
+- **Milestones** are the next minor versions: a milestone holds what its version ships, and the
+  version is cut when the milestone is empty. Patch releases carry no milestone.
 - **Labels** come in groups, all defined in [`.github/labels.yml`](.github/labels.yml): one
   `area:` per issue, a `priority:` and a `size:` set at triage (a size is an estimate, not a
   promise), and a status word. `needs-triage` means nobody has looked yet, `needs-info` means the

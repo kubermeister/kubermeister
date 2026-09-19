@@ -1,15 +1,15 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ComingSoonButton } from '@/components/coming-soon-button';
+import { UnavailableButton } from '@/components/unavailable-button';
 import { renderWithQuery } from './helpers';
 
-describe('ComingSoonButton', () => {
+describe('UnavailableButton', () => {
     it('stays focusable, blocks activation, and explains itself on focus', async () => {
         const onClick = vi.fn((event: React.MouseEvent) => event.defaultPrevented);
         renderWithQuery(
             <form onSubmit={onClick}>
-                <ComingSoonButton tip="Restart arrives later">Restart</ComingSoonButton>
+                <UnavailableButton reason="This pod has no workload to roll">Restart</UnavailableButton>
             </form>,
         );
         const button = screen.getByRole('button', { name: 'Restart' });
@@ -23,6 +23,8 @@ describe('ComingSoonButton', () => {
         button.blur();
         await userEvent.tab();
         expect(button).toHaveFocus();
-        expect(await screen.findByRole('tooltip', {}, { timeout: 3000 })).toHaveTextContent('Restart arrives later');
+        expect(await screen.findByRole('tooltip', {}, { timeout: 3000 })).toHaveTextContent(
+            'This pod has no workload to roll',
+        );
     });
 });

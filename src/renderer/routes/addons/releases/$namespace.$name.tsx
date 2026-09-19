@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { FileTextIcon, HistoryIcon, RefreshCwIcon, RocketIcon } from 'lucide-react';
-import { ComingSoonButton } from '@/components/coming-soon-button';
+import { FileTextIcon, HistoryIcon, RocketIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { ReleaseRollbackButton } from '@/components/release/release-rollback-button';
 import { UninstallReleaseButton } from '@/components/release/uninstall-release-button';
@@ -112,15 +111,7 @@ function ReleaseDetailPage() {
             query={query}
             found={!!release}
             status={release ? { label: release.status, tone: RELEASE_TONE[release.status] } : undefined}
-            actions={
-                <>
-                    <ComingSoonButton variant="outline" size="sm">
-                        <RefreshCwIcon />
-                        Upgrade
-                    </ComingSoonButton>
-                    <UninstallReleaseButton name={name} namespace={namespace} />
-                </>
-            }
+            actions={<UninstallReleaseButton name={name} namespace={namespace} />}
             meta={
                 release
                     ? [`chart: ${release.chart}`, `revision: ${release.revision}`, `namespace: ${release.namespace}`]
