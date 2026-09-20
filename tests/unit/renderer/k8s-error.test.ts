@@ -5,6 +5,7 @@ import { describeError } from '../../../src/renderer/lib/k8s-error';
 describe('describeError', () => {
     it('titles every classified kind and keeps the structured detail', () => {
         const cases: Array<[Parameters<typeof IpcError.prototype.constructor>[0]['kind'], string]> = [
+            ['kubeconfig', 'Kubeconfig not loaded'],
             ['forbidden', 'Access denied'],
             ['unreachable', 'Cluster unreachable'],
             ['timeout', 'Cluster timed out'],

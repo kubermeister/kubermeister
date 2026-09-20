@@ -9,18 +9,18 @@ const ICON = {
     error: <XCircle className="size-4 text-red-500" aria-hidden />,
 };
 
+/**
+ * The screen for a bridge that cannot answer the startup checks at all. A kubeconfig problem is not
+ * shown here any more: the shell opens and the top bar's connection notice carries it.
+ */
 export function StartupError({
     checks,
     retrying,
     onRetry,
-    onPickKubeconfig,
-    onResetKubeconfig,
 }: {
     checks: StartupCheck[];
     retrying: boolean;
     onRetry: () => void;
-    onPickKubeconfig?: () => void;
-    onResetKubeconfig?: () => void;
 }) {
     return (
         <div className="flex h-screen items-center justify-center p-6">
@@ -46,16 +46,6 @@ export function StartupError({
                         <Button onClick={onRetry} disabled={retrying}>
                             {retrying ? 'Checking…' : 'Try again'}
                         </Button>
-                        {onPickKubeconfig && (
-                            <Button variant="outline" onClick={onPickKubeconfig}>
-                                Choose kubeconfig…
-                            </Button>
-                        )}
-                        {onResetKubeconfig && (
-                            <Button variant="ghost" onClick={onResetKubeconfig}>
-                                Use default kubeconfig
-                            </Button>
-                        )}
                     </div>
                 </CardContent>
             </Card>

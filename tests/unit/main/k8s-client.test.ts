@@ -235,3 +235,63 @@ describe('namespace helpers', () => {
         expect(activeContextName()).toBe('beta');
     });
 });
+
+describe('a kubeconfig that will not load', () => {
+    const savedKubeconfigEnv = process.env.KUBECONFIG;
+    let dir: string;
+
+    beforeEach(() => {
+        dir = mkdtempSync(join(tmpdir(), 'km-client-'));
+    });
+
+    afterEach(() => {
+        rmSync(dir, { recursive: true, force: true });
+        if (savedKubeconfigEnv === undefined) delete process.env.KUBECONFIG;
+        else process.env.KUBECONFIG = savedKubeconfigEnv;
+    });
+
+    it('fails every access as a classified kubeconfig error that names the path, never the contents', async () => {
+        const broken = join(dir, 'broken.yaml');
+        writeFileSync(broken, 'apiVersion: v1\nclusters: [ this is not yaml\nsecret-token-in-file: hunter2\n');
+        withSettings({}, broken);
+        const { kubeConfig, getActiveNamespace, activeContextName } = await loadClient();
+        for (const access of [kubeConfig, getActiveNamespace, activeContextName]) {
+            let caught: unknown;
+            try {
+                access();
+            } catch (error) {
+                caught = error;
+            }
+            expect(caught).toMatchObject({
+                name: 'K8sError',
+                kind: 'kubeconfig',
+                op: 'kubeconfig',
+                detail: `${broken} could not be parsed as a kubeconfig file.`,
+            });
+            expect(String((caught as Error).message)).not.toContain('hunter2');
+        }
+    });
+
+    it('names a configured path that does not exist', async () => {
+        const missing = join(dir, 'missing.yaml');
+        withSettings({}, missing);
+        const { kubeConfig } = await loadClient();
+        expect(() => kubeConfig()).toThrow(
+            expect.objectContaining({ kind: 'kubeconfig', detail: `No file exists at ${missing}.` }),
+        );
+    });
+
+    it('speaks of the default kubeconfig when no path is configured', async () => {
+        const broken = join(dir, 'default.yaml');
+        writeFileSync(broken, '{{ not a kubeconfig');
+        process.env.KUBECONFIG = broken;
+        withSettings({}, null);
+        const { kubeConfig } = await loadClient();
+        expect(() => kubeConfig()).toThrow(
+            expect.objectContaining({
+                kind: 'kubeconfig',
+                detail: 'The default kubeconfig ($KUBECONFIG or ~/.kube/config) could not be parsed.',
+            }),
+        );
+    });
+});

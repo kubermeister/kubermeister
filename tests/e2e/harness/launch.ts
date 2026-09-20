@@ -42,7 +42,7 @@ export async function launchApp(options: { kubeconfigPath?: string } = {}): Prom
     // The first window is handed over while index.html may still be loading; a spec that evaluates
     // or clicks before the load settles would hit a destroyed execution context.
     await window.waitForLoadState('domcontentloaded');
-    // A launch pointed at an unusable kubeconfig stops at the startup screen instead of the shell.
+    // A spec that launches against its own kubeconfig decides for itself what to wait for.
     if (!options.kubeconfigPath) await window.getByTestId('app-shell').waitFor();
     return { app, window, userData };
 }

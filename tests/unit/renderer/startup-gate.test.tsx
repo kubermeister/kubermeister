@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StartupReport } from '../../../src/shared/ipc';
@@ -47,47 +47,28 @@ describe('StartupGate', () => {
         expect(invoke).toHaveBeenCalledWith('startupChecks', {});
     });
 
-    it('shows the failing checks with details and hints, and retries on demand', async () => {
-        invoke.mockResolvedValueOnce(failing).mockResolvedValueOnce(passing);
+    it('opens the app anyway when the kubeconfig check fails; the top bar carries the failure', async () => {
+        invoke.mockResolvedValueOnce(failing);
+        renderWithQuery(
+            <StartupGate>
+                <p>the app</p>
+            </StartupGate>,
+        );
+        expect(await screen.findByText('the app')).toBeInTheDocument();
+        expect(screen.queryByTestId('startup-error')).not.toBeInTheDocument();
+    });
+
+    it('blocks on a bridge failure with a retry, since nothing behind it could answer either', async () => {
+        invoke.mockRejectedValueOnce(new Error('blocked IPC channel: startupChecks')).mockResolvedValueOnce(passing);
         renderWithQuery(
             <StartupGate>
                 <p>the app</p>
             </StartupGate>,
         );
         const card = await screen.findByTestId('startup-error');
-        expect(card).toHaveTextContent('No file exists at /k.');
-        expect(card).toHaveTextContent('Fix or clear the kubeconfig path in Settings.');
+        expect(card).toHaveTextContent('blocked IPC channel: startupChecks');
         expect(screen.queryByText('the app')).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
         expect(await screen.findByText('the app')).toBeInTheDocument();
-    });
-
-    it('lets the user pick a kubeconfig or reset to the default', async () => {
-        invoke.mockImplementation(async (channel: string) => {
-            if (channel === 'startupChecks') return failing;
-            if (channel === 'kubeconfig.pick') return { path: '/picked' };
-            if (channel === 'kubeconfig.useDefault') return {};
-            throw new Error(`unexpected ${channel}`);
-        });
-        renderWithQuery(
-            <StartupGate>
-                <p>the app</p>
-            </StartupGate>,
-        );
-        await screen.findByTestId('startup-error');
-        await userEvent.click(screen.getByRole('button', { name: 'Choose kubeconfig…' }));
-        await waitFor(() => expect(invoke).toHaveBeenCalledWith('kubeconfig.pick', {}));
-        await userEvent.click(screen.getByRole('button', { name: 'Use default kubeconfig' }));
-        await waitFor(() => expect(invoke).toHaveBeenCalledWith('kubeconfig.useDefault', {}));
-    });
-
-    it('reports a bridge failure as a single error check', async () => {
-        invoke.mockRejectedValueOnce(new Error('blocked IPC channel: startupChecks'));
-        renderWithQuery(
-            <StartupGate>
-                <p>the app</p>
-            </StartupGate>,
-        );
-        expect(await screen.findByTestId('startup-error')).toHaveTextContent('blocked IPC channel: startupChecks');
     });
 });

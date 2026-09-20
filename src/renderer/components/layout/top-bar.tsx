@@ -35,6 +35,7 @@ import { useSelectNamespace, useSwitchContext } from '@/lib/scope';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { CLUSTER_TONE, type StatusTone } from '@/lib/status';
 import { cn } from '@/lib/utils';
+import { ConnectionNotice } from './connection-notice';
 import { NavLink } from './nav-link';
 import { ForwardManager } from './forward-manager';
 import { UpdatePill } from './update-pill';
@@ -58,6 +59,7 @@ export function TopBar() {
             <div className="h-4 w-px bg-border" />
             <ContextSelector />
             <NamespaceSelector />
+            <ConnectionNotice />
             {crumbs.length > 0 && <div className="ml-1 h-4 w-px bg-border" />}
             <nav aria-label="Breadcrumb" className="flex items-center gap-2.5 text-body" data-testid="breadcrumbs">
                 {crumbs.map((crumb, i) => {
@@ -194,8 +196,13 @@ export function NamespaceSelector() {
                         <TagIcon className="size-3 text-text-muted" />
                     )}
                     <span data-testid="active-namespace">
-                        {/* Until the selection is known, "All namespaces" would be a claim rather than a label. */}
-                        {active.isPending ? 'Loading…' : (activeName ?? ALL_NAMESPACES)}
+                        {/* Until the selection is known, "All namespaces" would be a claim rather than a label,
+                            and so would it be when the selection could not be read at all. */}
+                        {active.isPending
+                            ? 'Loading…'
+                            : active.isError
+                              ? 'Unavailable'
+                              : (activeName ?? ALL_NAMESPACES)}
                     </span>
                     <ChevronDownIcon className="size-3 text-text-muted" />
                 </Button>
