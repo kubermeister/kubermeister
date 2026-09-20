@@ -101,6 +101,8 @@ interface LogViewerProps {
     /** Whether each line carries its timestamp; the screen decides, there is no control for it. */
     timestamps: boolean;
     onDownload: () => void;
+    /** The tail this screen reads when the reader has not chosen one; shown by the View menu. */
+    defaultTail: number;
     /** Rendered above the rows when the live stream errors. */
     error?: string | null;
     /** True when `lines` has been narrowed by the search or the level floor. */
@@ -129,6 +131,7 @@ export function LogViewer({
     onSearchChange,
     timestamps,
     onDownload,
+    defaultTail,
     error,
     filtered,
     brokenPattern,
@@ -240,6 +243,8 @@ export function LogViewer({
                     onWrapChange={(wrap) => setView({ wrap })}
                     timestamps={showTimestamps}
                     onTimestampsChange={(value) => setView({ timestamps: value })}
+                    tail={view.tail ?? defaultTail}
+                    onTailChange={(tail) => setView({ tail })}
                 />
                 <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
                     <span className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')} />

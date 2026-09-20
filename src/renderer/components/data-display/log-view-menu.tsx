@@ -2,7 +2,9 @@ import { SlidersHorizontalIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { TAIL_OPTIONS } from '@/lib/log-view-options';
 
 /** One labelled switch in the menu; they all read the same way. */
 function Option({
@@ -37,11 +39,15 @@ export function LogViewMenu({
     onWrapChange,
     timestamps,
     onTimestampsChange,
+    tail,
+    onTailChange,
 }: {
     wrap: boolean;
     onWrapChange: (wrap: boolean) => void;
     timestamps: boolean;
     onTimestampsChange: (timestamps: boolean) => void;
+    tail: number;
+    onTailChange: (tail: number) => void;
 }) {
     return (
         <Popover>
@@ -59,6 +65,23 @@ export function LogViewMenu({
                     checked={timestamps}
                     onChange={onTimestampsChange}
                 />
+                <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="log-tail" className="font-normal text-meta">
+                        Tail
+                    </Label>
+                    <Select value={String(tail)} onValueChange={(value) => onTailChange(Number(value))}>
+                        <SelectTrigger id="log-tail" className="h-7 w-24 text-meta" aria-label="Tail">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {TAIL_OPTIONS.map((size) => (
+                                <SelectItem key={size} value={String(size)}>
+                                    {size.toLocaleString()}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </PopoverContent>
         </Popover>
     );

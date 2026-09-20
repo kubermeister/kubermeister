@@ -62,6 +62,7 @@ vi.mock('sonner', async () => ({
 const { forwardSnapshot, stopAllForwards } = await import('@/lib/port-forwards');
 const { LogViewer, SINCE_OPTIONS } = await import('@/components/data-display/log-viewer');
 const { LogsTab } = await import('@/components/pod/logs-tab');
+const { resetLogViewOptions, setLogViewOptions } = await import('@/lib/log-view-options');
 const { NetworkTab } = await import('@/components/pod/network-tab');
 const { OverviewTab } = await import('@/components/pod/overview-tab');
 const { declaredPorts, parseLocalPort, PortForwardControl } = await import('@/components/pod/port-forward-control');
@@ -162,6 +163,9 @@ beforeEach(() => {
     download.mockReset();
     streams.usePodLogStream.mockReset();
     streams.usePodLogStream.mockReturnValue(idle);
+    localStorage.clear();
+    // The view options are one store outside React; a test starts from nothing.
+    resetLogViewOptions();
 });
 
 describe('LogViewer', () => {
@@ -245,6 +249,15 @@ describe('LogsTab', () => {
         // Nothing is read one-shot while the stream is the source.
         expect(invoke).not.toHaveBeenCalledWith('pods.logSnapshot', expect.anything());
         expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'true');
+    });
+
+    it('reads the tail the reader picked rather than the screen’s own', async () => {
+        invoke.mockImplementation(answering([]));
+        streams.usePodLogStream.mockReturnValue(following(line('from stream')));
+        setLogViewOptions({ tail: 10000 });
+        renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
+        await screen.findByText('from stream');
+        expect(streams.usePodLogStream).toHaveBeenLastCalledWith(expect.objectContaining({ tailLines: 10000 }), 2000);
     });
 
     it('holds the view still on a snapshot once Live is turned off', async () => {

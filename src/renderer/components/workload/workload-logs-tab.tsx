@@ -5,11 +5,13 @@ import { LogViewer, SINCE_OPTIONS, type SinceOption } from '@/components/data-di
 import type { DetailTab } from '@/components/templates/resource-detail';
 import { downloadTextFile } from '@/lib/download';
 import { isBrokenPattern, visibleLines, NO_SEARCH, type LogSearch } from '@/lib/log-filter';
+import { useLogViewOptions } from '@/lib/log-view-options';
 import { podColors, useMultiPodLogStream } from '@/lib/multi-pod-logs';
 import { useIpcQuery } from '@/lib/query';
 import { useLogBufferLines, useRefreshIntervalMs } from '@/lib/settings';
 
-/** Per pod, not in total: this view follows every pod of the workload at once. */
+/** Per pod, not in total: this view follows every pod of the workload at once. The reader's own
+ * choice in the View menu is per pod for the same reason. */
 const TAIL_LINES_PER_POD = 100;
 
 interface WorkloadLogsProps {
@@ -34,10 +36,11 @@ export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
     // Following from the moment the tab opens, like the pod's own Logs tab; one stream per pod.
     const [live, setLive] = useState(true);
     const [search, setSearch] = useState<LogSearch>(NO_SEARCH);
+    const tailLines = useLogViewOptions()[0].tail ?? TAIL_LINES_PER_POD;
 
     const follow = useMultiPodLogStream(
         live ? names : [],
-        live ? { namespace, sinceSeconds: since.seconds, tailLines: TAIL_LINES_PER_POD } : null,
+        live ? { namespace, sinceSeconds: since.seconds, tailLines } : null,
         useLogBufferLines(),
     );
     const deferred = useDeferredValue(search);
@@ -66,6 +69,7 @@ export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
             onSearchChange={setSearch}
             // Each line already names its pod, so the timestamp would crowd the row out.
             timestamps={false}
+            defaultTail={TAIL_LINES_PER_POD}
             onDownload={download}
             error={failures.length > 0 ? `${failures[0]![0]}: ${failures[0]![1]}` : null}
             filtered={lines.length !== follow.lines.length}

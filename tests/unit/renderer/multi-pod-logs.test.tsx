@@ -23,6 +23,7 @@ vi.mock('@/lib/download', () => ({ downloadTextFile: download }));
 
 const { podColors, useMultiPodLogStream } = await import('@/lib/multi-pod-logs');
 const { WorkloadLogs } = await import('@/components/workload/workload-logs-tab');
+const { resetLogViewOptions, setLogViewOptions } = await import('@/lib/log-view-options');
 
 const SETTINGS = {
     version: 1,
@@ -72,6 +73,8 @@ beforeEach(() => {
     download.mockReset();
     opened.length = 0;
     invoke.mockImplementation(async (channel: string) => (channel === 'settings.get' ? SETTINGS : pods));
+    localStorage.clear();
+    resetLogViewOptions();
 });
 
 describe('colouring pods', () => {
@@ -188,6 +191,17 @@ describe('the workload logs tab', () => {
         // Both columns are one width, so the rows still line up, and it fits the longest name.
         expect(cell.getAttribute('style')).toContain(`width: ${long.length}ch`);
         expect(rows.querySelector(`[data-pod="${short}"]`)?.getAttribute('style')).toContain(`width: ${long.length}ch`);
+    });
+
+    it('reads the picked tail once per pod, as its own default is', async () => {
+        setLogViewOptions({ tail: 1000 });
+        renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
+        await waitFor(() => expect(stream).toHaveBeenCalledTimes(2));
+        expect(stream).toHaveBeenCalledWith(
+            'pods.logs',
+            expect.objectContaining({ tailLines: 1000, name: 'web-1' }),
+            expect.any(Function),
+        );
     });
 
     it('lets every stream go when Live is turned off', async () => {
