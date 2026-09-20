@@ -277,9 +277,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   through `src/renderer/lib/log-view-options.ts` with every access wrapped, shared by every console
   rather than kept per screen. Wrapping changes every row's height, so toggling it re-measures the
   virtualiser.
-- Whether a line carries its timestamp is still the screen's decision, not the toolbar's: a pod
-  stamps every line, a workload following many pods does not, since its rows already spend a column
-  naming the pod.
+- Whether a line carries its timestamp starts as the screen's decision — a pod stamps every line, a
+  workload following many pods does not, since its rows already spend a column naming the pod — and
+  the View menu's switch overrides it. `timestamps` is therefore `boolean | null` in the options,
+  where `null` means "as the screen has it"; once the switch is touched the answer is the reader's
+  on every console.
 - `pods.logDownload` saves the whole log from the API server rather than the buffer on screen,
   capped in main and cut on a line boundary.
 

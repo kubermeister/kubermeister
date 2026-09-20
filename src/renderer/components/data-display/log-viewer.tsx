@@ -135,6 +135,8 @@ export function LogViewer({
 }: LogViewerProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [view, setView] = useLogViewOptions();
+    // The screen says whether its lines are worth stamping; the reader overrides it for good.
+    const showTimestamps = view.timestamps ?? timestamps;
     // Every row is one unwrapped line, so they all match the estimate; each is still measured so
     // the estimate need not track the font.
     const virtualizer = useVirtualizer({
@@ -233,7 +235,12 @@ export function LogViewer({
                     label="Aa"
                     title="Match case"
                 />
-                <LogViewMenu options={view} onChange={setView} />
+                <LogViewMenu
+                    wrap={view.wrap}
+                    onWrapChange={(wrap) => setView({ wrap })}
+                    timestamps={showTimestamps}
+                    onTimestampsChange={(value) => setView({ timestamps: value })}
+                />
                 <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
                     <span className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')} />
                     Live
@@ -285,7 +292,7 @@ export function LogViewer({
                                             {log.pod}
                                         </span>
                                     )}
-                                    {timestamps && <span className="shrink-0 text-text-dim">{log.timestamp}</span>}
+                                    {showTimestamps && <span className="shrink-0 text-text-dim">{log.timestamp}</span>}
                                     <span className={cn('w-12 shrink-0 font-medium', LOG_LEVEL_COLOR[log.level])}>
                                         {log.level}
                                     </span>
