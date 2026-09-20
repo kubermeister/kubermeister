@@ -69,19 +69,14 @@ describe('describeUpdate', () => {
         });
     });
 
-    it('prefers release notes over the release date for a found version', () => {
-        expect(
-            describeUpdate({ status: 'available', version: '0.3.0', notes: 'Fixes the namespace selector.' }),
-        ).toEqual({
-            title: 'Version 0.3.0 is available.',
-            detail: 'Fixes the namespace selector.',
-        });
+    it('dates a found version rather than reciting its changelog', () => {
         const dated = describeUpdate({
             status: 'available',
             version: '0.3.0',
             releaseDate: '2026-09-16T06:48:44.854Z',
         });
         expect(dated.detail).toMatch(/^Released .*2026\.$/);
+        expect(dated.title).toBe('Version 0.3.0 is available.');
         expect(
             describeUpdate({ status: 'available', version: '0.3.0', releaseDate: 'garbage' }).detail,
         ).toBeUndefined();

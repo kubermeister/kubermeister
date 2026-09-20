@@ -115,8 +115,6 @@ export const updateStateSchema = z.object({
     /** Download progress, 0 to 100. */
     percent: z.number().min(0).max(100).optional(),
     message: z.string().optional(),
-    /** Release notes of the found version, when the feed carries them as plain text. */
-    notes: z.string().optional(),
     /** When the found version was published, ISO 8601. */
     releaseDate: z.string().optional(),
     /** When the last check finished, ISO 8601. */

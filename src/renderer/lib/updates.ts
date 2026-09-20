@@ -99,7 +99,9 @@ export function describeUpdate(
                 detail: state.checkedAt ? `Checked ${formatRelative(state.checkedAt, now)}.` : undefined,
             };
         case 'available':
-            return { title: `Version ${state.version ?? '?'} is available.`, detail: state.notes ?? releasedOn(state) };
+            // Not the release notes: a generated changelog is a list of pull requests, and the
+            // "What's new" link beside this is where it reads properly.
+            return { title: `Version ${state.version ?? '?'} is available.`, detail: releasedOn(state) };
         case 'downloading':
             return { title: `Downloading version ${state.version ?? '?'}… ${state.percent ?? 0}%` };
         case 'downloaded':

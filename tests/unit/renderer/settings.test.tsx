@@ -150,7 +150,7 @@ describe('settings screen', () => {
     it('shows this install and the last check, and runs a check on demand', async () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.check'
-                ? { status: 'available', version: '0.2.2', notes: 'Fixes the namespace selector.' }
+                ? { status: 'available', version: '0.2.2', releaseDate: '2026-09-16T06:48:44.854Z' }
                 : data[channel],
         );
         renderRoutes(routeTree, '/settings');
@@ -165,7 +165,12 @@ describe('settings screen', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('update.check', {}));
         await waitFor(() => expect(status).toHaveTextContent('Version 0.2.2 is available.'));
-        expect(status).toHaveTextContent('Fixes the namespace selector.');
+        // The changelog stays on the release page, which the card links to rather than reciting.
+        expect(status).toHaveTextContent(/Released .*2026\./);
+        expect(screen.getByRole('link', { name: /What's new/ })).toHaveAttribute(
+            'href',
+            'https://github.com/kubermeister/kubermeister/releases/tag/v0.2.2',
+        );
         await userEvent.click(screen.getByRole('button', { name: 'Download update' }));
         expect(invoke).toHaveBeenCalledWith('update.download', {});
     });

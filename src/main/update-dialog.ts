@@ -1,6 +1,8 @@
 import { app, BrowserWindow, dialog, type MessageBoxOptions } from 'electron';
 import type { UpdateState } from '../shared/ipc.js';
+import { releasePageUrl } from '../shared/updates.js';
 import { checkForUpdates, downloadUpdate, getUpdateState, installUpdate, onUpdateState } from './updater.js';
+import { openExternally } from './window.js';
 
 /**
  * The native update flow behind the menu's "Check for Updates…". The top-bar pill and the Settings
@@ -11,8 +13,8 @@ import { checkForUpdates, downloadUpdate, getUpdateState, installUpdate, onUpdat
  * itself behind the thing that broke.
  */
 
-/** What the leading button of a prompt does; the other button always dismisses. */
-export type PromptAction = 'download' | 'install' | 'dismiss';
+/** What a button of a prompt does. `notes` opens the release page and leaves the question open. */
+export type PromptAction = 'download' | 'install' | 'notes' | 'dismiss';
 
 export interface UpdatePrompt {
     type: 'info' | 'error';
@@ -20,15 +22,8 @@ export interface UpdatePrompt {
     detail?: string;
     /** The leading button first; the last button is what Escape and closing the box mean. */
     buttons: string[];
-    action: PromptAction;
-}
-
-/** Release notes beyond this are the changelog, which the release page shows in full. */
-const MAX_NOTES = 600;
-
-function excerpt(notes: string | undefined): string {
-    if (!notes) return '';
-    return notes.length > MAX_NOTES ? `${notes.slice(0, MAX_NOTES - 1).trimEnd()}…` : notes;
+    /** What each button does, by index, so a box and the meaning of its answer cannot drift apart. */
+    actions: PromptAction[];
 }
 
 function releasedOn(iso: string | undefined): string {
@@ -51,21 +46,26 @@ function paragraphs(...parts: string[]): string | undefined {
 /** The message box for a settled updater state, as seen by a user on `currentVersion`. */
 export function promptFor(state: UpdateState, currentVersion: string): UpdatePrompt {
     switch (state.status) {
-        case 'available':
+        case 'available': {
+            // The changelog itself lives on the release page: generated notes are a list of pull
+            // requests, too long for a message box and already rendered properly over there. The
+            // page is named by the version, so a state that lost it is offered no way through.
+            const linkable = state.version !== undefined;
             return {
                 type: 'info',
                 message: `${named(state.version)} is available.`,
-                detail: paragraphs(`You have ${currentVersion}.`, releasedOn(state.releaseDate), excerpt(state.notes)),
-                buttons: ['Download', 'Later'],
-                action: 'download',
+                detail: paragraphs(`You have ${currentVersion}.`, releasedOn(state.releaseDate)),
+                buttons: linkable ? ['Download', 'Release Notes', 'Later'] : ['Download', 'Later'],
+                actions: linkable ? ['download', 'notes', 'dismiss'] : ['download', 'dismiss'],
             };
+        }
         case 'downloading':
             return {
                 type: 'info',
                 message: `${named(state.version)} is downloading.`,
                 detail: 'You will be asked to restart once it is ready.',
                 buttons: ['OK'],
-                action: 'dismiss',
+                actions: ['dismiss'],
             };
         case 'downloaded':
             return {
@@ -73,14 +73,14 @@ export function promptFor(state: UpdateState, currentVersion: string): UpdatePro
                 message: `${named(state.version)} is ready to install.`,
                 detail: 'Restart now to finish updating, or later and it installs when you quit.',
                 buttons: ['Restart Now', 'Later'],
-                action: 'install',
+                actions: ['install', 'dismiss'],
             };
         case 'up-to-date':
             return {
                 type: 'info',
                 message: `${named(currentVersion)} is up to date.`,
                 buttons: ['OK'],
-                action: 'dismiss',
+                actions: ['dismiss'],
             };
         case 'unsupported':
             return {
@@ -88,7 +88,7 @@ export function promptFor(state: UpdateState, currentVersion: string): UpdatePro
                 message: 'This build cannot check for updates.',
                 detail: state.message,
                 buttons: ['OK'],
-                action: 'dismiss',
+                actions: ['dismiss'],
             };
         case 'error':
             return {
@@ -96,7 +96,7 @@ export function promptFor(state: UpdateState, currentVersion: string): UpdatePro
                 message: 'Kubermeister could not check for updates.',
                 detail: state.message,
                 buttons: ['OK'],
-                action: 'dismiss',
+                actions: ['dismiss'],
             };
         default:
             // `idle` and `checking` are not settled; a check that ends in one of them found no answer.
@@ -105,7 +105,7 @@ export function promptFor(state: UpdateState, currentVersion: string): UpdatePro
                 message: 'Kubermeister could not check for updates.',
                 detail: 'The check did not finish.',
                 buttons: ['OK'],
-                action: 'dismiss',
+                actions: ['dismiss'],
             };
     }
 }
@@ -117,7 +117,7 @@ export function downloadFailedPrompt(state: UpdateState): UpdatePrompt {
         message: 'The update could not be downloaded.',
         detail: state.message,
         buttons: ['OK'],
-        action: 'dismiss',
+        actions: ['dismiss'],
     };
 }
 
@@ -137,8 +137,8 @@ export function whenDownloadSettles(): Promise<UpdateState> {
     });
 }
 
-/** Shows a prompt over the app's window and answers whether its leading button was chosen. */
-async function ask(prompt: UpdatePrompt): Promise<boolean> {
+/** Shows a prompt over the app's window and answers what the button the user chose means. */
+async function ask(prompt: UpdatePrompt): Promise<PromptAction> {
     const owner = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
     const options: MessageBoxOptions = {
         type: prompt.type,
@@ -151,7 +151,7 @@ async function ask(prompt: UpdatePrompt): Promise<boolean> {
         noLink: true,
     };
     const { response } = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options);
-    return prompt.action !== 'dismiss' && response === 0;
+    return prompt.actions[response] ?? 'dismiss';
 }
 
 let running = false;
@@ -170,22 +170,26 @@ export async function runInteractiveCheck(): Promise<void> {
         const settled =
             current.status === 'downloaded' || current.status === 'downloading' ? current : await checkForUpdates();
         const prompt = promptFor(settled, app.getVersion());
-        const chosen = await ask(prompt);
-        if (prompt.action === 'install' && chosen) {
+        let chosen = await ask(prompt);
+        // Reading the notes is not an answer to what the box asked, so it asks again afterwards.
+        while (chosen === 'notes' && settled.version) {
+            openExternally(releasePageUrl(settled.version));
+            chosen = await ask(prompt);
+        }
+        if (chosen === 'install') {
             installUpdate();
             return;
         }
         // In `download` mode the check itself started the download; the user still gets the restart
         // prompt when it lands, otherwise the box they just dismissed was the last they hear of it.
-        const downloading =
-            settled.status === 'downloading' || (prompt.action === 'download' && chosen && downloadUpdate());
+        const downloading = settled.status === 'downloading' || (chosen === 'download' && downloadUpdate());
         if (!downloading) return;
         const done = await whenDownloadSettles();
         if (done.status !== 'downloaded') {
             await ask(downloadFailedPrompt(done));
             return;
         }
-        if (await ask(promptFor(done, app.getVersion()))) installUpdate();
+        if ((await ask(promptFor(done, app.getVersion()))) === 'install') installUpdate();
     } finally {
         running = false;
     }

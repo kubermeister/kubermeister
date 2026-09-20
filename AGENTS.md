@@ -587,8 +587,10 @@ through the next release.
   and update the cask. A tag ruleset restricts creating, moving and deleting `v*` tags to admins.
 - The `package` job installs with no npm cache (`package-manager-cache: false`): its output is what
   users install, and a cache entry written by any other run would feed straight into it.
-- A release's notes arrive from GitHub's Atom feed as rendered HTML, which
-  `src/main/release-notes.ts` flattens to text before the bridge and the popover shows.
+- **The app shows no release notes.** Generated notes are a list of pull-request titles, dozens of
+  lines with an author and a URL on each, so the popover, the toast and the Settings About card give
+  the version and its date and link to the release page, and the native dialog offers it as a
+  `Release Notes` button. Nothing flattens the feed's HTML and `UpdateState` carries no notes.
 
 ### Names, repositories and the Homebrew tap
 
