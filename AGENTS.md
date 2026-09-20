@@ -11,8 +11,8 @@ This file is the project's agent instructions. `CLAUDE.md` only imports it, so e
   versions; older npm silently drops optional lockfile entries and breaks `npm ci`.
 - Since Electron 42 the npm package no longer downloads its binary on install; the `postinstall`
   script runs Electron's installer so `node_modules/electron/dist` exists for electron-vite dev
-  and for the license notices packaging copies. After an install with `--ignore-scripts`, run
-  `node node_modules/electron/install.js` by hand.
+  and for the license notices packaging copies, then enables the git hooks. After an install with
+  `--ignore-scripts`, run `node node_modules/electron/install.js` by hand.
 - `npm run package` builds the current OS's installers into `release/` (`package:dir` for a fast
   unpacked bundle). The artifact name pattern in `electron-builder.yml` is load-bearing for the
   release workflows; change both together.
@@ -22,14 +22,18 @@ This file is the project's agent instructions. `CLAUDE.md` only imports it, so e
 ## Git workflow
 
 - **Never commit on `main`.** Create a branch first: `type/short-slug` (kebab-case, 2 to 4 words,
-  no issue numbers, no usernames). Example: `feat/ipc-bridge`.
+  no issue numbers, no usernames). Example: `feat/ipc-bridge`. The `pre-commit` hook refuses a
+  commit while HEAD is `main`.
 - Every change lands as a **squash-merged PR**. The PR title is the resulting commit header on
   `main` and the PR body is its body, so both follow the commit rules below.
 - Open PRs with `gh pr create`. Never merge; the user merges.
 - The PR body becomes the commit body on `main` and GitHub re-wraps it at 72 columns: write each
   paragraph as one unwrapped line. GitHub appends ` (#N)` to the title: keep PR titles at 66
   characters or fewer.
-- Enable the hook once per clone: `git config core.hooksPath .githooks`.
+- The hooks live in `.githooks` (`commit-msg`, `pre-commit`). `npm install` enables them through
+  `scripts/enable-hooks.mjs` in `postinstall`, which sets `core.hooksPath` only when it is unset, so
+  a path the developer chose is left alone. By hand: `git config core.hooksPath .githooks`. Hook
+  and script tests live in `tests/unit/repo`.
 - CI runs on pull requests against `main` only, so a PR stacked on another branch gets nothing but
   the title check until it is retargeted.
 - Retarget every child to `main` before merging its parent, because GitHub closes a PR whose base
