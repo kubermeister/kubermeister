@@ -23,12 +23,18 @@ describe('log view options', () => {
     });
 
     it('round-trips a choice', () => {
-        writeLogViewOptions({ wrap: true });
-        expect(readLogViewOptions().wrap).toBe(true);
+        writeLogViewOptions({ wrap: true, timestamps: false });
+        expect(readLogViewOptions()).toEqual({ wrap: true, timestamps: false });
+    });
+
+    it('leaves timestamps to the screen until somebody says otherwise', () => {
+        expect(readLogViewOptions().timestamps).toBeNull();
+        localStorage.setItem(KEY, JSON.stringify({ wrap: false, timestamps: null }));
+        expect(readLogViewOptions().timestamps).toBeNull();
     });
 
     it('falls back to the defaults for anything it cannot read', () => {
-        for (const raw of ['not json', 'null', '[]', '"wrap"', '{"wrap":"yes"}']) {
+        for (const raw of ['not json', 'null', '[]', '"wrap"', '{"wrap":"yes","timestamps":1}']) {
             localStorage.setItem(KEY, raw);
             // Each option is read on its own, so a stored value of the wrong shape costs the rest
             // nothing rather than throwing the whole preference away.
@@ -44,7 +50,7 @@ describe('log view options', () => {
             throw new Error('denied');
         });
         expect(readLogViewOptions()).toEqual(DEFAULT_LOG_VIEW_OPTIONS);
-        expect(() => writeLogViewOptions({ wrap: true })).not.toThrow();
+        expect(() => writeLogViewOptions({ wrap: true, timestamps: true })).not.toThrow();
     });
 
     it('writes each change back as it is made', () => {
@@ -95,8 +101,32 @@ describe('the console’s View menu', () => {
     });
 
     it('opens already wrapping when that is what was chosen before', () => {
-        writeLogViewOptions({ wrap: true });
+        writeLogViewOptions({ wrap: true, timestamps: null });
         renderWithQuery(<LogViewer {...props} />);
         expect(messageCell().className).toContain('whitespace-pre-wrap');
+    });
+
+    it('stamps lines as the screen asked until the reader says otherwise', async () => {
+        const stamp = '2026-09-21T10:00:00Z';
+        // A screen that stamps its lines, as a pod's console does.
+        const { unmount } = renderWithQuery(<LogViewer {...props} timestamps />);
+        expect(screen.getByText(stamp)).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'View options' }));
+        await userEvent.click(await screen.findByRole('switch', { name: 'Show timestamps' }));
+        expect(screen.queryByText(stamp)).not.toBeInTheDocument();
+        expect(readLogViewOptions().timestamps).toBe(false);
+        unmount();
+
+        // The answer holds for a console that would not have stamped them either.
+        renderWithQuery(<LogViewer {...props} timestamps={false} />);
+        expect(screen.queryByText(stamp)).not.toBeInTheDocument();
+    });
+
+    it('turns the stamp on for a screen that leaves it off', async () => {
+        renderWithQuery(<LogViewer {...props} timestamps={false} />);
+        expect(screen.queryByText('2026-09-21T10:00:00Z')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'View options' }));
+        await userEvent.click(await screen.findByRole('switch', { name: 'Show timestamps' }));
+        expect(screen.getByText('2026-09-21T10:00:00Z')).toBeInTheDocument();
     });
 });
