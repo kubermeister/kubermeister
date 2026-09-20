@@ -12,12 +12,14 @@ import { useIpcQuery } from '@/lib/query';
 /** How much of the container's log to ask for; the live buffer's own cap still applies above it. */
 const TAIL_LINES = 500;
 
-/** Pod logs tab: a snapshot of the selected container when idle, a live tail of it when Live is on. */
+/** Pod logs tab: a live tail of the selected container, or a snapshot of it once Live is turned off. */
 export function LogsTab({ name, namespace, pod }: { name: string; namespace: string; pod?: PodDetail | null }) {
     const containers = pod?.containers.map((c) => c.name) ?? [];
     const [selectedContainer, setSelectedContainer] = useState<string | null>(null);
     const [since, setSince] = useState<SinceOption>(SINCE_OPTIONS[0]!);
-    const [live, setLive] = useState(false);
+    // A log is opened to watch what the container is doing now, so the follow is already running;
+    // turning Live off is how the reader holds the view still, and that is what the snapshot is for.
+    const [live, setLive] = useState(true);
     const [search, setSearch] = useState<LogSearch>(NO_SEARCH);
     const container = selectedContainer && containers.includes(selectedContainer) ? selectedContainer : containers[0];
 

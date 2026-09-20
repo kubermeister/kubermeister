@@ -31,7 +31,8 @@ export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
     const colors = useMemo(() => podColors(names), [names]);
 
     const [since, setSince] = useState<SinceOption>(SINCE_OPTIONS[0]!);
-    const [live, setLive] = useState(false);
+    // Following from the moment the tab opens, like the pod's own Logs tab; one stream per pod.
+    const [live, setLive] = useState(true);
     const [search, setSearch] = useState<LogSearch>(NO_SEARCH);
 
     const follow = useMultiPodLogStream(

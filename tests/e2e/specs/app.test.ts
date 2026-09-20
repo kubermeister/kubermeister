@@ -139,14 +139,17 @@ test('follows pod logs, runs a command in the pod shell, and starts a port-forwa
 
     await window.getByRole('tab', { name: 'Logs' }).click();
     const viewer = window.getByTestId('log-viewer');
-    // The snapshot read shows recent lines first; Live switches to the follow stream.
+    // The tab opens on the follow stream, read from its end, with nobody pressing Live.
+    await expect(viewer).toHaveAttribute('data-live', 'true');
     await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('km-e2e-marker', { timeout: 30_000 });
+    await expect(viewer).toHaveAttribute('data-following', 'true');
+
+    // Live off holds the view still on the one-shot read, and pressing it again follows once more.
+    await window.getByRole('button', { name: 'Live' }).click();
     await expect(viewer).toHaveAttribute('data-live', 'false');
+    await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('km-e2e-marker', { timeout: 30_000 });
     await window.getByRole('button', { name: 'Live' }).click();
     await expect(viewer).toHaveAttribute('data-live', 'true', { timeout: 30_000 });
-    await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('km-e2e-marker', { timeout: 30_000 });
-    // A running stream is read from its end, so the console stays on the newest line.
-    await expect(viewer).toHaveAttribute('data-following', 'true');
 
     // The console's own controls: the marker survives a case-sensitive search for it, and a search
     // in the wrong case empties the console.
@@ -656,8 +659,9 @@ test('follows every pod of the seeded deployment in one view', async () => {
     // The picker names how many pods are being followed rather than a container.
     const viewer = page.getByTestId('log-viewer');
     await expect(viewer.getByRole('button', { name: 'Container' })).toContainText('pods', { timeout: 30_000 });
-    await viewer.getByRole('button', { name: 'Live' }).click();
-    // Each line carries the pod it came from, which is the point of the view.
+    // Every pod is followed from the moment the tab opens; each line carries the one it came from,
+    // which is the point of the view.
+    await expect(viewer).toHaveAttribute('data-live', 'true');
     await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('km-e2e-marker', { timeout: 60_000 });
     await expect(viewer.getByRole('list', { name: 'Log lines' }).locator('[title^="web-"]').first()).toBeVisible();
 });

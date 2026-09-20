@@ -127,6 +127,13 @@ const line = (message: string, level: 'INFO' | 'ERROR' = 'INFO') => ({
     message,
 });
 const idle = { lines: [], live: false, error: null, ended: false };
+/** What the mocked follow hands back: the tab opens live, so its lines come from here. */
+const following = (...messages: ReturnType<typeof line>[]) => ({
+    lines: messages,
+    live: true,
+    error: null,
+    ended: false,
+});
 /** The tab reads settings for its buffer size, so every mock answers that channel too. */
 const SETTINGS = {
     version: 1,
@@ -219,26 +226,11 @@ describe('LogViewer', () => {
 });
 
 describe('LogsTab', () => {
-    it('reads a snapshot of the first container, then follows it live when toggled', async () => {
+    it('follows the first container from the moment it opens', async () => {
         invoke.mockImplementation(answering([line('from snapshot')]));
+        streams.usePodLogStream.mockReturnValue(following(line('from stream')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
-        expect(await screen.findByText('from snapshot')).toBeInTheDocument();
-        expect(invoke).toHaveBeenCalledWith('pods.logSnapshot', {
-            name: 'web-1',
-            namespace: 'team-a',
-            container: 'web',
-            sinceSeconds: 300,
-            tailLines: 500,
-        });
-        expect(streams.usePodLogStream).toHaveBeenLastCalledWith(null, 2000);
-
-        streams.usePodLogStream.mockReturnValue({
-            lines: [line('from stream')],
-            live: true,
-            error: null,
-            ended: false,
-        });
-        await userEvent.click(screen.getByRole('button', { name: 'Live' }));
+        expect(await screen.findByText('from stream')).toBeInTheDocument();
         expect(streams.usePodLogStream).toHaveBeenLastCalledWith(
             {
                 name: 'web-1',
@@ -250,15 +242,35 @@ describe('LogsTab', () => {
             // The buffer size comes from settings, so a live follow keeps what the user asked for.
             2000,
         );
-        expect(screen.getByText('from stream')).toBeInTheDocument();
-        expect(screen.queryByText('from snapshot')).not.toBeInTheDocument();
+        // Nothing is read one-shot while the stream is the source.
+        expect(invoke).not.toHaveBeenCalledWith('pods.logSnapshot', expect.anything());
+        expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'true');
     });
 
-    it('re-reads when the container or window changes and filters on the search', async () => {
-        invoke.mockImplementation(async (channel: string, input: { container: string; sinceSeconds?: number }) =>
-            channel === 'settings.get'
-                ? SETTINGS
-                : [line(`${input.container} since ${input.sinceSeconds ?? 'all'}`), line('noise')],
+    it('holds the view still on a snapshot once Live is turned off', async () => {
+        invoke.mockImplementation(answering([line('from snapshot')]));
+        streams.usePodLogStream.mockReturnValue(following(line('from stream')));
+        renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
+        await screen.findByText('from stream');
+
+        await userEvent.click(screen.getByRole('button', { name: 'Live' }));
+        expect(await screen.findByText('from snapshot')).toBeInTheDocument();
+        expect(invoke).toHaveBeenCalledWith('pods.logSnapshot', {
+            name: 'web-1',
+            namespace: 'team-a',
+            container: 'web',
+            sinceSeconds: 300,
+            tailLines: 500,
+        });
+        // The follow is let go rather than left running behind a paused console.
+        expect(streams.usePodLogStream).toHaveBeenLastCalledWith(null, 2000);
+        expect(screen.queryByText('from stream')).not.toBeInTheDocument();
+    });
+
+    it('restarts the follow when the container or window changes and filters on the search', async () => {
+        invoke.mockImplementation(answering([line('unused')]));
+        streams.usePodLogStream.mockImplementation((input: { container: string; sinceSeconds?: number } | null) =>
+            input ? following(line(`${input.container} since ${input.sinceSeconds ?? 'all'}`), line('noise')) : idle,
         );
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         expect(await screen.findByText('web since 300')).toBeInTheDocument();
@@ -275,8 +287,9 @@ describe('LogsTab', () => {
 
     it('downloads the whole log from the cluster rather than the buffer on screen', async () => {
         invoke.mockImplementation(
-            answering([line('boom', 'ERROR')], { 'pods.logDownload': { text: 'every line ever\n', truncated: false } }),
+            answering([], { 'pods.logDownload': { text: 'every line ever\n', truncated: false } }),
         );
+        streams.usePodLogStream.mockReturnValue(following(line('boom', 'ERROR')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('boom');
         await userEvent.click(screen.getByRole('button', { name: 'Download logs' }));
@@ -304,11 +317,13 @@ describe('LogsTab', () => {
     it('does nothing until the pod resolves to a container', () => {
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={null} />);
         expect(invoke).not.toHaveBeenCalledWith('pods.logSnapshot', expect.anything());
+        expect(streams.usePodLogStream).toHaveBeenLastCalledWith(null, 2000);
         expect(screen.getByRole('button', { name: 'Container' })).toBeDisabled();
     });
 
     it('keeps the lines the search matched and brings the rest back when it is cleared', async () => {
-        invoke.mockImplementation(answering([line('all good'), line('boom', 'ERROR')]));
+        invoke.mockImplementation(answering([]));
+        streams.usePodLogStream.mockReturnValue(following(line('all good'), line('boom', 'ERROR')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('all good');
 
@@ -320,9 +335,8 @@ describe('LogsTab', () => {
     });
 
     it('matches case only when asked, and says when a download was cut short', async () => {
-        invoke.mockImplementation(
-            answering([line('Boom'), line('boom')], { 'pods.logDownload': { text: 'tail only\n', truncated: true } }),
-        );
+        invoke.mockImplementation(answering([], { 'pods.logDownload': { text: 'tail only\n', truncated: true } }));
+        streams.usePodLogStream.mockReturnValue(following(line('Boom'), line('boom')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('Boom');
         await userEvent.type(screen.getByRole('textbox', { name: 'Filter log lines' }), 'boom');
@@ -339,7 +353,8 @@ describe('LogsTab', () => {
     });
 
     it('says a pattern is not valid yet rather than emptying the console', async () => {
-        invoke.mockImplementation(answering([line('connection refused', 'ERROR')]));
+        invoke.mockImplementation(answering([]));
+        streams.usePodLogStream.mockReturnValue(following(line('connection refused', 'ERROR')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('connection refused');
         await userEvent.click(screen.getByRole('button', { name: '.*' }));
@@ -350,7 +365,8 @@ describe('LogsTab', () => {
     });
 
     it('stamps every line with its time and keeps each one on a single row', async () => {
-        invoke.mockImplementation(answering([line('a very long line')]));
+        invoke.mockImplementation(answering([]));
+        streams.usePodLogStream.mockReturnValue(following(line('a very long line')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('a very long line');
         expect(screen.getByText('2026-09-15T12:00:00Z')).toBeInTheDocument();
