@@ -125,7 +125,7 @@ export const updateStateSchema = z.object({
 
 /** One startup preflight check. `error` blocks the app, `warning` lets it open. */
 const startupCheckSchema = z.object({
-    id: z.enum(['kubeconfig', 'cluster']),
+    id: z.enum(['kubeconfig', 'context', 'cluster']),
     label: z.string(),
     status: z.enum(['ok', 'warning', 'error']),
     /** What was found, shown to the user as the reason. */

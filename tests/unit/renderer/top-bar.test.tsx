@@ -25,6 +25,7 @@ const namespaces = [
     { name: 'kube-system', tone: 'ok' },
 ];
 const data: Record<string, unknown> = {
+    startupChecks: { ok: true, checks: [] },
     'update.state': { status: 'up-to-date' },
     'contexts.list': contexts,
     'namespaces.list': namespaces,
@@ -112,6 +113,28 @@ describe('ContextSelector', () => {
         // The navigation happened first, so no detail read could race the switch.
         const setIndex = invoke.mock.calls.findIndex(([channel]) => channel === 'context.set');
         expect(setIndex).toBeGreaterThan(-1);
+    });
+
+    it('marks a context the kubeconfig cannot back, and carries its problem on the dot when current', async () => {
+        const broken =
+            'Context "alpha" names cluster "nowhere", which the kubeconfig does not define or which has no server.';
+        invoke.mockImplementation(async (channel: string) =>
+            channel === 'contexts.list'
+                ? [{ ...contexts[0], problem: broken }, contexts[1]]
+                : channel === 'cluster.active'
+                  ? null
+                  : data[channel],
+        );
+        renderInRouter(<ContextSelector />);
+        const trigger = await screen.findByTestId('context-selector');
+        await waitFor(() => expect(trigger).toHaveTextContent('alpha'));
+        expect(trigger.querySelector('[title]')).toHaveAttribute('title', broken);
+        await userEvent.click(trigger);
+        const menu = await screen.findByRole('menu');
+        const alpha = within(menu).getByRole('menuitem', { name: /alpha/ });
+        expect(alpha).toHaveTextContent('Unusable: names a missing cluster or user');
+        expect(alpha.querySelector('[title]')).toHaveAttribute('title', broken);
+        expect(within(menu).getByRole('menuitem', { name: /beta/ })).toHaveTextContent('b');
     });
 
     it('does not switch when the current context is chosen again', async () => {

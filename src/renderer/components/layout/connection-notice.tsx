@@ -6,19 +6,26 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useIpcQuery } from '@/lib/query';
 import { pickKubeconfig, recheckConnection, resetKubeconfig, useSettings } from '@/lib/settings';
 
+/** The pill's words for each check that can fail; the popover carries the check's own sentence. */
+const LABELS = { kubeconfig: 'Kubeconfig not loaded', context: 'Context unusable' } as const;
+
 /**
- * A kubeconfig that would not load, named once in the top bar with its fixes, instead of a screen
- * that keeps the shell from opening. Every cluster read fails the same way until it is fixed, so
- * the notice reads the startup report the gate already fetched and the fixes refetch that report:
- * the notice goes away the moment a kubeconfig loads, from here or from Settings. "Use default"
- * is offered only while a path override is set, since with none set there is nothing to clear.
+ * A kubeconfig that would not load, or a current context whose cluster or user the file does not
+ * define, named once in the top bar with its fixes, instead of a screen that keeps the shell from
+ * opening. Every cluster read fails the same way until it is fixed, so the notice reads the startup
+ * report the gate already fetched and the fixes refetch that report: the notice goes away the moment
+ * a kubeconfig loads and its current context resolves, from here, from Settings or from a context
+ * switch. "Use default" is offered only while a path override is set, since with none set there is
+ * nothing to clear.
  */
 export function ConnectionNotice() {
     const client = useQueryClient();
     const report = useIpcQuery('startupChecks', {}, { staleTime: Infinity, gcTime: Infinity });
     const settings = useSettings();
     const [busy, setBusy] = useState(false);
-    const problem = report.data?.checks.find((check) => check.id === 'kubeconfig' && check.status === 'error');
+    const problem = report.data?.checks.find(
+        (check): check is typeof check & { id: keyof typeof LABELS } => check.status === 'error' && check.id in LABELS,
+    );
     if (!problem) return null;
 
     const run = async (action: () => Promise<void>) => {
@@ -40,7 +47,7 @@ export function ConnectionNotice() {
                     data-testid="connection-notice"
                 >
                     <StatusDot tone="danger" />
-                    <span className="font-medium">Kubeconfig not loaded</span>
+                    <span className="font-medium">{LABELS[problem.id]}</span>
                 </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-96 space-y-3 text-body">

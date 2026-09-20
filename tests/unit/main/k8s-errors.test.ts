@@ -105,6 +105,12 @@ describe('withK8s', () => {
         expect((await failWith(cyclic)).kind).toBe('unknown');
     });
 
+    it('classifies the library\'s "No active cluster!" as a kubeconfig problem', async () => {
+        const error = await failWith(new Error('No active cluster!'));
+        expect(error.kind).toBe('kubeconfig');
+        expect(error.detail).toBe('The current context names a cluster the kubeconfig does not define.');
+    });
+
     it('reports anything else as unknown with the original message', async () => {
         const error = await failWith(new Error('boom'));
         expect(error.message).toBe('[unknown] boom');

@@ -30,6 +30,21 @@ const failing: StartupReport = {
     ],
 };
 
+const brokenContext: StartupReport = {
+    ok: false,
+    checks: [
+        { id: 'kubeconfig', label: 'Kubeconfig file', status: 'ok', detail: 'Kubeconfig loaded' },
+        {
+            id: 'context',
+            label: 'Current context',
+            status: 'error',
+            detail: 'Context "alpha" names cluster "nowhere", which the kubeconfig does not define or which has no server.',
+            hint: 'Switch to another context in the top bar, or fix the entry in the kubeconfig.',
+        },
+        { id: 'cluster', label: 'Cluster connection', status: 'warning', detail: 'Skipped' },
+    ],
+};
+
 let report: StartupReport;
 let kubeconfigPath: string | null;
 
@@ -73,6 +88,17 @@ describe('ConnectionNotice', () => {
         expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Choose kubeconfig…' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Use default kubeconfig' })).toBeInTheDocument();
+    });
+
+    it('names a context the kubeconfig cannot back and says to switch', async () => {
+        report = brokenContext;
+        renderWithQuery(<ConnectionNotice />);
+        const notice = await screen.findByTestId('connection-notice');
+        expect(notice).toHaveTextContent('Context unusable');
+        await userEvent.click(notice);
+        expect(await screen.findByText(/names cluster "nowhere"/)).toBeInTheDocument();
+        expect(screen.getByText(/Switch to another context/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     });
 
     it('offers no reset to the default when no path override is set', async () => {

@@ -149,9 +149,38 @@ export function kubeconfigError(): string | null {
     }
 }
 
+/**
+ * Why a context cannot be used, or null. The kubeconfig loads with entries kubectl tolerates dropped,
+ * so a context can survive while the cluster or user it names did not (a hand edit, a cluster removed
+ * with `kubectl config delete-cluster` while its context stayed). The library lists such a context
+ * and switches to it, then fails every call with "No active cluster!" or an unauthenticated request;
+ * naming the missing entry here is what lets the screen say so and point at the context selector.
+ */
+export function contextProblem(kc: KubeConfig, name: string): string | null {
+    const ctx = kc.getContextObject(name);
+    if (!ctx) return `Context "${name}" is not in the kubeconfig.`;
+    if (!kc.getCluster(ctx.cluster)) {
+        return `Context "${name}" names cluster "${ctx.cluster}", which the kubeconfig does not define or which has no server.`;
+    }
+    if (!kc.getUser(ctx.user))
+        return `Context "${name}" names user "${ctx.user}", which the kubeconfig does not define.`;
+    return null;
+}
+
+/** The current context's problem, or null when there is none or no context is current at all. */
+export function currentContextProblem(): string | null {
+    const kc = kubeConfig();
+    const current = kc.getCurrentContext();
+    return current ? contextProblem(kc, current) : null;
+}
+
 export function apis(): ApiBundle {
     if (!apiCache) {
         const c = kubeConfig();
+        // Fail closed with a sentence rather than let the library throw on the cluster and send an
+        // unauthenticated request for a missing user.
+        const problem = currentContextProblem();
+        if (problem) throw new K8sError('kubeconfig', problem, 'kubeconfig');
         apiCache = {
             core: c.makeApiClient(CoreV1Api),
             apps: c.makeApiClient(AppsV1Api),

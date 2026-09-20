@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { existsSync } from 'node:fs';
+import { dump as dumpYaml, load as loadYaml } from 'js-yaml';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CONTEXT_NAME, NAMESPACE, clusterKubectl } from '../harness/cluster';
+import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
 import { launchApp, type LaunchedApp } from '../harness/launch';
 
 let launched: LaunchedApp;
@@ -890,6 +891,38 @@ test('shows what else a pod is tied to, and why', async () => {
     await expect(traffic.locator('[data-related="web"]')).toContainText('selects these pods');
     // Every pod runs as some service account, even the default one.
     await expect(page.getByTestId('related-access')).toContainText('runs as');
+});
+
+test('names a current context whose cluster is missing, and switching away clears it', async () => {
+    // The seeded kubeconfig, plus a context whose cluster entry is not there, made current.
+    const seeded = loadYaml(readFileSync(KUBECONFIG_PATH, 'utf8')) as {
+        contexts: unknown[];
+        'current-context': string;
+    };
+    seeded.contexts.push({ name: 'nowhere', context: { cluster: 'gone', user: 'gone' } });
+    seeded['current-context'] = 'nowhere';
+    const broken = join(tmpdir(), `km-e2e-broken-context-${Date.now()}.yaml`);
+    writeFileSync(broken, dumpYaml(seeded));
+    const bad = await launchApp({ kubeconfigPath: broken, restoreContext: false });
+    try {
+        await bad.window.getByTestId('app-shell').waitFor();
+        const notice = bad.window.getByTestId('connection-notice');
+        await expect(notice).toContainText('Context unusable');
+        await notice.click();
+        await expect(bad.window.getByRole('dialog').getByText(/names cluster "gone"/)).toBeVisible();
+        // Every screen says the same thing instead of "Something went wrong".
+        await expect(bad.window.getByTestId('dashboard-error')).toContainText('Kubeconfig not loaded');
+        await bad.window.keyboard.press('Escape');
+        // The selector beside it is the fix: the whole context is listed and the broken one is marked.
+        await bad.window.getByTestId('context-selector').click();
+        const menu = bad.window.getByRole('menu');
+        await expect(menu.getByRole('menuitem', { name: /nowhere/ })).toContainText('Unusable');
+        await menu.getByRole('menuitem', { name: new RegExp(CONTEXT_NAME) }).click();
+        await expect(bad.window.getByTestId('connection-notice')).toHaveCount(0);
+        await expect(bad.window.getByTestId('context-selector')).toContainText(CONTEXT_NAME);
+    } finally {
+        await bad.app.close();
+    }
 });
 
 test('opens the shell with a connection notice when the kubeconfig path names nothing', async () => {

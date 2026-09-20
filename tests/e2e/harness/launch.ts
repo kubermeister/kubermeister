@@ -17,14 +17,18 @@ export interface LaunchedApp {
  * so every spec starts from the same deterministic state. `KUBECONFIG` is set as well so even a
  * code path that ignored settings could only reach the test cluster.
  */
-export async function launchApp(options: { kubeconfigPath?: string } = {}): Promise<LaunchedApp> {
+export async function launchApp(
+    options: { kubeconfigPath?: string; restoreContext?: boolean } = {},
+): Promise<LaunchedApp> {
     const kubeconfigPath = options.kubeconfigPath ?? KUBECONFIG_PATH;
+    // A spec about the file's own current-context must not have the remembered one restored over it.
+    const restoreOnLaunch = options.restoreContext ?? true;
     const userData = mkdtempSync(join(tmpdir(), 'km-e2e-'));
     writeFileSync(
         join(userData, 'settings.json'),
         JSON.stringify({
             version: 1,
-            session: { lastContext: CONTEXT_NAME, lastNamespace: NAMESPACE, restoreOnLaunch: true },
+            session: { lastContext: CONTEXT_NAME, lastNamespace: NAMESPACE, restoreOnLaunch },
             connection: { kubeconfigPath },
         }),
     );

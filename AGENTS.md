@@ -375,7 +375,14 @@ failed` and which fires before the ceiling does. The kubeconfig loads with
   kubeconfig, use the default), reading the same `startupChecks` report the gate fetched;
   `recheckConnection` in `src/renderer/lib/settings.ts` refetches it and resets the cluster queries,
   so a fix from the notice or from Settings clears both. The startup error card remains only for a
-  bridge that cannot answer at all. The ceiling is the
+  bridge that cannot answer at all. A file that loads can still carry a **context whose cluster or
+  user entry is missing** (filtered out, or removed while the context stayed): the library lists it,
+  switches to it and then fails every call with "No active cluster!". `contextProblem` in `client.ts`
+  names the missing entry, `apis()` fails closed with it as a `kubeconfig` error, every listed
+  `KubeContext` carries it as `problem` so the selector marks the entry, the `context` startup check
+  reports it (the cluster probe is skipped) and the notice reads "Context unusable" with a hint to
+  switch; a context switch reruns the startup checks so the notice follows the current context. The
+  ceiling is the
   `data.readTimeoutSec` setting (60 s by default), applied to `errors.ts` at startup and on every
   settings write rather than read per call, so the k8s modules never import the settings store; a
   timed-out list or summary points at Settings, since how long a cluster may take is the user's to say. No `kubectl` dependency; the

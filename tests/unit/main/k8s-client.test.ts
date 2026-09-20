@@ -295,3 +295,45 @@ describe('a kubeconfig that will not load', () => {
         );
     });
 });
+
+describe('a context the kubeconfig cannot back', () => {
+    const BROKEN = resolve('tests/unit/fixtures/kubeconfig-broken-context.yaml');
+
+    beforeEach(() => withSettings({}, BROKEN));
+
+    it('names the missing cluster or user, and nothing for a whole context or an unknown name', async () => {
+        const { kubeConfig, contextProblem } = await loadClient();
+        const kc = kubeConfig();
+        expect(contextProblem(kc, 'alpha')).toBe(
+            'Context "alpha" names cluster "nowhere", which the kubeconfig does not define or which has no server.',
+        );
+        expect(contextProblem(kc, 'ghost-user')).toBe(
+            'Context "ghost-user" names user "nobody", which the kubeconfig does not define.',
+        );
+        expect(contextProblem(kc, 'beta')).toBeNull();
+        expect(contextProblem(kc, 'gone')).toBe('Context "gone" is not in the kubeconfig.');
+    });
+
+    it('reports the current context problem and none once a whole context is current', async () => {
+        const { kubeConfig, currentContextProblem, invalidateApis, apis } = await loadClient();
+        expect(currentContextProblem()).toContain('names cluster "nowhere"');
+        // Building clients fails closed with the same sentence rather than the library's own.
+        expect(() => apis()).toThrow(
+            expect.objectContaining({
+                name: 'K8sError',
+                kind: 'kubeconfig',
+                detail: expect.stringContaining('nowhere'),
+            }),
+        );
+        kubeConfig().setCurrentContext('beta');
+        invalidateApis();
+        expect(currentContextProblem()).toBeNull();
+        expect(apis().core).toBeDefined();
+    });
+
+    it('has no current context problem when no context is current', async () => {
+        const { kubeConfig, currentContextProblem } = await loadClient();
+        kubeConfig().setCurrentContext('');
+        expect(currentContextProblem()).toBeNull();
+    });
+});
