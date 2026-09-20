@@ -275,8 +275,14 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   button (`log-view-menu.tsx`), so an option can be added without a second row of controls growing
   back. Preferences there are about the window, not the cluster, so they live in `localStorage`
   through `src/renderer/lib/log-view-options.ts` with every access wrapped, shared by every console
-  rather than kept per screen. Wrapping changes every row's height, so toggling it re-measures the
-  virtualiser.
+  rather than kept per screen. They are one store outside React (`useSyncExternalStore`), because
+  the tail is read by the screen opening the log as well as by the console showing it and two copies
+  of a preference are two answers. Wrapping changes every row's height, so toggling it re-measures
+  the virtualiser.
+- An option that defers to the screen is `null`, not a default copied into the store: `timestamps`
+  and `tail` start there, so a pod still reads 500 lines and stamps them while a workload reads 100
+  per pod and does not, until the reader says otherwise. `TAIL_OPTIONS` contains both screens' own
+  defaults, so the picker always has a value to show, and a stored tail outside it is refused.
 - Whether a line carries its timestamp starts as the screen's decision — a pod stamps every line, a
   workload following many pods does not, since its rows already spend a column naming the pod — and
   the View menu's switch overrides it. `timestamps` is therefore `boolean | null` in the options,

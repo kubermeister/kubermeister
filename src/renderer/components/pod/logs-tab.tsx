@@ -5,11 +5,12 @@ import { LogViewer, SINCE_OPTIONS, type SinceOption } from '@/components/data-di
 import { downloadTextFile } from '@/lib/download';
 import { invoke } from '@/lib/ipc';
 import { isBrokenPattern, visibleLines, NO_SEARCH, type LogSearch } from '@/lib/log-filter';
+import { useLogViewOptions } from '@/lib/log-view-options';
 import { usePodLogStream } from '@/lib/pod-streams';
 import { useLogBufferLines } from '@/lib/settings';
 import { useIpcQuery } from '@/lib/query';
 
-/** How much of the container's log to ask for; the live buffer's own cap still applies above it. */
+/** How much of the container's log to ask for until the reader picks a tail in the View menu. */
 const TAIL_LINES = 500;
 
 /** Pod logs tab: a live tail of the selected container, or a snapshot of it once Live is turned off. */
@@ -21,11 +22,11 @@ export function LogsTab({ name, namespace, pod }: { name: string; namespace: str
     // turning Live off is how the reader holds the view still, and that is what the snapshot is for.
     const [live, setLive] = useState(true);
     const [search, setSearch] = useState<LogSearch>(NO_SEARCH);
+    // Changing the tail changes the target, so the read is made again and the follow restarts on it.
+    const tailLines = useLogViewOptions()[0].tail ?? TAIL_LINES;
     const container = selectedContainer && containers.includes(selectedContainer) ? selectedContainer : containers[0];
 
-    const target = container
-        ? { name, namespace, container, sinceSeconds: since.seconds, tailLines: TAIL_LINES }
-        : null;
+    const target = container ? { name, namespace, container, sinceSeconds: since.seconds, tailLines } : null;
     const snapshot = useIpcQuery('pods.logSnapshot', target ?? { name, namespace }, { enabled: !live && !!target });
     const stream = usePodLogStream(live ? target : null, useLogBufferLines());
 
@@ -66,6 +67,7 @@ export function LogsTab({ name, namespace, pod }: { name: string; namespace: str
             search={search}
             onSearchChange={setSearch}
             timestamps
+            defaultTail={TAIL_LINES}
             onDownload={() => void download()}
             error={live ? stream.error : snapshot.error ? snapshot.error.message : null}
             filtered={lines.length !== source.length}
