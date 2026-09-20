@@ -1,4 +1,4 @@
-import { act, renderHook, screen, waitFor, within } from '@testing-library/react';
+import { act, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamMessage } from '../../../src/shared/streams';
@@ -161,7 +161,33 @@ describe('the workload logs tab', () => {
         const rows = await screen.findByRole('list', { name: 'Log lines' });
         await waitFor(() => expect(rows).toHaveTextContent('hello from web-1'));
         // The pod's name rides with its line, since two streams are interleaved.
-        expect(within(rows).getByTitle('web-1')).toBeInTheDocument();
+        expect(rows.querySelector('[data-pod="web-1"]')).toHaveTextContent('web-1');
+    });
+
+    it('shows every pod name in full, sized to the longest one', async () => {
+        const long = 'payment-gateway-worker-5f9c7d8b64-2xk9p';
+        const short = 'web-1';
+        invoke.mockImplementation(async (channel: string) =>
+            channel === 'settings.get'
+                ? SETTINGS
+                : [
+                      { ...pods[0]!, name: long },
+                      { ...pods[1]!, name: short },
+                  ],
+        );
+        renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
+        await waitFor(() => expect(stream).toHaveBeenCalledTimes(2));
+        act(() => opened.forEach((open) => open.onMessage({ type: 'data', data: line('hello') })));
+
+        const rows = await screen.findByRole('list', { name: 'Log lines' });
+        await waitFor(() => expect(rows.querySelector(`[data-pod="${long}"]`)).toBeInTheDocument());
+        const cell = rows.querySelector(`[data-pod="${long}"]`)!;
+        // The whole name, not a prefix and an ellipsis.
+        expect(cell).toHaveTextContent(long);
+        expect(cell.className).not.toContain('truncate');
+        // Both columns are one width, so the rows still line up, and it fits the longest name.
+        expect(cell.getAttribute('style')).toContain(`width: ${long.length}ch`);
+        expect(rows.querySelector(`[data-pod="${short}"]`)?.getAttribute('style')).toContain(`width: ${long.length}ch`);
     });
 
     it('lets every stream go when Live is turned off', async () => {
