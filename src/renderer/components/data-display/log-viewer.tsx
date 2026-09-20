@@ -1,7 +1,8 @@
 import { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronDownIcon, DownloadIcon, SearchIcon } from 'lucide-react';
+import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, SearchIcon } from 'lucide-react';
 import type { LogLine } from '../../../shared/k8s/logs';
+import { useFollowBottom } from '@/lib/follow-scroll';
 import { matchRanges, type LogSearch } from '@/lib/log-filter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -140,12 +141,20 @@ export function LogViewer({
         // nothing is mounted until layout has run, and the first paint of a log is blank.
         initialRect: { width: 900, height: 600 },
     });
+    // A log is read from its end: the console follows the newest line while the end is on screen,
+    // and a container, since window or Live change is a new log, which is followed from its end too.
+    const follow = useFollowBottom(
+        scrollRef,
+        virtualizer.getTotalSize(),
+        `${container ?? ''}\u0000${since.label}\u0000${live}`,
+    );
 
     return (
         <Card
             className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden rounded-card py-0 shadow-none"
             data-testid="log-viewer"
             data-live={String(live)}
+            data-following={String(follow.following)}
         >
             <div className="flex items-center gap-2.5 border-b border-border px-3.5 py-2">
                 <span className="text-meta text-text-muted">Container</span>
@@ -214,51 +223,67 @@ export function LogViewer({
             </div>
             {/* Only the rows in view are mounted: the buffer can be tens of thousands of lines, and
                 every one of them in the DOM is what makes a log console crawl. */}
-            <div
-                ref={scrollRef}
-                className="min-h-0 flex-1 overflow-auto bg-code-bg py-2 font-mono text-meta"
-                role="list"
-                aria-label="Log lines"
-                data-testid="log-rows"
-            >
-                {error && live && (
-                    <div className="px-3.5 py-2 text-danger" role="alert">
-                        {error}
-                    </div>
-                )}
-                <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
-                    {virtualizer.getVirtualItems().map((item) => {
-                        const log = lines[item.index]!;
-                        return (
-                            <div
-                                key={item.key}
-                                ref={virtualizer.measureElement}
-                                data-index={item.index}
-                                role="listitem"
-                                className="absolute top-0 left-0 flex w-full gap-3 px-3.5 py-px whitespace-nowrap text-text-2"
-                                style={{ transform: `translateY(${item.start}px)` }}
-                            >
-                                <span className="w-7 shrink-0 text-right text-text-dim">{item.index + 1}</span>
-                                {log.pod && (
-                                    <span
-                                        className={cn(
-                                            'w-40 shrink-0 truncate',
-                                            podColors?.get(log.pod) ?? 'text-text-2',
-                                        )}
-                                        title={log.pod}
-                                    >
-                                        {log.pod}
+            <div className="relative flex min-h-0 flex-1 flex-col">
+                <div
+                    ref={scrollRef}
+                    onScroll={follow.onScroll}
+                    className="min-h-0 flex-1 overflow-auto bg-code-bg py-2 font-mono text-meta"
+                    role="list"
+                    aria-label="Log lines"
+                    data-testid="log-rows"
+                >
+                    {error && live && (
+                        <div className="px-3.5 py-2 text-danger" role="alert">
+                            {error}
+                        </div>
+                    )}
+                    <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+                        {virtualizer.getVirtualItems().map((item) => {
+                            const log = lines[item.index]!;
+                            return (
+                                <div
+                                    key={item.key}
+                                    ref={virtualizer.measureElement}
+                                    data-index={item.index}
+                                    role="listitem"
+                                    className="absolute top-0 left-0 flex w-full gap-3 px-3.5 py-px whitespace-nowrap text-text-2"
+                                    style={{ transform: `translateY(${item.start}px)` }}
+                                >
+                                    <span className="w-7 shrink-0 text-right text-text-dim">{item.index + 1}</span>
+                                    {log.pod && (
+                                        <span
+                                            className={cn(
+                                                'w-40 shrink-0 truncate',
+                                                podColors?.get(log.pod) ?? 'text-text-2',
+                                            )}
+                                            title={log.pod}
+                                        >
+                                            {log.pod}
+                                        </span>
+                                    )}
+                                    {timestamps && <span className="shrink-0 text-text-dim">{log.timestamp}</span>}
+                                    <span className={cn('w-12 shrink-0 font-medium', LOG_LEVEL_COLOR[log.level])}>
+                                        {log.level}
                                     </span>
-                                )}
-                                {timestamps && <span className="shrink-0 text-text-dim">{log.timestamp}</span>}
-                                <span className={cn('w-12 shrink-0 font-medium', LOG_LEVEL_COLOR[log.level])}>
-                                    {log.level}
-                                </span>
-                                <span className="flex-1">{highlight(log.message, search)}</span>
-                            </div>
-                        );
-                    })}
+                                    <span className="flex-1">{highlight(log.message, search)}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
+                {/* Offered only while lines are still arriving: with the stream off nothing is
+                    being missed by reading where you are. */}
+                {live && !follow.following && (
+                    <Button
+                        variant="outline"
+                        size="xs"
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-md"
+                        onClick={follow.resume}
+                    >
+                        <ArrowDownIcon />
+                        Jump to latest
+                    </Button>
+                )}
             </div>
             <div
                 className="flex border-t border-border px-3.5 py-1.5 text-label text-text-muted"
@@ -269,7 +294,7 @@ export function LogViewer({
                     {filtered && ' (filtered)'}
                 </span>
                 <div className="flex-1" />
-                <span>{live ? 'following' : 'snapshot'}</span>
+                <span>{live ? (follow.following ? 'following' : 'not following') : 'snapshot'}</span>
             </div>
         </Card>
     );
