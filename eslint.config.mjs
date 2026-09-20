@@ -54,6 +54,35 @@ export default tseslint.config(
             ],
         },
     },
+    {
+        // The preload runs sandboxed, where `require` resolves only Electron built-ins. Any other
+        // module in its import chain fails the bridge at load time and leaves `window.km`
+        // undefined, so the preload imports exactly two things, and the channel list it imports
+        // may import nothing at all. `scripts/check-preload.mjs` checks the built bundle as well.
+        files: ['src/preload/**/*.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            regex: '^(?!electron$|\\.\\./shared/ipc-channels\\.js$)',
+                            message: 'The preload imports only electron and ../shared/ipc-channels.js.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ['src/shared/ipc-channels.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                { patterns: [{ regex: '.', message: 'ipc-channels.ts stays import-free: the preload requires it.' }] },
+            ],
+        },
+    },
     prettier,
     { ignores: ['out/**', 'dist/**', 'release/**', 'coverage/**', 'src/renderer/routeTree.gen.ts'] },
 );

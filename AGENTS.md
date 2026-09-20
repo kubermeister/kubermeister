@@ -78,13 +78,17 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - `src/shared` is compiled by both tsconfig projects, so it must not touch DOM or Node APIs.
 - **The preload imports only `src/shared/ipc-channels.ts`**, which stays import-free. A sandboxed
   preload cannot `require` anything but Electron built-ins; one stray import chain (zod, a schema
-  file) makes the bridge fail to load and leaves `window.km` undefined. `npm run build` runs
-  `scripts/check-preload.mjs`, which fails on any other `require` in the preload bundle.
+  file) makes the bridge fail to load and leaves `window.km` undefined. ESLint refuses any other
+  import in `src/preload` and any import at all in `ipc-channels.ts` (`no-restricted-imports` in
+  `eslint.config.mjs`), and `npm run build` runs `scripts/check-preload.mjs`, which fails on any
+  other `require` in the built preload bundle.
 - `dependencies` holds only what the main process imports at runtime (it is externalized and
   shipped as `node_modules`). Everything renderer-side is a devDependency, bundled by Vite.
 - **Renderer hardening is never relaxed:** `sandbox`, `contextIsolation` on, `nodeIntegration`
   off, `setWindowOpenHandler` and the `will-navigate`/`will-redirect` guard route only `http:`
-  and `https:` URLs to the OS browser and deny everything else.
+  and `https:` URLs to the OS browser and deny everything else. It lives in `src/main/window.ts`
+  (`WEB_PREFERENCES`, `createMainWindow`), outside the bootstrap so `tests/unit/main/window.test.ts`
+  can assert every one of those, including that no other web preference is set.
 
 ### IPC contract
 
