@@ -1,12 +1,13 @@
 import { app, Menu, type MenuItemConstructorOptions } from 'electron';
 import { broadcast } from './ipc/push.js';
-import { checkForUpdates } from './updater.js';
+import { runInteractiveCheck } from './update-dialog.js';
 
 /**
  * The application menu. Its Settings item carries the standard macOS `Cmd+,` accelerator, so the
  * visible entry and the shortcut come from one mechanism; other platforms open Settings by click.
  * Activating it pushes `open-settings`, which the renderer routes to the settings screen. "Check for
- * Updates…" starts a check and opens Settings too, whose Updates card is where the outcome shows.
+ * Updates…" runs the native dialog flow in main rather than opening Settings, so it works even when
+ * the renderer is stuck behind the startup checks and has no Settings to open.
  */
 export function buildMenuTemplate(platform: NodeJS.Platform = process.platform): MenuItemConstructorOptions[] {
     const isMac = platform === 'darwin';
@@ -17,10 +18,7 @@ export function buildMenuTemplate(platform: NodeJS.Platform = process.platform):
     };
     const updatesItem: MenuItemConstructorOptions = {
         label: 'Check for Updates…',
-        click: () => {
-            void checkForUpdates();
-            broadcast('open-settings', {});
-        },
+        click: () => void runInteractiveCheck(),
     };
     const first: MenuItemConstructorOptions = isMac
         ? {

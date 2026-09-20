@@ -12,10 +12,21 @@ const FIRST_CHECK_DELAY_MS = 15_000;
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
 let state: UpdateState = { status: 'idle' };
+const listeners = new Set<(state: UpdateState) => void>();
 
 function setState(next: UpdateState): void {
     state = next;
     broadcast('update.state', next);
+    for (const listener of listeners) listener(next);
+}
+
+/**
+ * Hear every transition inside main, the way the renderer hears `update.state`. The native update
+ * dialog waits on a download this way, since it must work when no renderer is listening.
+ */
+export function onUpdateState(listener: (state: UpdateState) => void): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
 }
 
 function errorMessage(error: unknown): string {

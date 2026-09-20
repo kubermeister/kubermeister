@@ -413,8 +413,11 @@ updates need the `zip` target next to the dmg. The library never downloads on it
 `updates.mode` setting (`check` by default, `download`, `off`) is read the moment a version is found,
 and main pushes every transition as `update.state`, which `useUpdater` in `src/renderer/lib/updates.ts`
 mirrors for the top-bar `UpdatePill` (popover plus one-shot toasts) and the Settings About card;
-`update.check` is also reachable from the menu and the palette. A failed scheduled check is stored
-with `background: true` and never surfaces as a notification. **Publishing is fail-safe, not
+the palette reaches `update.check` too. **The menu's "Check for Updates…" needs no renderer:** it
+runs `src/main/update-dialog.ts`, native message boxes for the outcome, the download and the restart,
+because the pill and Settings only exist once the renderer is past the startup checks, and an update
+found while a broken kubeconfig or a white screen holds it there must still have a way in. A failed
+scheduled check is stored with `background: true` and never surfaces as a notification. **Publishing is fail-safe, not
 fail-proof:** GitHub's upload service does fail a large asset now and then, so the packaging action
 uploads one file at a time with retries, reads every asset back and checks its size and checksum,
 and only then uploads the `*.yml` feed. Installer names carry the version, so a new build never

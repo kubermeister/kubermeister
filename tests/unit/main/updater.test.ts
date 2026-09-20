@@ -240,6 +240,18 @@ describe('startUpdater', () => {
         expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
     });
 
+    it('tells in-process listeners about every transition until they unsubscribe', async () => {
+        const { startUpdater, onUpdateState } = await loadUpdater();
+        startUpdater();
+        const seen: string[] = [];
+        const stop = onUpdateState((next) => seen.push(next.status));
+        autoUpdater.emit('checking-for-update');
+        autoUpdater.emit('update-available', found);
+        stop();
+        autoUpdater.emit('update-not-available');
+        expect(seen).toEqual(['checking', 'available']);
+    });
+
     it('installs only when a download is ready', async () => {
         const { startUpdater, installUpdate } = await loadUpdater();
         startUpdater();
