@@ -57,6 +57,21 @@ describe('what the console shows', () => {
     it('shows every line when there is no search', () => {
         expect(visibleLines(lines, NO_SEARCH)).toEqual(lines);
     });
+
+    it('keeps every line when the search marks rather than narrows', () => {
+        // The point of the mode: a hit is only legible next to the lines around it.
+        expect(visibleLines(lines, { ...NO_SEARCH, query: 'refused', highlight: true })).toEqual(lines);
+        // Including a search that matches nothing at all, which would otherwise empty the console.
+        expect(visibleLines(lines, { ...NO_SEARCH, query: 'nothing here', highlight: true })).toEqual(lines);
+    });
+
+    it('marks where a line matched in either mode', () => {
+        for (const highlight of [false, true]) {
+            expect(matchRanges('connection refused', { ...NO_SEARCH, query: 'refused', highlight })).toEqual([
+                [11, 18],
+            ]);
+        }
+    });
 });
 
 describe('marking matches inside a line', () => {
