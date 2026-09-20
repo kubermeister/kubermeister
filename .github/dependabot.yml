@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # A week between a version's publication and its pull request: a package compromised on the
+    # registry is usually pulled within days, and nothing here needs a dependency the day it ships.
+    cooldown:
+      default-days: 7
     groups:
       npm:
         patterns: ['*']
@@ -32,6 +36,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ['*']
