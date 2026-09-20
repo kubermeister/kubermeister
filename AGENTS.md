@@ -425,6 +425,9 @@ never export an empty `CSC_LINK`. In-app updates: `src/main/updater.ts` (electro
 feed electron-builder embeds at package time; macOS
 updates need the `zip` target next to the dmg. The library never downloads on its own: the
 `updates.mode` setting (`check` by default, `download`, `off`) is read the moment a version is found,
+and `updates.checkIntervalHours` (4 by default) spaces the scheduled checks after the 15 s launch
+delay; `applyCheckInterval` runs on every settings write and reschedules from now only when the
+value changed, so a write of anything else never pushes the next check out. The mode is read
 and main pushes every transition as `update.state`, which `useUpdater` in `src/renderer/lib/updates.ts`
 mirrors for the top-bar `UpdatePill` (popover plus one-shot toasts) and the Settings About card;
 the palette reaches `update.check` too. **The menu's "Check for Updates…" needs no renderer:** it

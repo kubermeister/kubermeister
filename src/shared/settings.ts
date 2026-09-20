@@ -64,8 +64,13 @@ const dataSchema = z.object({
  */
 export const UPDATE_MODES = ['check', 'download', 'off'] as const;
 
+/** Scheduled update check cadences offered in Settings, in hours. */
+export const UPDATE_CHECK_INTERVAL_OPTIONS = [1, 4, 12, 24] as const;
+
 const updatesSchema = z.object({
     mode: z.enum(UPDATE_MODES),
+    /** Hours between scheduled checks; how often the app reaches out is the user's to decide. */
+    checkIntervalHours: z.number().int().min(1).max(168),
 });
 
 const windowBoundsSchema = z.object({
@@ -117,7 +122,7 @@ export const DEFAULT_SETTINGS: Settings = {
     session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },
-    updates: { mode: 'check' },
+    updates: { mode: 'check', checkIntervalHours: 4 },
     window: { bounds: null },
 };
 

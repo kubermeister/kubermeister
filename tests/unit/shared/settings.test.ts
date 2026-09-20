@@ -20,7 +20,7 @@ describe('parseSettings', () => {
                 terminalFontSize: 12,
                 forwards: [],
             },
-            updates: { mode: 'download' },
+            updates: { mode: 'download', checkIntervalHours: 12 },
             window: { bounds: { x: 0, y: 0, width: 1200, height: 800 } },
         };
         expect(parseSettings(valid)).toEqual(valid);
@@ -61,15 +61,24 @@ describe('parseSettings', () => {
                 terminalFontSize: 12,
                 forwards: [],
             },
-            updates: { mode: 'check' },
+            updates: { mode: 'check', checkIntervalHours: 4 },
             window: { bounds: null },
         });
     });
 
-    it('starts existing installs on notify-first updates and rejects an unknown mode', () => {
-        expect(parseSettings({ version: 1 }).updates).toEqual({ mode: 'check' });
-        expect(parseSettings({ version: 1, updates: { mode: 'off' } }).updates).toEqual({ mode: 'off' });
-        expect(parseSettings({ version: 1, updates: { mode: 'always' } }).updates).toEqual({ mode: 'check' });
+    it('starts existing installs on notify-first updates every four hours and rejects unknown values', () => {
+        const defaults = { mode: 'check', checkIntervalHours: 4 };
+        expect(parseSettings({ version: 1 }).updates).toEqual(defaults);
+        // A file from before the interval existed keeps its mode and gains the default cadence.
+        expect(parseSettings({ version: 1, updates: { mode: 'off' } }).updates).toEqual({ ...defaults, mode: 'off' });
+        expect(parseSettings({ version: 1, updates: { mode: 'always' } }).updates).toEqual(defaults);
+        expect(parseSettings({ version: 1, updates: { checkIntervalHours: 24 } }).updates).toEqual({
+            ...defaults,
+            checkIntervalHours: 24,
+        });
+        for (const bad of [0, -1, 1.5, 200, 'daily']) {
+            expect(parseSettings({ version: 1, updates: { checkIntervalHours: bad } }).updates).toEqual(defaults);
+        }
     });
 
     it('forgets saved window bounds that are not a full rectangle', () => {
@@ -145,7 +154,10 @@ describe('patch schemas', () => {
         expect(settingsInputSchema.safeParse({ updates: { mode: 'sometimes' } }).success).toBe(false);
         expect(mergeSettings(DEFAULT_SETTINGS, { updates: { mode: 'download' } }).updates).toEqual({
             mode: 'download',
+            checkIntervalHours: 4,
         });
+        expect(settingsInputSchema.safeParse({ updates: { checkIntervalHours: 24 } }).success).toBe(true);
+        expect(settingsInputSchema.safeParse({ updates: { checkIntervalHours: 0 } }).success).toBe(false);
     });
 
     it('lets the renderer change the refresh interval', () => {

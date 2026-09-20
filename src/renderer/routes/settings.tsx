@@ -7,6 +7,7 @@ import {
     READ_TIMEOUT_OPTIONS,
     REFRESH_INTERVAL_OPTIONS,
     TERMINAL_FONT_SIZES,
+    UPDATE_CHECK_INTERVAL_OPTIONS,
     UPDATE_MODES,
     type UpdateMode,
 } from '../../shared/settings';
@@ -41,6 +42,15 @@ const UPDATE_MODE_LABELS: Record<UpdateMode, string> = {
 const modeForLabel = (label: string): UpdateMode =>
     UPDATE_MODES.find((mode) => UPDATE_MODE_LABELS[mode] === label) ?? 'check';
 
+const checkIntervalLabel = (hours: number) =>
+    hours === 1
+        ? 'Every hour'
+        : hours === 24
+          ? 'Once a day'
+          : hours % 24 === 0
+            ? `Every ${hours / 24} days`
+            : `Every ${hours} hours`;
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className="flex flex-col gap-3.5">
@@ -58,6 +68,7 @@ function SettingsScreen() {
 
     const kubeconfigPath = settings?.connection.kubeconfigPath ?? null;
     const updateMode = settings?.updates.mode ?? 'check';
+    const checkIntervalHours = settings?.updates.checkIntervalHours ?? 4;
     const refreshSec = settings?.data.refreshIntervalSec ?? 12;
     const readTimeoutSec = settings?.data.readTimeoutSec ?? 60;
     const logBuffer = settings?.data.logBufferLines ?? 2_000;
@@ -69,6 +80,10 @@ function SettingsScreen() {
     const timeoutOptions = Array.from(new Set<number>([...READ_TIMEOUT_OPTIONS, readTimeoutSec]))
         .sort((a, b) => a - b)
         .map(intervalLabel);
+    const checkIntervals = Array.from(new Set<number>([...UPDATE_CHECK_INTERVAL_OPTIONS, checkIntervalHours])).sort(
+        (a, b) => a - b,
+    );
+    const checkIntervalByLabel = new Map(checkIntervals.map((hours) => [checkIntervalLabel(hours), hours]));
 
     const runKubeconfig = async (action: () => Promise<void>) => {
         setKubeconfigBusy(true);
@@ -192,6 +207,16 @@ function SettingsScreen() {
                             onValueChange={(label) =>
                                 void updateSettings(client, { updates: { mode: modeForLabel(label) } })
                             }
+                        />
+                    </Field>
+                    <Field label="Check for new versions">
+                        <FormSelect
+                            value={checkIntervalLabel(checkIntervalHours)}
+                            options={checkIntervals.map(checkIntervalLabel)}
+                            onValueChange={(label) => {
+                                const hours = checkIntervalByLabel.get(label);
+                                if (hours) void updateSettings(client, { updates: { checkIntervalHours: hours } });
+                            }}
                         />
                     </Field>
                 </FormCard>

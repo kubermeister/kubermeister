@@ -20,7 +20,10 @@ const broadcast = vi.fn();
 vi.mock('../../../src/main/ipc/push.js', () => ({ broadcast }));
 
 let mode: UpdateMode = 'check';
-vi.mock('../../../src/main/settings/store.js', () => ({ getSettings: () => ({ updates: { mode } }) }));
+let checkIntervalHours = 4;
+vi.mock('../../../src/main/settings/store.js', () => ({
+    getSettings: () => ({ updates: { mode, checkIntervalHours } }),
+}));
 
 const savedAppImage = process.env.APPIMAGE;
 let platform: NodeJS.Platform = 'darwin';
@@ -31,6 +34,8 @@ const found = {
     releaseDate: '2026-09-16T06:48:44.854Z',
     releaseNotes: 'Fixes the namespace selector.',
 };
+
+const HOUR = 60 * 60 * 1000;
 
 async function loadUpdater() {
     vi.resetModules();
@@ -44,6 +49,7 @@ describe('startUpdater', () => {
         electron.app.isPackaged = true;
         platform = 'darwin';
         mode = 'check';
+        checkIntervalHours = 4;
         delete process.env.APPIMAGE;
         autoUpdater.removeAllListeners();
         autoUpdater.autoDownload = true;
@@ -82,7 +88,7 @@ describe('startUpdater', () => {
         expect(getUpdateState()).toEqual({ status: 'idle' });
     });
 
-    it('never lets the library download on its own, checks after a delay and then periodically', async () => {
+    it('never lets the library download on its own, checks after a delay and then at the set interval', async () => {
         const { startUpdater } = await loadUpdater();
         startUpdater();
         expect(autoUpdater.autoDownload).toBe(false);
@@ -90,8 +96,52 @@ describe('startUpdater', () => {
         expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
         await vi.advanceTimersByTimeAsync(15_000);
         expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
-        await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000);
+        await vi.advanceTimersByTimeAsync(4 * HOUR - 1);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
         expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(4 * HOUR);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(3);
+    });
+
+    it('takes the interval from settings at start', async () => {
+        checkIntervalHours = 24;
+        const { startUpdater } = await loadUpdater();
+        startUpdater();
+        await vi.advanceTimersByTimeAsync(15_000 + 12 * HOUR);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(12 * HOUR);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+    });
+
+    it('a changed interval reschedules from now; an unchanged one leaves the schedule alone', async () => {
+        const { startUpdater, applyCheckInterval } = await loadUpdater();
+        startUpdater();
+        await vi.advanceTimersByTimeAsync(15_000);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
+        // Three hours into a four-hour wait, every settings write re-applies the same value: no effect.
+        await vi.advanceTimersByTimeAsync(3 * HOUR);
+        applyCheckInterval(4);
+        await vi.advanceTimersByTimeAsync(HOUR);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+        // Lowering to one hour checks one hour from now, not at the end of the old four.
+        await vi.advanceTimersByTimeAsync(2 * HOUR);
+        applyCheckInterval(1);
+        await vi.advanceTimersByTimeAsync(HOUR - 1);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(3);
+        await vi.advanceTimersByTimeAsync(HOUR);
+        expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(4);
+    });
+
+    it('an interval applied to an unsupported build arms nothing', async () => {
+        electron.app.isPackaged = false;
+        const { startUpdater, applyCheckInterval } = await loadUpdater();
+        startUpdater();
+        applyCheckInterval(1);
+        await vi.advanceTimersByTimeAsync(2 * HOUR);
+        expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
     });
 
     it('skips scheduled checks while updates are off, but a manual check still runs', async () => {
