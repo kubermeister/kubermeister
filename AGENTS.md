@@ -270,8 +270,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   unhighlighted — and an unfinished regular expression reads as "no filter yet" rather than emptying
   the console mid-keystroke. `highlight` on the search is the other mode: every line stays and the
   matches are marked where they sit, since a hit is often only legible next to what surrounds it.
-  Its toggle (`Mark`) sits beside `.*` and `Aa`, because it modifies the search rather than how a
-  line reads, which is what the View menu is for. Marking inside a line (`matchRanges`) is only ever
+  Its toggle is the highlighter icon beside `.*` and `Aa`, because it modifies the search rather
+  than how a line reads, which is what the View menu is for; `Toggle` takes an icon as its child and
+  keeps `label` as the accessible name, since an icon-only control still has to say what it is. Marking inside a line (`matchRanges`) is only ever
   about saying where a line matched, in either mode.
 - **The console's toolbar is one row**, and what stays on it decides _which_ lines are shown: the
   container, the since window, the search and Live. How those lines are _read_ sits behind the View

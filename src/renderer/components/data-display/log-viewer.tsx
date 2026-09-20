@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, SearchIcon } from 'lucide-react';
+import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, HighlighterIcon, SearchIcon } from 'lucide-react';
 import type { LogLine } from '../../../shared/k8s/logs';
 import { LogViewMenu } from '@/components/data-display/log-view-menu';
 import { useFollowBottom } from '@/lib/follow-scroll';
@@ -39,17 +39,22 @@ export const LOG_LEVEL_COLOR: Record<LogLine['level'], string> = {
 /** Height of one unwrapped row, which is what the virtualiser starts from before measuring. */
 const ROW_HEIGHT = 18;
 
-/** A small on/off control for the console's display options. */
+/**
+ * A small on/off control for the console's display options. `label` names it for a screen reader
+ * whether or not it is what the button shows: a toggle with an icon still has to say what it is.
+ */
 function Toggle({
     pressed,
     onToggle,
     label,
     title,
+    children,
 }: {
     pressed: boolean;
     onToggle: () => void;
     label: string;
     title?: string;
+    children?: React.ReactNode;
 }) {
     return (
         <Button
@@ -60,7 +65,7 @@ function Toggle({
             title={title}
             onClick={onToggle}
         >
-            {label}
+            {children ?? label}
         </Button>
     );
 }
@@ -243,9 +248,11 @@ export function LogViewer({
                 <Toggle
                     pressed={search.highlight}
                     onToggle={() => onSearchChange({ ...search, highlight: !search.highlight })}
-                    label="Mark"
-                    title="Mark the matches in place instead of hiding the rest"
-                />
+                    label="Highlight matches"
+                    title="Highlight matches instead of hiding other lines"
+                >
+                    <HighlighterIcon />
+                </Toggle>
                 <LogViewMenu
                     wrap={view.wrap}
                     onWrapChange={(wrap) => setView({ wrap })}
