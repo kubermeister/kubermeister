@@ -590,6 +590,18 @@ through the next release.
   an npm older than the engine gate.
 - Packaging runs through `.github/actions/package`: with the `CSC_*` and `APPLE_*` secrets macOS is
   Developer ID signed and notarized, otherwise ad-hoc signed; never export an empty `CSC_LINK`.
+- **Electron fuses** (`electronFuses` in `electron-builder.yml`, locked by
+  `tests/unit/repo/electron-builder.test.ts`) are flipped in the binary at package time and read
+  before any JavaScript runs. `runAsNode`, `NODE_OPTIONS` and the inspect arguments are off, so the
+  signed app cannot be started as a plain Node binary or have a script preloaded into main;
+  `onlyLoadAppFromAsar` and the embedded ASAR integrity check are on. The file protocol privileges
+  fuse stays at its default because the packaged renderer is a `file://` document, and
+  `resetAdHocDarwinSignature` re-signs an unsigned build so it still opens. The end-to-end suite
+  drives `out/` through the development Electron binary, so fuses are checked on a packaged build
+  (`npm run package:dir`, then `npx electron-fuses read --app release/<os>/Kubermeister.app`).
+  Playwright's `_electron.launch` cannot drive a packaged build any more, since it attaches to main
+  with `--inspect`, which the fuse ignores: start the binary with `--remote-debugging-port` and
+  connect with `chromium.connectOverCDP`, which reaches the renderer without the Node inspector.
 - Icons regenerate from `resources/icon.svg` with `resources/build-icon.sh`.
 
 ### In-app updates
