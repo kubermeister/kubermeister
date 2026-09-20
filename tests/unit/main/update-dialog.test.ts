@@ -13,6 +13,9 @@ const electron = {
 };
 vi.mock('electron', () => electron);
 
+const openExternally = vi.fn<(url: string) => void>();
+vi.mock('../../../src/main/window.js', () => ({ openExternally }));
+
 let state: UpdateState = { status: 'idle' };
 const listeners = new Set<(next: UpdateState) => void>();
 function transition(next: UpdateState): void {
@@ -41,7 +44,6 @@ const found: UpdateState = {
     status: 'available',
     version: '0.5.0',
     releaseDate: '2026-09-16T06:48:44.854Z',
-    notes: 'Fixes the namespace selector.',
     checkedAt: '2026-09-16T07:00:00.000Z',
 };
 
@@ -51,32 +53,39 @@ const boxes = () => showMessageBox.mock.calls.map((call) => call[call.length - 1
 const messages = () => boxes().map((box) => box.message);
 
 describe('promptFor', () => {
-    it('offers to download a found version, naming both versions and the notes', () => {
+    it('offers to download a found version, naming both versions and where to read the changes', () => {
         const prompt = promptFor(found, '0.4.0');
-        expect(prompt).toMatchObject({ type: 'info', buttons: ['Download', 'Later'], action: 'download' });
+        expect(prompt).toMatchObject({
+            type: 'info',
+            buttons: ['Download', 'Release Notes', 'Later'],
+            actions: ['download', 'notes', 'dismiss'],
+        });
         expect(prompt.message).toBe('Kubermeister 0.5.0 is available.');
         expect(prompt.detail).toContain('You have 0.4.0.');
         expect(prompt.detail).toContain('Released ');
-        expect(prompt.detail).toContain('Fixes the namespace selector.');
     });
 
-    it('cuts long release notes and drops an unreadable release date', () => {
-        const prompt = promptFor({ ...found, notes: 'x'.repeat(700), releaseDate: 'yesterday' }, '0.4.0');
-        expect(prompt.detail).not.toContain('Released');
-        expect(prompt.detail?.length).toBeLessThan(700);
-        expect(prompt.detail?.endsWith('…')).toBe(true);
+    it('drops an unreadable release date rather than printing it', () => {
+        expect(promptFor({ ...found, releaseDate: 'yesterday' }, '0.4.0').detail).not.toContain('Released');
+    });
+
+    it('leaves out the release notes button for a found version that lost its version', () => {
+        expect(promptFor({ status: 'available' }, '0.4.0')).toMatchObject({
+            buttons: ['Download', 'Later'],
+            actions: ['download', 'dismiss'],
+        });
     });
 
     it('offers a restart for a downloaded version and reports a download in flight', () => {
         expect(promptFor({ status: 'downloaded', version: '0.5.0' }, '0.4.0')).toMatchObject({
             message: 'Kubermeister 0.5.0 is ready to install.',
             buttons: ['Restart Now', 'Later'],
-            action: 'install',
+            actions: ['install', 'dismiss'],
         });
         expect(promptFor({ status: 'downloading', version: '0.5.0', percent: 12 }, '0.4.0')).toMatchObject({
             message: 'Kubermeister 0.5.0 is downloading.',
             buttons: ['OK'],
-            action: 'dismiss',
+            actions: ['dismiss'],
         });
     });
 
@@ -84,7 +93,7 @@ describe('promptFor', () => {
         expect(promptFor({ status: 'up-to-date', checkedAt: 'now' }, '0.4.0')).toMatchObject({
             type: 'info',
             message: 'Kubermeister 0.4.0 is up to date.',
-            action: 'dismiss',
+            actions: ['dismiss'],
         });
     });
 
@@ -92,7 +101,7 @@ describe('promptFor', () => {
         expect(promptFor({ status: 'unsupported', message: 'Development build' }, '0.4.0')).toMatchObject({
             type: 'info',
             detail: 'Development build',
-            action: 'dismiss',
+            actions: ['dismiss'],
         });
         expect(promptFor({ status: 'error', message: 'offline' }, '0.4.0')).toMatchObject({
             type: 'error',
@@ -167,16 +176,35 @@ describe('runInteractiveCheck', () => {
         expect(messages()).toEqual(['Kubermeister 0.5.0 is available.', 'Kubermeister 0.5.0 is ready to install.']);
         expect(showMessageBox.mock.calls[0]?.[0]).toBe(focused);
         expect(showMessageBox.mock.calls[0]?.[1]).toMatchObject({
-            buttons: ['Download', 'Later'],
+            buttons: ['Download', 'Release Notes', 'Later'],
             defaultId: 0,
-            cancelId: 1,
+            cancelId: 2,
             noLink: true,
         });
         expect(updater.installUpdate).toHaveBeenCalledOnce();
     });
 
+    it('opens the release page and asks again when the user reads the notes first', async () => {
+        answer(1); // Release Notes
+        answer(0); // Download
+        answer(0); // Restart Now
+        const run = runInteractiveCheck();
+        await vi.waitFor(() => expect(updater.downloadUpdate).toHaveBeenCalledOnce());
+        transition({ status: 'downloaded', version: '0.5.0' });
+        await run;
+        expect(openExternally).toHaveBeenCalledOnce();
+        expect(openExternally).toHaveBeenCalledWith('https://github.com/kubermeister/kubermeister/releases/tag/v0.5.0');
+        // Reading the notes answers nothing, so the same question comes back.
+        expect(messages()).toEqual([
+            'Kubermeister 0.5.0 is available.',
+            'Kubermeister 0.5.0 is available.',
+            'Kubermeister 0.5.0 is ready to install.',
+        ]);
+        expect(updater.installUpdate).toHaveBeenCalledOnce();
+    });
+
     it('does nothing more when the user picks Later, at either prompt', async () => {
-        answer(1);
+        answer(2);
         await runInteractiveCheck();
         expect(updater.downloadUpdate).not.toHaveBeenCalled();
         expect(updater.installUpdate).not.toHaveBeenCalled();
@@ -268,10 +296,10 @@ describe('runInteractiveCheck', () => {
         await vi.waitFor(() => expect(showMessageBox).toHaveBeenCalledOnce());
         await runInteractiveCheck();
         expect(updater.checkForUpdates).toHaveBeenCalledOnce();
-        resolveBox({ response: 1 });
+        resolveBox({ response: 2 });
         await first;
         // Once the box is answered the menu item works again.
-        answer(1);
+        answer(2);
         await runInteractiveCheck();
         expect(updater.checkForUpdates).toHaveBeenCalledTimes(2);
     });

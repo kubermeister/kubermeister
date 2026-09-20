@@ -54,13 +54,13 @@ describe('IPC contract', () => {
         const found = {
             status: 'available',
             version: '0.3.0',
-            notes: 'Fixes the namespace selector.',
             releaseDate: '2026-09-16T06:48:44.854Z',
             checkedAt: '2026-09-16T07:00:00.000Z',
         };
         expect(output.safeParse(found).success).toBe(true);
         expect(output.safeParse({ status: 'error', message: 'offline', background: true }).success).toBe(true);
-        expect(output.safeParse({ status: 'available', notes: ['not', 'text'] }).success).toBe(false);
+        // The changelog never crosses the bridge: the renderer links to the release page instead.
+        expect(output.parse({ status: 'available', notes: 'Fixes it.' })).toEqual({ status: 'available' });
     });
 
     it('the update actions take no input and report whether they applied', () => {

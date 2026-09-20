@@ -54,7 +54,11 @@ describe('UpdatePill', () => {
         answer({ status: 'up-to-date' });
         render(<UpdatePill />);
         await act(async () => {});
-        const found: UpdateState = { status: 'available', version: '0.3.0', notes: 'Fixes the namespace selector.' };
+        const found: UpdateState = {
+            status: 'available',
+            version: '0.3.0',
+            releaseDate: '2026-09-16T06:48:44.854Z',
+        };
         act(() => push?.(found));
         const pill = screen.getByTestId('update-pill');
         expect(pill).toHaveTextContent('Update available');
@@ -62,7 +66,7 @@ describe('UpdatePill', () => {
         expect(toast).toHaveBeenCalledOnce();
         expect(toast).toHaveBeenCalledWith(
             'Version 0.3.0 is available.',
-            expect.objectContaining({ description: 'Fixes the namespace selector.' }),
+            expect.objectContaining({ description: expect.stringMatching(/^Released .*2026\.$/) as string }),
         );
         // The same version pushed again (a later scheduled check) is not announced twice.
         act(() => push?.({ ...found, checkedAt: '2026-09-16T11:00:00.000Z' }));
@@ -71,7 +75,8 @@ describe('UpdatePill', () => {
         await userEvent.click(pill);
         const popover = await screen.findByTestId('update-popover');
         expect(popover).toHaveTextContent('Version 0.3.0 is available.');
-        expect(popover).toHaveTextContent('Fixes the namespace selector.');
+        // The changelog is not in the popover at all; the link beside the action is the way to it.
+        expect(popover).toHaveTextContent(/Released .*2026\./);
         expect(screen.getByRole('link', { name: /What's new/ })).toHaveAttribute(
             'href',
             'https://github.com/kubermeister/kubermeister/releases/tag/v0.3.0',

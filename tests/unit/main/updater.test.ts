@@ -164,7 +164,6 @@ describe('startUpdater', () => {
             status: 'available',
             version: '0.3.0',
             releaseDate: found.releaseDate,
-            notes: 'Fixes the namespace selector.',
             checkedAt: '2026-09-16T07:00:00.000Z',
         });
         expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
@@ -196,7 +195,6 @@ describe('startUpdater', () => {
             status: 'downloading',
             version: '0.3.0',
             releaseDate: found.releaseDate,
-            notes: 'Fixes the namespace selector.',
             percent: 42,
         });
         autoUpdater.emit('update-downloaded', found);
@@ -204,29 +202,21 @@ describe('startUpdater', () => {
             status: 'downloaded',
             version: '0.3.0',
             releaseDate: found.releaseDate,
-            notes: 'Fixes the namespace selector.',
         });
     });
 
-    it('flattens release notes GitHub hands over as HTML', async () => {
+    it("never carries the feed's release notes, whatever shape they arrive in", async () => {
         const { startUpdater, getUpdateState } = await loadUpdater();
         startUpdater();
-        autoUpdater.emit('update-available', {
-            ...found,
-            releaseNotes: '<h2>What\'s Changed</h2><ul><li>fix(k8s): a fix in <a href="x">#101</a></li></ul>',
-        });
-        expect(getUpdateState()).toMatchObject({ notes: "What's Changed\n• fix(k8s): a fix in #101" });
-    });
-
-    it('drops release notes that are not plain text', async () => {
-        const { startUpdater, getUpdateState } = await loadUpdater();
-        startUpdater();
-        autoUpdater.emit('update-available', { ...found, releaseNotes: [{ version: '0.3.0', note: 'x' }] });
-        expect(getUpdateState()).not.toHaveProperty('notes');
-        autoUpdater.emit('update-available', { ...found, releaseNotes: '   ' });
-        expect(getUpdateState()).not.toHaveProperty('notes');
-        autoUpdater.emit('update-available', { ...found, releaseNotes: '<p></p>' });
-        expect(getUpdateState()).not.toHaveProperty('notes');
+        for (const releaseNotes of [
+            '<h2>What\'s Changed</h2><ul><li>fix(k8s): a fix in <a href="x">#101</a></li></ul>',
+            'Fixes the namespace selector.',
+            [{ version: '0.3.0', note: 'x' }],
+        ]) {
+            autoUpdater.emit('update-available', { ...found, releaseNotes });
+            expect(getUpdateState()).not.toHaveProperty('notes');
+            expect(getUpdateState()).toMatchObject({ version: '0.3.0', releaseDate: found.releaseDate });
+        }
     });
 
     it('downloads only from the available state', async () => {

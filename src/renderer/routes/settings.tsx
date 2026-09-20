@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { MonitorIcon, MoonIcon, SunIcon, type LucideIcon } from 'lucide-react';
+import { ExternalLinkIcon, MonitorIcon, MoonIcon, SunIcon, type LucideIcon } from 'lucide-react';
 import {
     LOG_BUFFER_OPTIONS,
     READ_TIMEOUT_OPTIONS,
@@ -11,6 +11,7 @@ import {
     UPDATE_MODES,
     type UpdateMode,
 } from '../../shared/settings';
+import { releasePageUrl } from '../../shared/updates';
 import { SettingsPage } from '@/components/templates/settings-page';
 import { Field, FormCard, FormSelect, Toggle } from '@/components/templates/settings-form';
 import { Button } from '@/components/ui/button';
@@ -308,16 +309,27 @@ function AboutCard() {
                     <span>{title}</span>
                     {detail && <span className="whitespace-pre-wrap text-text-muted">{detail}</span>}
                 </div>
-                {state?.status === 'available' && (
-                    <Button size="sm" className="w-fit" onClick={() => void downloadUpdate()}>
-                        Download update
-                    </Button>
-                )}
-                {state?.status === 'downloaded' && (
-                    <Button size="sm" className="w-fit" onClick={() => void installUpdate()}>
-                        Restart now
-                    </Button>
-                )}
+                <div className="flex items-center gap-2 empty:hidden">
+                    {state?.status === 'available' && (
+                        <Button size="sm" onClick={() => void downloadUpdate()}>
+                            Download update
+                        </Button>
+                    )}
+                    {state?.status === 'downloaded' && (
+                        <Button size="sm" onClick={() => void installUpdate()}>
+                            Restart now
+                        </Button>
+                    )}
+                    {/* The changelog is not in the app at all, so every card naming a version links to it. */}
+                    {state?.version && state.status !== 'error' && (
+                        <Button size="sm" variant="ghost" asChild>
+                            <a href={releasePageUrl(state.version)} target="_blank" rel="noreferrer">
+                                What&apos;s new
+                                <ExternalLinkIcon />
+                            </a>
+                        </Button>
+                    )}
+                </div>
             </div>
         </FormCard>
     );

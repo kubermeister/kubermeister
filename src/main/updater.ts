@@ -2,7 +2,6 @@ import { app } from 'electron';
 import electronUpdater, { type UpdateInfo } from 'electron-updater';
 import type { UpdateState } from '../shared/ipc.js';
 import { broadcast } from './ipc/push.js';
-import { releaseNotesText } from './release-notes.js';
 import { getSettings } from './settings/store.js';
 
 // electron-updater is CommonJS; named imports are not reliably detected from ESM, so destructure.
@@ -37,15 +36,17 @@ function now(): string {
     return new Date().toISOString();
 }
 
-/** The fields that describe a found version, kept through download and readiness. */
-function describe(info: UpdateInfo): Pick<UpdateState, 'version' | 'releaseDate' | 'notes'> {
-    const notes = typeof info.releaseNotes === 'string' ? releaseNotesText(info.releaseNotes) : '';
-    return { version: info.version, releaseDate: info.releaseDate, ...(notes ? { notes } : {}) };
+/**
+ * The fields that describe a found version, kept through download and readiness. The feed's own
+ * release notes are left where they are: the app shows the release page rather than a changelog.
+ */
+function describe(info: UpdateInfo): Pick<UpdateState, 'version' | 'releaseDate'> {
+    return { version: info.version, releaseDate: info.releaseDate };
 }
 
-function carry(current: UpdateState): Pick<UpdateState, 'version' | 'releaseDate' | 'notes'> {
-    const { version, releaseDate, notes } = current;
-    return { version, releaseDate, ...(notes ? { notes } : {}) };
+function carry(current: UpdateState): Pick<UpdateState, 'version' | 'releaseDate'> {
+    const { version, releaseDate } = current;
+    return { version, releaseDate };
 }
 
 /**
