@@ -270,10 +270,16 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   and an unfinished regular expression reads as "no filter yet" rather than emptying the console
   mid-keystroke. Marking inside a line (`matchRanges`) is only ever about saying where a shown line
   matched.
-- The console's controls are the container, the since window, the search and Live: how much tail
-  to read and whether a line carries its timestamp are decisions each screen makes for itself (a
-  pod stamps every line, a workload following many pods does not, since its rows already name
-  one), not controls on the toolbar.
+- **The console's toolbar is one row**, and what stays on it decides _which_ lines are shown: the
+  container, the since window, the search and Live. How those lines are _read_ sits behind the View
+  button (`log-view-menu.tsx`), so an option can be added without a second row of controls growing
+  back. Preferences there are about the window, not the cluster, so they live in `localStorage`
+  through `src/renderer/lib/log-view-options.ts` with every access wrapped, shared by every console
+  rather than kept per screen. Wrapping changes every row's height, so toggling it re-measures the
+  virtualiser.
+- Whether a line carries its timestamp is still the screen's decision, not the toolbar's: a pod
+  stamps every line, a workload following many pods does not, since its rows already spend a column
+  naming the pod.
 - `pods.logDownload` saves the whole log from the API server rather than the buffer on screen,
   capped in main and cut on a line boundary.
 
