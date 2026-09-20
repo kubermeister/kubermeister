@@ -151,13 +151,12 @@ describe('following several pods', () => {
 });
 
 describe('the workload logs tab', () => {
-    it('follows every pod of the workload once Live is on, and says how many', async () => {
+    it('follows every pod of the workload the moment it opens, and says how many', async () => {
         renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
         await waitFor(() => expect(screen.getByRole('button', { name: 'Container' })).toHaveTextContent('2 pods'));
-        expect(stream).not.toHaveBeenCalled();
-
-        await userEvent.click(screen.getByRole('button', { name: 'Live' }));
+        // One stream per pod, opened without anybody pressing Live.
         await waitFor(() => expect(stream).toHaveBeenCalledTimes(2));
+
         act(() => opened[0]!.onMessage({ type: 'data', data: line('hello from web-1') }));
         const rows = await screen.findByRole('list', { name: 'Log lines' });
         await waitFor(() => expect(rows).toHaveTextContent('hello from web-1'));
@@ -165,9 +164,17 @@ describe('the workload logs tab', () => {
         expect(within(rows).getByTitle('web-1')).toBeInTheDocument();
     });
 
+    it('lets every stream go when Live is turned off', async () => {
+        renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
+        await waitFor(() => expect(stream).toHaveBeenCalledTimes(2));
+
+        await userEvent.click(screen.getByRole('button', { name: 'Live' }));
+        await waitFor(() => opened.forEach((open) => expect(open.stop).toHaveBeenCalled()));
+        expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'false');
+    });
+
     it('downloads what is on screen, with the pod each line came from', async () => {
         renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
-        await userEvent.click(await screen.findByRole('button', { name: 'Live' }));
         await waitFor(() => expect(stream).toHaveBeenCalled());
         act(() => opened[0]!.onMessage({ type: 'data', data: line('saved') }));
         await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('1 lines'));
@@ -177,7 +184,6 @@ describe('the workload logs tab', () => {
 
     it('surfaces a failing pod through the viewer', async () => {
         renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
-        await userEvent.click(await screen.findByRole('button', { name: 'Live' }));
         await waitFor(() => expect(stream).toHaveBeenCalled());
         act(() => opened[0]!.onMessage({ type: 'error', message: 'forbidden' }));
         await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('web-1: forbidden'));

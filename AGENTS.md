@@ -251,8 +251,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 
 ### Logs
 
-- The Logs tab shows a one-shot `pods.logSnapshot` read until the user turns Live on, then follows
-  the stream.
+- **A Logs tab opens already following.** `live` starts on in both the pod tab and the workload one,
+  because a log is opened to see what is happening now and a console that has to be switched on
+  first is a step in front of the answer. The stream carries the same tail the snapshot did; the
+  one-shot `pods.logSnapshot` read is what the tab shows once Live is turned off to hold the view
+  still. Both tabs are `keepMounted`, so a follow outlives a switch to another tab of the same
+  object and ends with the page.
 - A controller's Logs tab follows every pod it owns at once (`src/renderer/lib/multi-pod-logs.ts`):
   the API server has no call for "the logs of this deployment", so it is one stream per pod, merged
   in arrival order and coloured by pod, restarting when the set of pods changes so a replaced pod
