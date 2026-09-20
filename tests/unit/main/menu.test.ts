@@ -5,8 +5,8 @@ const menu = { buildFromTemplate: vi.fn((template: unknown) => ({ template })), 
 vi.mock('electron', () => ({ app: { name: 'Kubermeister' }, Menu: menu }));
 const broadcast = vi.fn();
 vi.mock('../../../src/main/ipc/push.js', () => ({ broadcast }));
-const checkForUpdates = vi.fn(() => Promise.resolve({ status: 'checking' }));
-vi.mock('../../../src/main/updater.js', () => ({ checkForUpdates }));
+const runInteractiveCheck = vi.fn(() => Promise.resolve());
+vi.mock('../../../src/main/update-dialog.js', () => ({ runInteractiveCheck }));
 
 const { buildMenuTemplate, installApplicationMenu } = await import('../../../src/main/menu.js');
 
@@ -54,14 +54,14 @@ describe('application menu', () => {
         expect(broadcast).toHaveBeenCalledWith('open-settings', {});
     });
 
-    it('starts a check and opens Settings when Check for Updates is activated', () => {
+    it('runs the native update flow, not Settings, when Check for Updates is activated', () => {
         for (const platform of ['darwin', 'win32'] as const) {
             const item = updatesItem(buildMenuTemplate(platform));
             (item.click as () => void)();
         }
-        expect(checkForUpdates).toHaveBeenCalledTimes(2);
-        expect(broadcast).toHaveBeenCalledTimes(2);
-        expect(broadcast).toHaveBeenLastCalledWith('open-settings', {});
+        expect(runInteractiveCheck).toHaveBeenCalledTimes(2);
+        // The flow must not depend on a renderer that can open Settings.
+        expect(broadcast).not.toHaveBeenCalled();
     });
 
     it('installs the built menu for the current platform', () => {
