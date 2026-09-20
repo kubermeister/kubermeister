@@ -5,7 +5,7 @@ name: PR labels
 # the token can write labels on pull requests from forks, and checks nothing out, so no code from
 # the pull request runs here.
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, reopened, synchronize]
 
 permissions:

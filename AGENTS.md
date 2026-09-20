@@ -570,6 +570,11 @@ through the next release.
   blockmaps), publish as latest.
 - Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps package.json, then
   `git tag vX.Y.Z && git push origin vX.Y.Z`.
+- The `verify` job refuses a tag whose version differs from package.json and a tag whose commit is
+  not on `main`, before anything is built: a tag on any other commit would still publish as latest
+  and update the cask. A tag ruleset restricts creating, moving and deleting `v*` tags to admins.
+- The `package` job installs with no npm cache (`package-manager-cache: false`): its output is what
+  users install, and a cache entry written by any other run would feed straight into it.
 - A release's notes arrive from GitHub's Atom feed as rendered HTML, which
   `src/main/release-notes.ts` flattens to text before the bridge and the popover shows.
 
@@ -588,6 +593,15 @@ through the next release.
 
 - Every `setup-node` step passes `check-latest: true`, because a runner's cached Node 24 can bundle
   an npm older than the engine gate.
+- The workflows are linted in the `checks` job: actionlint for syntax, expressions and shell steps,
+  zizmor (medium severity and up) for security posture. Every checkout sets
+  `persist-credentials: false` except the Homebrew tap checkout, which pushes with its token. A
+  deliberate exception carries an inline `# zizmor: ignore[audit]` next to a comment saying why;
+  `pr-labels.yml` has one for `pull_request_target`, which it needs to label fork PRs and which is
+  safe because that workflow checks nothing out. Locally: `pipx run zizmor --min-severity medium
+.github` and `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint`.
+- Dependabot waits seven days after a version is published before proposing it (`cooldown`), since
+  a package compromised on the registry is usually pulled within days.
 - Packaging runs through `.github/actions/package`: with the `CSC_*` and `APPLE_*` secrets macOS is
   Developer ID signed and notarized, otherwise ad-hoc signed; never export an empty `CSC_LINK`.
 - Icons regenerate from `resources/icon.svg` with `resources/build-icon.sh`.
