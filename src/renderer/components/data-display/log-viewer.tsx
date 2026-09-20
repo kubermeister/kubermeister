@@ -1,8 +1,10 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, SearchIcon } from 'lucide-react';
 import type { LogLine } from '../../../shared/k8s/logs';
+import { LogViewMenu } from '@/components/data-display/log-view-menu';
 import { useFollowBottom } from '@/lib/follow-scroll';
+import { useLogViewOptions } from '@/lib/log-view-options';
 import { matchRanges, type LogSearch } from '@/lib/log-filter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -109,7 +111,9 @@ interface LogViewerProps {
 
 /**
  * Presentational log console: container and since pickers, grep, a Live toggle, and the rendered
- * lines. State and the log source (snapshot or live stream) are owned by the caller.
+ * lines. State and the log source (snapshot or live stream) are owned by the caller; how the lines
+ * are read is the console's own, since that is a preference about the window rather than about the
+ * screen asking for the log.
  */
 export function LogViewer({
     lines,
@@ -130,6 +134,7 @@ export function LogViewer({
     brokenPattern,
 }: LogViewerProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [view, setView] = useLogViewOptions();
     // Every row is one unwrapped line, so they all match the estimate; each is still measured so
     // the estimate need not track the font.
     const virtualizer = useVirtualizer({
@@ -156,6 +161,8 @@ export function LogViewer({
         for (const line of lines) if (line.pod) longest = Math.max(longest, line.pod.length);
         return longest;
     }, [podColors, lines]);
+    // Wrapping changes every row's height, and the virtualiser holds the ones it has measured.
+    useEffect(() => virtualizer.measure(), [virtualizer, view.wrap]);
     const follow = useFollowBottom(
         scrollRef,
         virtualizer.getTotalSize(),
@@ -226,6 +233,7 @@ export function LogViewer({
                     label="Aa"
                     title="Match case"
                 />
+                <LogViewMenu options={view} onChange={setView} />
                 <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
                     <span className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')} />
                     Live
@@ -259,7 +267,12 @@ export function LogViewer({
                                     ref={virtualizer.measureElement}
                                     data-index={item.index}
                                     role="listitem"
-                                    className="absolute top-0 left-0 flex w-full gap-3 px-3.5 py-px whitespace-nowrap text-text-2"
+                                    className={cn(
+                                        'absolute top-0 left-0 flex w-full gap-3 px-3.5 py-px whitespace-nowrap text-text-2',
+                                        // The gutter columns keep their own line while the message
+                                        // runs on, so a wrapped line still reads as one row.
+                                        view.wrap && 'items-start',
+                                    )}
                                     style={{ transform: `translateY(${item.start}px)` }}
                                 >
                                     <span className="w-7 shrink-0 text-right text-text-dim">{item.index + 1}</span>
@@ -276,7 +289,11 @@ export function LogViewer({
                                     <span className={cn('w-12 shrink-0 font-medium', LOG_LEVEL_COLOR[log.level])}>
                                         {log.level}
                                     </span>
-                                    <span className="flex-1">{highlight(log.message, search)}</span>
+                                    <span
+                                        className={cn('flex-1', view.wrap && 'min-w-0 break-words whitespace-pre-wrap')}
+                                    >
+                                        {highlight(log.message, search)}
+                                    </span>
                                 </div>
                             );
                         })}
