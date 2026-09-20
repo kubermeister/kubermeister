@@ -28,9 +28,10 @@ export default defineConfig({
         ],
         coverage: {
             provider: 'v8',
-            // Unit-testable code. Excluded: process bootstrap (window creation, the preload bridge,
+            // Unit-testable code. Excluded: process bootstrap (app lifecycle, the preload bridge,
             // the React entry), generated route code, shadcn primitives, and route files, which are
-            // thin compositions covered end to end.
+            // thin compositions covered end to end. Window creation is not bootstrap: it holds the
+            // renderer hardening and is unit tested.
             include: ['src/main/**/*.ts', 'src/shared/**/*.ts', 'src/renderer/**/*.{ts,tsx}'],
             exclude: [
                 'src/main/index.ts',

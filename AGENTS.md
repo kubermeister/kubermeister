@@ -11,8 +11,8 @@ This file is the project's agent instructions. `CLAUDE.md` only imports it, so e
   versions; older npm silently drops optional lockfile entries and breaks `npm ci`.
 - Since Electron 42 the npm package no longer downloads its binary on install; the `postinstall`
   script runs Electron's installer so `node_modules/electron/dist` exists for electron-vite dev
-  and for the license notices packaging copies. After an install with `--ignore-scripts`, run
-  `node node_modules/electron/install.js` by hand.
+  and for the license notices packaging copies, then enables the git hooks. After an install with
+  `--ignore-scripts`, run `node node_modules/electron/install.js` by hand.
 - `npm run package` builds the current OS's installers into `release/` (`package:dir` for a fast
   unpacked bundle). The artifact name pattern in `electron-builder.yml` is load-bearing for the
   release workflows; change both together.
@@ -22,14 +22,18 @@ This file is the project's agent instructions. `CLAUDE.md` only imports it, so e
 ## Git workflow
 
 - **Never commit on `main`.** Create a branch first: `type/short-slug` (kebab-case, 2 to 4 words,
-  no issue numbers, no usernames). Example: `feat/ipc-bridge`.
+  no issue numbers, no usernames). Example: `feat/ipc-bridge`. The `pre-commit` hook refuses a
+  commit while HEAD is `main`.
 - Every change lands as a **squash-merged PR**. The PR title is the resulting commit header on
   `main` and the PR body is its body, so both follow the commit rules below.
 - Open PRs with `gh pr create`. Never merge; the user merges.
 - The PR body becomes the commit body on `main` and GitHub re-wraps it at 72 columns: write each
   paragraph as one unwrapped line. GitHub appends ` (#N)` to the title: keep PR titles at 66
   characters or fewer.
-- Enable the hook once per clone: `git config core.hooksPath .githooks`.
+- The hooks live in `.githooks` (`commit-msg`, `pre-commit`). `npm install` enables them through
+  `scripts/enable-hooks.mjs` in `postinstall`, which sets `core.hooksPath` only when it is unset, so
+  a path the developer chose is left alone. By hand: `git config core.hooksPath .githooks`. Hook
+  and script tests live in `tests/unit/repo`.
 - CI runs on pull requests against `main` only, so a PR stacked on another branch gets nothing but
   the title check until it is retargeted.
 - Retarget every child to `main` before merging its parent, because GitHub closes a PR whose base
@@ -78,13 +82,17 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - `src/shared` is compiled by both tsconfig projects, so it must not touch DOM or Node APIs.
 - **The preload imports only `src/shared/ipc-channels.ts`**, which stays import-free. A sandboxed
   preload cannot `require` anything but Electron built-ins; one stray import chain (zod, a schema
-  file) makes the bridge fail to load and leaves `window.km` undefined. `npm run build` runs
-  `scripts/check-preload.mjs`, which fails on any other `require` in the preload bundle.
+  file) makes the bridge fail to load and leaves `window.km` undefined. ESLint refuses any other
+  import in `src/preload` and any import at all in `ipc-channels.ts` (`no-restricted-imports` in
+  `eslint.config.mjs`), and `npm run build` runs `scripts/check-preload.mjs`, which fails on any
+  other `require` in the built preload bundle.
 - `dependencies` holds only what the main process imports at runtime (it is externalized and
   shipped as `node_modules`). Everything renderer-side is a devDependency, bundled by Vite.
 - **Renderer hardening is never relaxed:** `sandbox`, `contextIsolation` on, `nodeIntegration`
   off, `setWindowOpenHandler` and the `will-navigate`/`will-redirect` guard route only `http:`
-  and `https:` URLs to the OS browser and deny everything else.
+  and `https:` URLs to the OS browser and deny everything else. It lives in `src/main/window.ts`
+  (`WEB_PREFERENCES`, `createMainWindow`), outside the bootstrap so `tests/unit/main/window.test.ts`
+  can assert every one of those, including that no other web preference is set.
 
 ### IPC contract
 
@@ -570,6 +578,11 @@ through the next release.
   blockmaps), publish as latest.
 - Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps package.json, then
   `git tag vX.Y.Z && git push origin vX.Y.Z`.
+- The `verify` job refuses a tag whose version differs from package.json and a tag whose commit is
+  not on `main`, before anything is built: a tag on any other commit would still publish as latest
+  and update the cask. A tag ruleset restricts creating, moving and deleting `v*` tags to admins.
+- The `package` job installs with no npm cache (`package-manager-cache: false`): its output is what
+  users install, and a cache entry written by any other run would feed straight into it.
 - A release's notes arrive from GitHub's Atom feed as rendered HTML, which
   `src/main/release-notes.ts` flattens to text before the bridge and the popover shows.
 
@@ -588,6 +601,15 @@ through the next release.
 
 - Every `setup-node` step passes `check-latest: true`, because a runner's cached Node 24 can bundle
   an npm older than the engine gate.
+- The workflows are linted in the `checks` job: actionlint for syntax, expressions and shell steps,
+  zizmor (medium severity and up) for security posture. Every checkout sets
+  `persist-credentials: false` except the Homebrew tap checkout, which pushes with its token. A
+  deliberate exception carries an inline `# zizmor: ignore[audit]` next to a comment saying why;
+  `pr-labels.yml` has one for `pull_request_target`, which it needs to label fork PRs and which is
+  safe because that workflow checks nothing out. Locally: `pipx run zizmor --min-severity medium
+.github` and `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint`.
+- Dependabot waits seven days after a version is published before proposing it (`cooldown`), since
+  a package compromised on the registry is usually pulled within days.
 - Packaging runs through `.github/actions/package`: with the `CSC_*` and `APPLE_*` secrets macOS is
   Developer ID signed and notarized, otherwise ad-hoc signed; never export an empty `CSC_LINK`.
 - **Electron fuses** (`electronFuses` in `electron-builder.yml`, locked by
