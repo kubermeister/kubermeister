@@ -145,6 +145,8 @@ test('follows pod logs, runs a command in the pod shell, and starts a port-forwa
     await window.getByRole('button', { name: 'Live' }).click();
     await expect(viewer).toHaveAttribute('data-live', 'true', { timeout: 30_000 });
     await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('km-e2e-marker', { timeout: 30_000 });
+    // A running stream is read from its end, so the console stays on the newest line.
+    await expect(viewer).toHaveAttribute('data-following', 'true');
 
     // The console's own controls: the marker survives a case-sensitive search for it, and a search
     // in the wrong case empties the console.
