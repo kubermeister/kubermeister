@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, SearchIcon } from 'lucide-react';
 import type { LogLine } from '../../../shared/k8s/logs';
@@ -143,6 +143,19 @@ export function LogViewer({
     });
     // A log is read from its end: the console follows the newest line while the end is on screen,
     // and a container, since window or Live change is a new log, which is followed from its end too.
+    // A pod's name is never cut short: the column is as wide as the longest name it has to carry,
+    // in `ch`, which is exact in the console's monospace font. Two pods of one workload differ only
+    // in the suffix an ellipsis eats, so a truncated name tells the streams apart no better than
+    // none at all.
+    const podColumnCh = useMemo(() => {
+        if (!podColors) return 0;
+        let longest = 0;
+        for (const pod of podColors.keys()) longest = Math.max(longest, pod.length);
+        // Sized from the lines too, so a name on screen is shown whole even if its pod has since
+        // left the followed set.
+        for (const line of lines) if (line.pod) longest = Math.max(longest, line.pod.length);
+        return longest;
+    }, [podColors, lines]);
     const follow = useFollowBottom(
         scrollRef,
         virtualizer.getTotalSize(),
@@ -252,11 +265,9 @@ export function LogViewer({
                                     <span className="w-7 shrink-0 text-right text-text-dim">{item.index + 1}</span>
                                     {log.pod && (
                                         <span
-                                            className={cn(
-                                                'w-40 shrink-0 truncate',
-                                                podColors?.get(log.pod) ?? 'text-text-2',
-                                            )}
-                                            title={log.pod}
+                                            className={cn('shrink-0', podColors?.get(log.pod) ?? 'text-text-2')}
+                                            style={{ width: `${podColumnCh}ch` }}
+                                            data-pod={log.pod}
                                         >
                                             {log.pod}
                                         </span>
