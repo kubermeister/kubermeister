@@ -20,7 +20,7 @@
     "npm": ">=11.19"
   },
   "scripts": {
-    "postinstall": "node node_modules/electron/install.js",
+    "postinstall": "node node_modules/electron/install.js && node scripts/enable-hooks.mjs",
     "dev": "electron-vite dev",
     "build": "electron-vite build && node scripts/check-preload.mjs",
     "preview": "electron-vite preview",

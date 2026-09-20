@@ -1,0 +1,17 @@
+#!/bin/sh
+# Refuses a commit while HEAD is main. Every change lands through a squash-merged pull request, so
+# a commit made on main can only ever be moved to a branch; refusing it here saves that move.
+# Enabled per clone by `npm install` (scripts/enable-hooks.mjs) or by hand:
+#     git config core.hooksPath .githooks
+
+# A detached HEAD (rebase, bisect, checkout of a tag) is not a commit on main.
+branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null) || exit 0
+
+if [ "$branch" = main ]; then
+    printf '\npre-commit: refusing to commit on main.\n\n' >&2
+    printf 'Create a branch first; uncommitted changes follow it:\n\n' >&2
+    printf '    git switch -c type/short-slug\n\n' >&2
+    exit 1
+fi
+
+exit 0
