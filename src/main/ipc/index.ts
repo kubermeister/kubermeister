@@ -67,7 +67,7 @@ import { getDrainPlan } from '../k8s/drain.js';
 import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
 import { getSettings, updateSettings } from '../settings/store.js';
 import { runStartupChecks } from '../startup/checks.js';
-import { checkForUpdates, downloadUpdate, getUpdateState, installUpdate } from '../updater.js';
+import { applyCheckInterval, checkForUpdates, downloadUpdate, getUpdateState, installUpdate } from '../updater.js';
 
 type Handler<C extends IpcChannel> = (input: IpcInput<C>) => Promise<IpcOutput<C>>;
 type Handlers = { [C in IpcChannel]: Handler<C> };
@@ -130,6 +130,7 @@ const handlers: Handlers = {
     'settings.set': async (patch) => {
         const settings = updateSettings(patch);
         setReadTimeoutSec(settings.data.readTimeoutSec);
+        applyCheckInterval(settings.updates.checkIntervalHours);
         return settings;
     },
     'kubeconfig.pick': async () => ({ path: await pickKubeconfig() }),

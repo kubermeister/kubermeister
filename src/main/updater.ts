@@ -9,7 +9,7 @@ import { getSettings } from './settings/store.js';
 const { autoUpdater } = electronUpdater;
 
 const FIRST_CHECK_DELAY_MS = 15_000;
-const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 let state: UpdateState = { status: 'idle' };
 const listeners = new Set<(state: UpdateState) => void>();
@@ -64,11 +64,40 @@ function mode() {
     return getSettings().updates.mode;
 }
 
+let checkIntervalMs = 0;
+let nextCheck: NodeJS.Timeout | undefined;
+let scheduling = false;
+
+/** Arm the next scheduled check `delayMs` from now; each check arms the one after it at the interval. */
+function scheduleNext(delayMs: number, run: () => void): void {
+    clearTimeout(nextCheck);
+    nextCheck = setTimeout(() => {
+        run();
+        scheduleNext(checkIntervalMs, run);
+    }, delayMs);
+}
+
+let runScheduled: () => void = () => {};
+
 /**
- * Checks on a delay after launch and every few hours after that, unless updates are off. The library
- * never downloads on its own: `updates.mode` decides at the moment a version is found whether the
- * download starts or waits for the user, so changing the setting needs no restart. A downloaded
- * update installs on quit; the renderer can also ask for an immediate restart through `installUpdate`.
+ * Apply the `updates.checkIntervalHours` setting. A changed interval reschedules the next check from
+ * now, so lowering it does not wait out the old one; an unchanged value leaves the schedule alone,
+ * because every settings write passes through here (window bounds, a remembered forward) and none
+ * of those should push the next check further out.
+ */
+export function applyCheckInterval(hours: number): void {
+    const ms = hours * HOUR_MS;
+    if (ms === checkIntervalMs) return;
+    checkIntervalMs = ms;
+    if (scheduling) scheduleNext(ms, runScheduled);
+}
+
+/**
+ * Checks on a delay after launch and then at the interval the settings name, unless updates are
+ * off. The library never downloads on its own: `updates.mode` decides at the moment a version is
+ * found whether the download starts or waits for the user, so changing the setting needs no restart.
+ * A downloaded update installs on quit; the renderer can also ask for an immediate restart through
+ * `installUpdate`.
  */
 export function startUpdater(): void {
     const reason = unsupportedReason();
@@ -99,15 +128,16 @@ export function startUpdater(): void {
     autoUpdater.on('update-downloaded', (info) => setState({ status: 'downloaded', ...describe(info) }));
     autoUpdater.on('error', (error) => setState({ status: 'error', message: errorMessage(error) }));
 
-    const scheduled = (): void => {
+    runScheduled = (): void => {
         if (mode() === 'off') return;
         void runCheck().catch((error: unknown) => {
             // Nobody asked for this check; the failure is recorded, not announced.
             setState({ status: 'error', message: errorMessage(error), background: true });
         });
     };
-    setTimeout(scheduled, FIRST_CHECK_DELAY_MS);
-    setInterval(scheduled, CHECK_INTERVAL_MS);
+    checkIntervalMs = getSettings().updates.checkIntervalHours * HOUR_MS;
+    scheduling = true;
+    scheduleNext(FIRST_CHECK_DELAY_MS, runScheduled);
 }
 
 function busy(): boolean {

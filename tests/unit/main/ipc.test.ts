@@ -14,7 +14,13 @@ vi.mock('electron', () => ({
     dialog,
 }));
 
-const updater = { getUpdateState: vi.fn(), installUpdate: vi.fn(), checkForUpdates: vi.fn(), downloadUpdate: vi.fn() };
+const updater = {
+    getUpdateState: vi.fn(),
+    installUpdate: vi.fn(),
+    checkForUpdates: vi.fn(),
+    downloadUpdate: vi.fn(),
+    applyCheckInterval: vi.fn(),
+};
 const client = { reloadKubeConfig: vi.fn() };
 const context = { listContexts: vi.fn(), getCurrentContext: vi.fn(), setContext: vi.fn(), setNamespace: vi.fn() };
 const store = { getSettings: vi.fn(), updateSettings: vi.fn() };
@@ -284,6 +290,12 @@ describe('registerHandlers', () => {
         expect(store.updateSettings).toHaveBeenCalledWith({ session: { lastNamespace: 'ns' } });
         await invoke('settings.set', { connection: { kubeconfigPath: '/etc/passwd' } });
         expect(store.updateSettings).toHaveBeenLastCalledWith({});
+    });
+
+    it('hands the update check interval to the updater on every settings write', async () => {
+        updater.applyCheckInterval.mockClear();
+        await invoke('settings.set', { updates: { checkIntervalHours: 12 } });
+        expect(updater.applyCheckInterval).toHaveBeenCalledWith(12);
     });
 
     it('applies a new read timeout to every cluster call the moment it is saved', async () => {

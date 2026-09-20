@@ -22,7 +22,7 @@ const settings = {
     session: { lastContext: 'alpha', lastNamespace: 'team-a', restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 45 },
-    updates: { mode: 'check' },
+    updates: { mode: 'check', checkIntervalHours: 4 },
 };
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date', checkedAt: new Date(Date.now() - 5 * 60_000).toISOString() },
@@ -130,6 +130,21 @@ describe('settings screen', () => {
         await userEvent.click(screen.getByRole('option', { name: 'Download in the background' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { updates: { mode: 'download' } }));
         expect(select).toHaveTextContent('Download in the background');
+    });
+
+    it('persists the update check interval through the bridge, folding in a non-preset value', async () => {
+        settings.updates.checkIntervalHours = 6;
+        renderRoutes(routeTree, '/settings');
+        const select = await screen.findByRole('combobox', { name: 'Check for new versions' });
+        await waitFor(() => expect(select).toHaveTextContent('Every 6 hours'));
+        await userEvent.click(select);
+        const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+        expect(options).toEqual(['Every hour', 'Every 4 hours', 'Every 6 hours', 'Every 12 hours', 'Once a day']);
+        await userEvent.click(screen.getByRole('option', { name: 'Once a day' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('settings.set', { updates: { checkIntervalHours: 24 } }),
+        );
+        expect(select).toHaveTextContent('Once a day');
     });
 
     it('shows this install and the last check, and runs a check on demand', async () => {
