@@ -40,14 +40,19 @@ export function SecretKeysCard({
                         return (
                             <TableRow key={entry.key} data-secret-key={entry.key}>
                                 <TableCell className="font-mono text-primary">{entry.key}</TableCell>
-                                <TableCell className="font-mono text-text-muted">
+                                {/*
+                                 * `max-w-0` with `w-full` pins this column to whatever the row has
+                                 * left, so a long value scrolls inside its own box instead of
+                                 * widening the table and carrying the buttons off the right edge.
+                                 */}
+                                <TableCell className="w-full max-w-0 font-mono text-text-muted">
                                     {value ? (
-                                        <span className="break-all text-text-2" data-testid={`value-${entry.key}`}>
-                                            {value.value}
-                                            {value.binary && (
-                                                <span className="ml-2 text-meta text-text-muted">(base64)</span>
-                                            )}
-                                        </span>
+                                        <div className="flex items-baseline gap-2" data-testid={`value-${entry.key}`}>
+                                            <div className="max-h-40 min-w-0 overflow-auto">
+                                                <span className="whitespace-pre text-text-2">{value.value}</span>
+                                            </div>
+                                            {value.binary && <span className="shrink-0 text-meta">(base64)</span>}
+                                        </div>
                                     ) : (
                                         <span className="tracking-widest">{entry.masked}</span>
                                     )}

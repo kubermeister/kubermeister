@@ -273,6 +273,12 @@ test('shows config map entries, masks secret values and reveals one on demand', 
     await expect(secret.getByTestId('value-password')).toHaveText('super-secret-value');
     await keys.getByRole('button', { name: 'Hide password' }).click();
     await expect(secret.getByTestId('value-password')).toHaveCount(0);
+
+    // A value wider than the window scrolls inside its own cell; the controls stay where they were.
+    await keys.getByRole('button', { name: 'Reveal long-token' }).click();
+    await expect(secret.getByTestId('value-long-token')).toContainText('long-token-value-');
+    await expect(keys.getByRole('button', { name: 'Copy long-token' })).toBeInViewport();
+    await expect(keys.getByRole('button', { name: 'Hide long-token' })).toBeInViewport();
 });
 
 test('shows the events stream, the namespace quota and its limit range', async () => {

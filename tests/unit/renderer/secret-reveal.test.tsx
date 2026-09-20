@@ -128,6 +128,20 @@ describe('the Keys card', () => {
         expect(screen.queryByTestId('value-token')).not.toBeInTheDocument();
     });
 
+    it('keeps a long value in a scroll box of its own so the controls stay in place', async () => {
+        invoke.mockResolvedValue({ key: 'password', value: 'long-token-value-'.repeat(40), binary: false });
+        renderWithQuery(<SecretKeysCard name="app-secret" namespace="team-a" entries={entries} />);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Reveal password' }));
+        const shown = await screen.findByTestId('value-password');
+        // jsdom lays nothing out, so what is asserted is the structure that holds the layout: the
+        // value scrolls inside a box of its own, in a cell that cannot widen past the row, and the
+        // buttons sit in a cell the value never shares.
+        expect(shown.firstElementChild).toHaveClass('overflow-auto');
+        expect(shown.closest('td')).toHaveClass('max-w-0');
+        expect(screen.getByRole('button', { name: 'Copy password' }).closest('td')).not.toBe(shown.closest('td'));
+    });
+
     it('labels a value that is not text as base64', async () => {
         invoke.mockResolvedValue({ key: 'password', value: 'MIL//g==', binary: true });
         renderWithQuery(<SecretKeysCard name="app-secret" namespace="team-a" entries={entries} />);
