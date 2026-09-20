@@ -21,11 +21,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The ancestry check below needs main's history, not only the tagged commit.
+          fetch-depth: 0
       - name: Tag must match package.json version
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
           if [ "v$PKG_VERSION" != "$GITHUB_REF_NAME" ]; then
             echo "Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+      # A release is a commit that went through a pull request and its checks. A tag on any other
+      # commit would still build, publish as latest and update the cask, so it is refused here,
+      # before anything is built.
+      - name: Tagged commit must be on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main"
             exit 1
           fi
 
@@ -44,6 +57,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Create the draft release with generated notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,11 +80,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # No npm cache here: this job's output is what users install, and a cache entry written by
+      # any other workflow run would otherwise feed straight into it. setup-node caches by default.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
           check-latest: true
-          cache: npm
+          package-manager-cache: false
       - run: npm ci
       - uses: ./.github/actions/package
         with:
@@ -101,7 +120,10 @@ jobs:
       # tap. Skipped when HOMEBREW_TAP_TOKEN is not configured so the release itself never blocks.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: env.HAS_TAP_TOKEN == 'true'
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # This checkout keeps its token on purpose: the step below pushes the cask with it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
         if: env.HAS_TAP_TOKEN == 'true'
         with:
           repository: kubermeister/homebrew-tap
