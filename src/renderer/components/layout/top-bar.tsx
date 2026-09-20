@@ -106,9 +106,12 @@ export function ContextSelector() {
     const contexts = useIpcQuery('contexts.list', {});
     const cluster = useIpcQuery('cluster.active', {}, { refetchInterval: useRefreshIntervalMs() });
     const current = contexts.data?.find((c) => c.current);
-    const health = cluster.data
-        ? { tone: CLUSTER_TONE[cluster.data.status], title: HEALTH_TITLE[cluster.data.status] }
-        : NO_CLUSTER;
+    // A context the kubeconfig cannot back has no health to report; its problem is the whole story.
+    const health = current?.problem
+        ? { tone: 'danger' as StatusTone, title: current.problem }
+        : cluster.data
+          ? { tone: CLUSTER_TONE[cluster.data.status], title: HEALTH_TITLE[cluster.data.status] }
+          : NO_CLUSTER;
     const [switching, setSwitching] = useState(false);
     const switchContext = useSwitchContext();
 
@@ -149,9 +152,12 @@ export function ContextSelector() {
                     >
                         <span className="flex w-full items-center gap-1.5 text-body font-medium">
                             <CheckIcon className={cn('size-3 text-primary', !ctx.current && 'invisible')} />
-                            {ctx.name}
+                            <span className={cn(ctx.problem && 'text-text-muted line-through')}>{ctx.name}</span>
+                            {ctx.problem && <StatusDot tone="danger" title={ctx.problem} className="ml-auto" />}
                         </span>
-                        <span className="pl-4.5 text-label text-text-muted">{ctx.cluster}</span>
+                        <span className="pl-4.5 text-label text-text-muted">
+                            {ctx.problem ? 'Unusable: names a missing cluster or user' : ctx.cluster}
+                        </span>
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

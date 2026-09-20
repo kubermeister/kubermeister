@@ -103,6 +103,11 @@ function detailOf(error: unknown): string {
 export function toK8sError(op: string, error: unknown): K8sError {
     if (error instanceof K8sError) return error;
     if (error instanceof ExecPluginError) return new K8sError('unauthorized', error.detail, op);
+    // The library's own words for a context whose cluster entry is missing; `apis()` catches this
+    // earlier with the entry named, but streams and metrics build their clients from the raw config.
+    if (error instanceof Error && error.message === 'No active cluster!') {
+        return new K8sError('kubeconfig', 'The current context names a cluster the kubeconfig does not define.', op);
+    }
     const status = statusOf(error);
     if (status === 403) return new K8sError('forbidden', 'Access denied (RBAC).', op);
     if (status === 401) return new K8sError('unauthorized', 'Not authenticated to the cluster.', op);

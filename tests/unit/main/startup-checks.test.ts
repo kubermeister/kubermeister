@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const client = { kubeconfigError: vi.fn<() => string | null>(), apis: vi.fn() };
+const client = {
+    kubeconfigError: vi.fn<() => string | null>(),
+    currentContextProblem: vi.fn<() => string | null>(() => null),
+    apis: vi.fn(),
+};
 const context = { getCurrentContext: vi.fn() };
 vi.mock('../../../src/main/k8s/client.js', () => client);
 vi.mock('../../../src/main/k8s/context.js', () => context);
 
-const { checkKubeconfig, checkCluster, runStartupChecks } = await import('../../../src/main/startup/checks.js');
+const { checkKubeconfig, checkContext, checkCluster, runStartupChecks } =
+    await import('../../../src/main/startup/checks.js');
 
 function version(getCode: () => Promise<unknown>): void {
     client.apis.mockReturnValue({ version: { getCode } });
@@ -36,6 +41,49 @@ describe('checkKubeconfig', () => {
             'The default kubeconfig ($KUBECONFIG or ~/.kube/config) could not be parsed.',
         );
         expect(checkKubeconfig()).toMatchObject({ status: 'error', hint: expect.stringContaining('~/.kube/config') });
+    });
+});
+
+describe('checkContext', () => {
+    beforeEach(() => {
+        client.currentContextProblem.mockReturnValue(null);
+        context.getCurrentContext.mockReturnValue({ name: 'alpha', cluster: 'c', user: 'u', current: true });
+    });
+
+    it('is ok naming the context it will use', () => {
+        expect(checkContext()).toEqual({
+            id: 'context',
+            label: 'Current context',
+            status: 'ok',
+            detail: 'Using alpha',
+        });
+    });
+
+    it('is an error, with a hint to switch, when the context names a missing cluster or user', () => {
+        client.currentContextProblem.mockReturnValue('Context "alpha" names cluster "nowhere", which ...');
+        expect(checkContext()).toMatchObject({
+            status: 'error',
+            detail: expect.stringContaining('nowhere'),
+            hint: expect.stringContaining('Switch to another context'),
+        });
+    });
+
+    it('only warns when no context is current at all', () => {
+        context.getCurrentContext.mockReturnValue(null);
+        expect(checkContext()).toMatchObject({
+            status: 'warning',
+            detail: expect.stringContaining('No current context'),
+        });
+    });
+
+    it('turns a throw while reading the config into the error, without the kind prefix', () => {
+        context.getCurrentContext.mockImplementation(() => {
+            throw new Error('[kubeconfig] /k could not be parsed as a kubeconfig file.');
+        });
+        expect(checkContext()).toMatchObject({
+            status: 'error',
+            detail: '/k could not be parsed as a kubeconfig file.',
+        });
     });
 });
 
@@ -80,8 +128,35 @@ describe('runStartupChecks', () => {
         expect(report.ok).toBe(true);
         expect(report.checks.map((c) => [c.id, c.status])).toEqual([
             ['kubeconfig', 'ok'],
+            ['context', 'warning'],
             ['cluster', 'warning'],
         ]);
+        expect(report.checks[2]?.detail).toContain('Skipped');
+    });
+
+    it('is not ok and skips the probe when the current context cannot be used', async () => {
+        client.kubeconfigError.mockReturnValue(null);
+        context.getCurrentContext.mockReturnValue({ name: 'alpha', cluster: 'nowhere', user: 'u', current: true });
+        client.currentContextProblem.mockReturnValue('Context "alpha" names cluster "nowhere", which ...');
+        client.apis.mockClear();
+        const report = await runStartupChecks();
+        expect(report.ok).toBe(false);
+        expect(report.checks.map((c) => [c.id, c.status])).toEqual([
+            ['kubeconfig', 'ok'],
+            ['context', 'error'],
+            ['cluster', 'warning'],
+        ]);
+        expect(client.apis).not.toHaveBeenCalled();
+    });
+
+    it('probes the cluster once the kubeconfig and its context are whole', async () => {
+        client.kubeconfigError.mockReturnValue(null);
+        context.getCurrentContext.mockReturnValue({ name: 'alpha', cluster: 'c', user: 'u', current: true });
+        client.currentContextProblem.mockReturnValue(null);
+        version(() => Promise.resolve({ gitVersion: 'v1.34.0' }));
+        const report = await runStartupChecks();
+        expect(report.ok).toBe(true);
+        expect(report.checks.map((c) => c.status)).toEqual(['ok', 'ok', 'ok']);
     });
 
     it('is not ok and skips the probe when the kubeconfig is broken', async () => {
@@ -89,7 +164,16 @@ describe('runStartupChecks', () => {
         client.apis.mockClear();
         const report = await runStartupChecks();
         expect(report.ok).toBe(false);
-        expect(report.checks[1]).toMatchObject({ status: 'warning', detail: expect.stringContaining('Skipped') });
+        expect(report.checks[1]).toMatchObject({
+            id: 'context',
+            status: 'warning',
+            detail: expect.stringContaining('Skipped'),
+        });
+        expect(report.checks[2]).toMatchObject({
+            id: 'cluster',
+            status: 'warning',
+            detail: expect.stringContaining('Skipped'),
+        });
         expect(client.apis).not.toHaveBeenCalled();
     });
 });

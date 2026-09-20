@@ -29,6 +29,25 @@ describe('contexts', () => {
         ]);
     });
 
+    it('marks a context whose cluster or user is missing, on the list and as the current one', async () => {
+        settings.connection.kubeconfigPath = resolve('tests/unit/fixtures/kubeconfig-broken-context.yaml');
+        try {
+            const { listContexts, getCurrentContext, setContext } = await load();
+            const byName = Object.fromEntries(listContexts().map((ctx) => [ctx.name, ctx.problem]));
+            expect(byName).toEqual({
+                alpha: expect.stringContaining('names cluster "nowhere"'),
+                'ghost-user': expect.stringContaining('names user "nobody"'),
+                beta: undefined,
+            });
+            expect(getCurrentContext()?.problem).toContain('nowhere');
+            // Switching to a whole context is the fix, so it is never refused.
+            expect(setContext('beta').problem).toBeUndefined();
+            expect(getCurrentContext()?.problem).toBeUndefined();
+        } finally {
+            settings.connection.kubeconfigPath = resolve('tests/unit/fixtures/kubeconfig.yaml');
+        }
+    });
+
     it('reports the current context', async () => {
         const { getCurrentContext } = await load();
         expect(getCurrentContext()?.name).toBe('alpha');

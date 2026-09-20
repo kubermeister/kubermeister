@@ -73,4 +73,31 @@ describe('switchContext', () => {
         expect(invoke).toHaveBeenCalledWith('context.set', { name: 'beta' });
         expect(queryClient.getQueryData(listKey)).toBeUndefined();
     });
+
+    it('reruns the startup checks once the context has changed, so the connection notice follows it', async () => {
+        invoke.mockReset();
+        invoke.mockImplementation(async (channel: string) =>
+            channel === 'startupChecks' ? { ok: true, checks: [] } : undefined,
+        );
+        queryClient.clear();
+        const startupKey = ipcQueryKey('startupChecks', {});
+        queryClient.setQueryData(startupKey, { ok: false, checks: [] });
+        // The gate and the notice keep the report mounted, which is what makes the invalidation refetch.
+        const observer = new QueryObserver(queryClient, {
+            queryKey: startupKey,
+            queryFn: () => invoke('startupChecks', {}),
+            staleTime: Infinity,
+        });
+        const unsubscribe = observer.subscribe(() => {});
+        try {
+            await switchContext('beta');
+            const order = invoke.mock.calls.map(([channel]) => channel as string);
+            expect(order.lastIndexOf('startupChecks')).toBeGreaterThan(order.indexOf('context.set'));
+            expect(queryClient.getQueryData(startupKey)).toEqual({ ok: true, checks: [] });
+        } finally {
+            unsubscribe();
+            await queryClient.cancelQueries();
+            queryClient.clear();
+        }
+    });
 });

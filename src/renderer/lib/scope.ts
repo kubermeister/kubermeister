@@ -2,8 +2,9 @@ import { type AnyRouter, useRouter } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { invoke } from './ipc';
 import { listPathForSubPage } from './nav';
-import { invalidateClusterQueries, useIpcQuery } from './query';
+import { invalidateClusterQueries, queryClient, useIpcQuery } from './query';
 import { stopAllForwards } from './port-forwards';
+import { recheckConnection } from './settings';
 
 /**
  * Switch kube-context and forget everything read from the previous one. Open forwards go with it:
@@ -13,7 +14,9 @@ import { stopAllForwards } from './port-forwards';
 export async function switchContext(name: string): Promise<void> {
     stopAllForwards();
     await invoke('context.set', { name });
-    await invalidateClusterQueries();
+    // The startup report speaks of the current context, so a switch reruns it: the top bar's
+    // connection notice appears or clears with the context it now describes.
+    await recheckConnection(queryClient);
 }
 
 /**

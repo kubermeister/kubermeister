@@ -1,5 +1,5 @@
 import type { StartupCheck, StartupReport } from '../../shared/ipc.js';
-import { apis, kubeconfigError } from '../k8s/client.js';
+import { apis, currentContextProblem, kubeconfigError } from '../k8s/client.js';
 import { getCurrentContext } from '../k8s/context.js';
 import { withK8s } from '../k8s/errors.js';
 
@@ -25,6 +25,38 @@ export function checkKubeconfig(): StartupCheck {
         };
     }
     return { ...base, status: 'ok', detail: 'Kubeconfig loaded' };
+}
+
+/**
+ * The current context must name a cluster and a user the kubeconfig defines. A file that loads can
+ * still carry a context whose entries were dropped or never existed; every call on it fails, so it
+ * is an error, but one the top bar can fix by switching context, which is what the hint says. No
+ * current context at all is only a warning: the app opens and the selector is where one is chosen.
+ */
+export function checkContext(): StartupCheck {
+    const base = { id: 'context', label: 'Current context' } as const;
+    let problem: string | null;
+    try {
+        const context = getCurrentContext();
+        problem = currentContextProblem();
+        if (!problem) {
+            if (context) return { ...base, status: 'ok', detail: `Using ${context.name}` };
+            return {
+                ...base,
+                status: 'warning',
+                detail: 'No current context is set in your kubeconfig.',
+                hint: 'Select a context once the app is open.',
+            };
+        }
+    } catch (error) {
+        problem = error instanceof Error ? error.message.replace(/^\[\w+\] /, '') : String(error);
+    }
+    return {
+        ...base,
+        status: 'error',
+        detail: problem,
+        hint: 'Switch to another context in the top bar, or fix the entry in the kubeconfig.',
+    };
 }
 
 /**
@@ -55,19 +87,25 @@ export async function checkCluster(): Promise<StartupCheck> {
     }
 }
 
-/** Run every check; the report is ok when nothing is an error. */
+function skipped(id: 'context' | 'cluster', reason: string): StartupCheck {
+    const label = id === 'context' ? 'Current context' : 'Cluster connection';
+    return { id, label, status: 'warning', detail: `Skipped: ${reason}` };
+}
+
+/**
+ * Run every check in dependency order; the report is ok when nothing is an error. A check whose
+ * precondition failed is reported as skipped rather than run into the same failure again.
+ */
 export async function runStartupChecks(): Promise<StartupReport> {
     const kubeconfig = checkKubeconfig();
-    // Without a loadable kubeconfig the probe cannot even start; report that plainly.
+    const context =
+        kubeconfig.status === 'error' ? skipped('context', 'the kubeconfig could not be loaded.') : checkContext();
     const cluster =
         kubeconfig.status === 'error'
-            ? {
-                  id: 'cluster' as const,
-                  label: 'Cluster connection',
-                  status: 'warning' as const,
-                  detail: 'Skipped: the kubeconfig could not be loaded.',
-              }
-            : await checkCluster();
-    const checks = [kubeconfig, cluster];
+            ? skipped('cluster', 'the kubeconfig could not be loaded.')
+            : context.status !== 'ok'
+              ? skipped('cluster', 'there is no usable current context.')
+              : await checkCluster();
+    const checks = [kubeconfig, context, cluster];
     return { checks, ok: checks.every((check) => check.status !== 'error') };
 }
