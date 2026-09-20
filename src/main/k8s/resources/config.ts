@@ -6,13 +6,15 @@ import type {
     Secret,
     SecretDetail,
     SecretEntry,
+    SecretValue,
 } from '../../../shared/k8s/workloads.js';
 import { apis, getNamespaced, listItems } from '../client.js';
 import { withK8s } from '../errors.js';
 import { age, formatBytes, toPairs } from '../format.js';
 
 /*
- * ConfigMaps and Secrets. Secret values never cross the bridge: only key names and a fixed mask.
+ * ConfigMaps and Secrets. A Secret is listed and read as key names and a fixed mask; a value crosses
+ * the bridge only when the user reveals or copies that one key.
  */
 
 /** Total stored bytes: UTF-8 for text data, decoded length for binary data. */
@@ -141,5 +143,29 @@ export function getSecretEntries(name: string, namespace: string): Promise<Secre
     return withK8s('secrets.entries', async () => {
         const secret = await readSecret(name, namespace);
         return secret ? toSecretEntries(secret) : [];
+    });
+}
+
+/**
+ * A stored value is arbitrary bytes, so only one that survives a UTF-8 round trip can be shown as
+ * text; anything else stays base64 and says so, rather than reaching the screen as replacement
+ * characters that no longer are the value.
+ */
+export function decodeSecretValue(key: string, encoded: string): SecretValue {
+    const bytes = Buffer.from(encoded, 'base64');
+    const text = bytes.toString('utf8');
+    const binary = !Buffer.from(text, 'utf8').equals(bytes);
+    return { key, value: binary ? bytes.toString('base64') : text, binary };
+}
+
+/**
+ * One key's value, asked for by name. This is the only read that answers a Secret value, and it
+ * answers a single key, so revealing one entry never puts the rest of the map in the renderer.
+ */
+export function revealSecretValue(name: string, namespace: string, key: string): Promise<SecretValue | null> {
+    return withK8s('secrets.reveal', async () => {
+        const secret = await readSecret(name, namespace);
+        const encoded = secret?.data?.[key];
+        return encoded === undefined ? null : decodeSecretValue(key, encoded);
     });
 }

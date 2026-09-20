@@ -115,6 +115,11 @@ describe('secret screens', () => {
         expect(within(table).getAllByRole('cell', { name: '••••••••' })).toHaveLength(2);
         expect(page.textContent).not.toContain('super-secret-value');
         expect(invoke).toHaveBeenCalledWith('secrets.entries', { name: 'app-secret', namespace: 'team-a' });
+        // Every value is behind a control of its own; the reads they make are covered in
+        // `secret-reveal.test.tsx`, so no value is asked for here.
+        expect(within(table).getByRole('button', { name: 'Reveal password' })).toBeInTheDocument();
+        expect(within(table).getByRole('button', { name: 'Copy password' })).toBeInTheDocument();
+        expect(invoke).not.toHaveBeenCalledWith('secrets.reveal', expect.anything());
     });
 
     it('reports a missing secret as not found', async () => {

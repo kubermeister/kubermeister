@@ -80,8 +80,10 @@ metadata:
   namespace: km-e2e
 type: Opaque
 data:
-  # "super-secret-value"; the app must never read or render this value.
+  # "super-secret-value"; the app reads it only for the key the user reveals or copies.
   password: c3VwZXItc2VjcmV0LXZhbHVl
+  # A value far wider than the window: revealing it must not carry the row's controls off screen.
+  long-token: bG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmctdG9rZW4tdmFsdWUtbG9uZy10b2tlbi12YWx1ZS1sb25nLXRva2VuLXZhbHVlLWxvbmct
 ---
 apiVersion: v1
 kind: ResourceQuota

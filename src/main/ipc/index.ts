@@ -10,7 +10,7 @@ import { endAllStreams } from './streams.js';
 import { stopAllInformers } from '../k8s/watch.js';
 import { readPodLogSnapshot, readPodLogText } from '../k8s/logs.js';
 import { getActiveCluster, getActiveNamespaceInfo, listClusters, listNamespaces } from '../k8s/resources/cluster.js';
-import { getConfigMapEntries, getSecretEntries } from '../k8s/resources/config.js';
+import { getConfigMapEntries, getSecretEntries, revealSecretValue } from '../k8s/resources/config.js';
 import { listEvents, listEventsForObject, listRecentEvents } from '../k8s/resources/events.js';
 import {
     createResource,
@@ -167,6 +167,7 @@ const handlers: Handlers = {
     'deployments.compare': (input) => compareDeploymentRevisions(input),
     'configMaps.entries': ({ name, namespace }) => getConfigMapEntries(name, namespace),
     'secrets.entries': ({ name, namespace }) => getSecretEntries(name, namespace),
+    'secrets.reveal': ({ name, namespace, key }) => revealSecretValue(name, namespace, key),
     'services.ports': ({ name, namespace }) => getServicePorts(name, namespace),
     'services.endpoints': ({ name, namespace }) => getServiceEndpoints(name, namespace),
     'ingresses.rules': ({ name, namespace }) => getIngressRules(name, namespace),

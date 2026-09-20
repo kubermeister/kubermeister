@@ -44,7 +44,7 @@ const metricsMod = {
     getDeploymentSeries: vi.fn(),
 };
 const workloadsMod = { getDeploymentReplicaSets: vi.fn(), getDeploymentRollouts: vi.fn() };
-const configMod = { getConfigMapEntries: vi.fn(), getSecretEntries: vi.fn() };
+const configMod = { getConfigMapEntries: vi.fn(), getSecretEntries: vi.fn(), revealSecretValue: vi.fn() };
 const networkMod = { getServicePorts: vi.fn(), getServiceEndpoints: vi.fn(), getIngressRules: vi.fn() };
 const helmMod = {
     listReleases: vi.fn(),
@@ -479,6 +479,16 @@ describe('registerHandlers', () => {
             { key: 'password', masked: '••••••••' },
         ]);
         await expect(invoke('secrets.entries', { name: 'app-secret' })).rejects.toThrow();
+    });
+
+    it('reveals one secret key by name and refuses a request without one', async () => {
+        configMod.revealSecretValue.mockResolvedValue({ key: 'password', value: 'super-secret', binary: false });
+        await expect(
+            invoke('secrets.reveal', { name: 'app-secret', namespace: 'team-a', key: 'password' }),
+        ).resolves.toEqual({ key: 'password', value: 'super-secret', binary: false });
+        expect(configMod.revealSecretValue).toHaveBeenCalledWith('app-secret', 'team-a', 'password');
+        await expect(invoke('secrets.reveal', { name: 'app-secret', namespace: 'team-a', key: '' })).rejects.toThrow();
+        await expect(invoke('secrets.reveal', { name: 'app-secret', namespace: 'team-a' })).rejects.toThrow();
     });
 
     it('forwards the overview list channels with their namespace scope', async () => {
