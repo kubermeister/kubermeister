@@ -265,11 +265,14 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   everything else renderer-side), so a buffer of tens of thousands of lines costs a screenful of
   DOM; its size is the `data.logBufferLines` setting, read live so raising it trims differently
   from the next batch on rather than restarting the follow.
-- The log console's filtering lives in `src/renderer/lib/log-filter.ts`, apart from the component:
-  the search narrows the console — a line the search misses is gone, not merely unhighlighted —
-  and an unfinished regular expression reads as "no filter yet" rather than emptying the console
-  mid-keystroke. Marking inside a line (`matchRanges`) is only ever about saying where a shown line
-  matched.
+- The log console's filtering lives in `src/renderer/lib/log-filter.ts`, apart from the component.
+  The search narrows the console by default — a line the search misses is gone, not merely
+  unhighlighted — and an unfinished regular expression reads as "no filter yet" rather than emptying
+  the console mid-keystroke. `highlight` on the search is the other mode: every line stays and the
+  matches are marked where they sit, since a hit is often only legible next to what surrounds it.
+  Its toggle (`Mark`) sits beside `.*` and `Aa`, because it modifies the search rather than how a
+  line reads, which is what the View menu is for. Marking inside a line (`matchRanges`) is only ever
+  about saying where a line matched, in either mode.
 - **The console's toolbar is one row**, and what stays on it decides _which_ lines are shown: the
   container, the since window, the search and Live. How those lines are _read_ sits behind the View
   button (`log-view-menu.tsx`), so an option can be added without a second row of controls growing

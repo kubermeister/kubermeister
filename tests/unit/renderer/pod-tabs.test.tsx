@@ -227,6 +227,15 @@ describe('LogViewer', () => {
         await userEvent.click(await screen.findByRole('menuitem', { name: '1 hour' }));
         expect(onSinceChange).toHaveBeenCalledWith({ label: '1 hour', seconds: 3600 });
     });
+
+    it('offers marking beside the other two search toggles', async () => {
+        const onSearchChange = vi.fn();
+        renderWithQuery(<LogViewer {...props} lines={[]} onSearchChange={onSearchChange} />);
+        const mark = screen.getByRole('button', { name: 'Mark' });
+        expect(mark).toHaveAttribute('aria-pressed', 'false');
+        await userEvent.click(mark);
+        expect(onSearchChange).toHaveBeenCalledWith({ ...NO_SEARCH, highlight: true });
+    });
 });
 
 describe('LogsTab', () => {
@@ -332,6 +341,22 @@ describe('LogsTab', () => {
         expect(invoke).not.toHaveBeenCalledWith('pods.logSnapshot', expect.anything());
         expect(streams.usePodLogStream).toHaveBeenLastCalledWith(null, 2000);
         expect(screen.getByRole('button', { name: 'Container' })).toBeDisabled();
+    });
+
+    it('marks the matches and keeps the rest of the lines when asked to', async () => {
+        invoke.mockImplementation(answering([]));
+        streams.usePodLogStream.mockReturnValue(following(line('all good'), line('boom', 'ERROR')));
+        renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
+        await screen.findByText('all good');
+
+        await userEvent.click(screen.getByRole('button', { name: 'Mark' }));
+        await userEvent.type(screen.getByRole('textbox', { name: 'Filter log lines' }), 'boom');
+        // Nothing is hidden, so the console never says it was narrowed.
+        await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('2 lines'));
+        expect(screen.getByTestId('log-status')).not.toHaveTextContent('(filtered)');
+        expect(screen.getByText('all good')).toBeInTheDocument();
+        // The hit is still marked where it sits.
+        expect(screen.getByRole('list', { name: 'Log lines' }).querySelector('mark')).toHaveTextContent('boom');
     });
 
     it('keeps the lines the search matched and brings the rest back when it is cleared', async () => {

@@ -10,9 +10,15 @@ export interface LogSearch {
     /** Treat the query as a regular expression rather than as text to find. */
     regex: boolean;
     caseSensitive: boolean;
+    /**
+     * Mark the matches in place and keep every line, instead of hiding the ones that do not match.
+     * What is being looked for is often only legible next to what surrounds it — a stack trace
+     * under the line that named the error, the request that came in before the timeout.
+     */
+    highlight: boolean;
 }
 
-export const NO_SEARCH: LogSearch = { query: '', regex: false, caseSensitive: false };
+export const NO_SEARCH: LogSearch = { query: '', regex: false, caseSensitive: false, highlight: false };
 
 /**
  * The matcher for one search, or null when the search is empty or its expression is not valid. An
@@ -46,8 +52,12 @@ export function isBrokenPattern(search: LogSearch): boolean {
     }
 }
 
-/** The lines to render, in order: the ones the search matched, or all of them when there is none. */
+/**
+ * The lines to render, in order: the ones the search matched, or all of them when there is no
+ * search or the search is marking rather than narrowing.
+ */
 export function visibleLines<T extends LogLine>(lines: T[], search: LogSearch): T[] {
+    if (search.highlight) return lines;
     const matches = matcherFor(search);
     return matches ? lines.filter(matches) : lines;
 }

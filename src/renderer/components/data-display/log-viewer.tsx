@@ -238,6 +238,14 @@ export function LogViewer({
                     label="Aa"
                     title="Match case"
                 />
+                {/* Beside the other two because it modifies the search the way they do, rather than
+                    in the View menu, which is about how any line reads. */}
+                <Toggle
+                    pressed={search.highlight}
+                    onToggle={() => onSearchChange({ ...search, highlight: !search.highlight })}
+                    label="Mark"
+                    title="Mark the matches in place instead of hiding the rest"
+                />
                 <LogViewMenu
                     wrap={view.wrap}
                     onWrapChange={(wrap) => setView({ wrap })}
