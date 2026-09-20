@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react';
 import type { StartupCheck } from '../../shared/ipc';
-import { invoke } from '@/lib/ipc';
 import { describeError } from '@/lib/k8s-error';
 import { useIpcQuery } from '@/lib/query';
 import { Preloader } from './preloader';
 import { StartupError } from './startup-error';
 
 /**
- * Boots the app behind the startup checks: preloader while they run, an actionable error screen
- * while any check is an error, the app once they pass. The result is kept forever and only the
- * buttons re-trigger it, so a later transient failure cannot unmount a running app.
+ * Boots the app behind the startup checks: preloader while they run, then the app. A failing check
+ * does not hold the shell back: only cluster calls depend on the kubeconfig, so the sidebar, top bar,
+ * Settings and updates open regardless and the top bar's connection notice carries the failure and
+ * its fixes. The one screen that still blocks is a bridge that cannot answer at all, since nothing
+ * behind it could work either. The result is kept forever, so a later transient failure cannot
+ * unmount a running app; the notice refetches it when the user acts on it.
  */
 export function StartupGate({ children }: { children: ReactNode }) {
     const { data, isPending, isError, error, isFetching, refetch } = useIpcQuery(
@@ -17,7 +19,6 @@ export function StartupGate({ children }: { children: ReactNode }) {
         {},
         { staleTime: Infinity, gcTime: Infinity },
     );
-    const retry = () => void refetch();
 
     if (isPending) return <Preloader />;
 
@@ -26,27 +27,7 @@ export function StartupGate({ children }: { children: ReactNode }) {
         const fallback: StartupCheck[] = [
             { id: 'kubeconfig', label: 'Startup checks', status: 'error', detail: described.detail },
         ];
-        return <StartupError checks={fallback} onRetry={retry} retrying={isFetching} />;
-    }
-
-    if (!data.ok) {
-        const pick = async () => {
-            const { path } = await invoke('kubeconfig.pick', {});
-            if (path) await refetch();
-        };
-        const reset = async () => {
-            await invoke('kubeconfig.useDefault', {});
-            await refetch();
-        };
-        return (
-            <StartupError
-                checks={data.checks}
-                onRetry={retry}
-                retrying={isFetching}
-                onPickKubeconfig={() => void pick()}
-                onResetKubeconfig={() => void reset()}
-            />
-        );
+        return <StartupError checks={fallback} onRetry={() => void refetch()} retrying={isFetching} />;
     }
 
     return <>{children}</>;

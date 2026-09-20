@@ -892,16 +892,27 @@ test('shows what else a pod is tied to, and why', async () => {
     await expect(page.getByTestId('related-access')).toContainText('runs as');
 });
 
-test('stops at the startup screen when the kubeconfig path names nothing', async () => {
+test('opens the shell with a connection notice when the kubeconfig path names nothing', async () => {
     const missing = join(tmpdir(), `km-e2e-missing-${Date.now()}.yaml`);
     const bad = await launchApp({ kubeconfigPath: missing });
     try {
-        const panel = bad.window.getByTestId('startup-error');
-        await expect(panel).toContainText('Kubermeister cannot start yet');
-        await expect(panel.locator('[data-check="kubeconfig"][data-status="error"]')).toBeVisible();
-        await expect(panel).toContainText('Fix or clear the kubeconfig path in Settings.');
-        // Nothing cluster-shaped is reached: the shell never mounts.
-        await expect(bad.window.getByTestId('app-shell')).toHaveCount(0);
+        // The shell is not held back: only cluster calls depend on the kubeconfig.
+        await bad.window.getByTestId('app-shell').waitFor();
+        const notice = bad.window.getByTestId('connection-notice');
+        await expect(notice).toContainText('Kubeconfig not loaded');
+        await notice.click();
+        await expect(bad.window.getByText('Fix or clear the kubeconfig path in Settings.')).toBeVisible();
+        await expect(bad.window.getByRole('button', { name: 'Use default kubeconfig' })).toBeVisible();
+        await bad.window.keyboard.press('Escape');
+        // Settings, where the path is fixed, is reachable; so is everything else that needs no cluster.
+        await bad.window
+            .getByTestId('sidebar')
+            .getByRole('link', { name: /Settings/ })
+            .click();
+        await expect(bad.window.getByTestId('settings-page').getByTestId('kubeconfig-path')).toContainText(
+            'km-e2e-missing',
+        );
+        await expect(bad.window.getByTestId('startup-error')).toHaveCount(0);
     } finally {
         await bad.app.close();
     }

@@ -22,6 +22,7 @@ import {
     type ConfigOptions,
 } from '@kubernetes/client-node';
 import { existsSync } from 'node:fs';
+import { K8sError } from './errors.js';
 import { guardCredentialPlugins } from './exec-auth.js';
 import { isNamespaceName } from '../../shared/k8s/names.js';
 import { getSettings } from '../settings/store.js';
@@ -95,11 +96,20 @@ function namespaceOrNull(value: string | null | undefined): string | null {
  */
 const LOAD_OPTIONS: Partial<ConfigOptions> = { onInvalidEntry: 'filter' };
 
+/**
+ * A kubeconfig that will not load fails every cluster call the same way, as a classified error the
+ * renderer can name and act on, rather than as the parser's exception. The parser's message embeds
+ * a snippet of the file, so the detail is the sentence {@link kubeconfigError} composes instead.
+ */
 function loadKubeConfig(): KubeConfig {
     const next = new KubeConfig();
     const { kubeconfigPath } = getSettings().connection;
-    if (kubeconfigPath) next.loadFromFile(kubeconfigPath, LOAD_OPTIONS);
-    else next.loadFromDefault(LOAD_OPTIONS);
+    try {
+        if (kubeconfigPath) next.loadFromFile(kubeconfigPath, LOAD_OPTIONS);
+        else next.loadFromDefault(LOAD_OPTIONS);
+    } catch {
+        throw new K8sError('kubeconfig', kubeconfigError() ?? 'The kubeconfig could not be loaded.', 'kubeconfig');
+    }
     guardCredentialPlugins(next);
     return next;
 }

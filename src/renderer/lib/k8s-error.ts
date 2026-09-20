@@ -8,6 +8,7 @@ export interface DescribedError {
 }
 
 const TITLES: Record<K8sErrorKind, string> = {
+    kubeconfig: 'Kubeconfig not loaded',
     unreachable: 'Cluster unreachable',
     timeout: 'Cluster timed out',
     forbidden: 'Access denied',

@@ -4,6 +4,7 @@ import { invoke } from './ipc';
 import { invalidateClusterQueries, ipcQueryKey, useIpcQuery } from './query';
 
 const SETTINGS_KEY = ipcQueryKey('settings.get', {});
+const STARTUP_KEY = ipcQueryKey('startupChecks', {});
 
 export function useSettings() {
     return useIpcQuery('settings.get', {});
@@ -39,11 +40,21 @@ export async function pickKubeconfig(client: QueryClient): Promise<void> {
     const { path } = await invoke('kubeconfig.pick', {});
     if (path === null) return;
     await client.invalidateQueries({ queryKey: SETTINGS_KEY });
-    await invalidateClusterQueries();
+    await recheckConnection(client);
 }
 
 export async function resetKubeconfig(client: QueryClient): Promise<void> {
     const settings = await invoke('kubeconfig.useDefault', {});
     client.setQueryData(SETTINGS_KEY, settings);
+    await recheckConnection(client);
+}
+
+/**
+ * Run the startup checks again and start every cluster read over. The checks are what the top-bar
+ * connection notice reads, so a kubeconfig fixed on disk, picked or reset clears the notice here and
+ * nowhere else; the reads then load under whatever the kubeconfig now says.
+ */
+export async function recheckConnection(client: QueryClient): Promise<void> {
+    await client.invalidateQueries({ queryKey: STARTUP_KEY });
     await invalidateClusterQueries();
 }

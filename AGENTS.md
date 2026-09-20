@@ -368,7 +368,14 @@ null` under "All namespaces"; the label is the renderer's, never a value handed 
 failed` and which fires before the ceiling does. The kubeconfig loads with
   `onInvalidEntry: 'filter'`: an entry with no name, an empty `cluster:` or a cluster without a
   server is dropped, as kubectl tolerates it, instead of failing the whole file and every other
-  context with it. The ceiling is the
+  context with it. **A kubeconfig that will not load never blocks the shell:** the load failure is a
+  `kubeconfig` error on every cluster call (`K8sError`, with the sentence `kubeconfigError` composes
+  rather than the parser's message, which quotes the file), the startup gate lets the app through,
+  and the top bar's `ConnectionNotice` carries the failure with its three fixes (try again, choose a
+  kubeconfig, use the default), reading the same `startupChecks` report the gate fetched;
+  `recheckConnection` in `src/renderer/lib/settings.ts` refetches it and resets the cluster queries,
+  so a fix from the notice or from Settings clears both. The startup error card remains only for a
+  bridge that cannot answer at all. The ceiling is the
   `data.readTimeoutSec` setting (60 s by default), applied to `errors.ts` at startup and on every
   settings write rather than read per call, so the k8s modules never import the settings store; a
   timed-out list or summary points at Settings, since how long a cluster may take is the user's to say. No `kubectl` dependency; the
@@ -415,8 +422,8 @@ and main pushes every transition as `update.state`, which `useUpdater` in `src/r
 mirrors for the top-bar `UpdatePill` (popover plus one-shot toasts) and the Settings About card;
 the palette reaches `update.check` too. **The menu's "Check for Updates…" needs no renderer:** it
 runs `src/main/update-dialog.ts`, native message boxes for the outcome, the download and the restart,
-because the pill and Settings only exist once the renderer is past the startup checks, and an update
-found while a broken kubeconfig or a white screen holds it there must still have a way in. A failed
+because the pill and Settings only exist once the renderer has mounted, and an update found while a
+white screen or a crashed renderer keeps it from mounting must still have a way in. A failed
 scheduled check is stored with `background: true` and never surfaces as a notification. **Publishing is fail-safe, not
 fail-proof:** GitHub's upload service does fail a large asset now and then, so the packaging action
 uploads one file at a time with retries, reads every asset back and checks its size and checksum,

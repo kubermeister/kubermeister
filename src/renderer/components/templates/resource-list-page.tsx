@@ -42,6 +42,8 @@ type ListQuery<T> = Pick<UseQueryResult<T[]>, 'data' | 'isPending' | 'isError' |
 /** Kind-specific one-liner for a failed list read; falls back to the generic message. */
 function listErrorBody(kind: K8sErrorKind, noun: string): string {
     switch (kind) {
+        case 'kubeconfig':
+            return 'The kubeconfig could not be loaded, so no cluster can be asked.';
         case 'forbidden':
             return `You don't have permission to view ${noun}.`;
         case 'unauthorized':
