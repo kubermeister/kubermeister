@@ -15,6 +15,24 @@ extraResources:
 # Deterministic asset names; the release workflows and any package manager templates depend on
 # this exact pattern.
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+# Electron fuses are switches flipped in the binary at package time and read before any JavaScript
+# runs, so they hold for anyone who can start the app with their own arguments or environment.
+# grantFileProtocolExtraPrivileges stays at its default: the packaged renderer is a file:// document.
+electronFuses:
+  # ELECTRON_RUN_AS_NODE=1 would turn the signed, notarized app into a plain Node binary.
+  runAsNode: false
+  # NODE_OPTIONS could preload a script into the main process.
+  enableNodeOptionsEnvironmentVariable: false
+  # --inspect and friends would open the main process to a debugger.
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  # A folder dropped next to app.asar can never shadow it.
+  onlyLoadAppFromAsar: true
+  # macOS validates the archive's hash at startup.
+  enableEmbeddedAsarIntegrityValidation: true
+  # Flipping fuses invalidates the ad-hoc signature an unsigned build carries; re-sign it so the
+  # bundle still opens. A Developer ID build is signed after this step anyway.
+  resetAdHocDarwinSignature: true
 # The publish block is never used to upload (the release workflow runs with --publish never and
 # uses `gh release upload`). It exists so electron-builder emits the electron-updater metadata
 # (latest*.yml, blockmaps) and embeds the GitHub releases feed into the app. Owner and repo come
