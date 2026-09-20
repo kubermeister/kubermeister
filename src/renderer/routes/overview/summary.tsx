@@ -34,6 +34,12 @@ const DASHBOARD_KEYS = [
 ];
 const last = (series: number[]) => series.at(-1) ?? 0;
 
+// The events and alerts panels end the page together and share whatever height is left, each
+// scrolling its own rows; below the minimum the page scrolls instead, so a short window doesn't
+// squeeze them down to their headers.
+const BOTTOM_ROW = 'grid min-h-56 flex-1 grid-cols-[1.6fr_1fr] gap-3';
+const PANEL_CARD = 'flex min-h-0 flex-col gap-0 rounded-card py-0 shadow-none';
+
 function DashboardPage() {
     const queryClient = useQueryClient();
     const refetchInterval = useRefreshIntervalMs();
@@ -68,8 +74,8 @@ function DashboardPage() {
         : 'No cluster connected';
 
     return (
-        <div className="h-full overflow-auto bg-background p-4" data-testid="cluster-summary">
-            <div className="mb-4 flex items-end justify-between">
+        <div className="flex h-full flex-col overflow-auto bg-background p-4" data-testid="cluster-summary">
+            <div className="mb-4 flex shrink-0 items-end justify-between">
                 <div>
                     <div className="text-label font-medium tracking-wider text-text-muted">CLUSTER OVERVIEW</div>
                     <div className="mt-0.5 flex items-center gap-2.5 text-title font-semibold">
@@ -83,7 +89,7 @@ function DashboardPage() {
 
             {failedQuery ? (
                 <Card
-                    className="flex flex-col items-center justify-center gap-3 rounded-card py-16 text-center shadow-none"
+                    className="flex shrink-0 flex-col items-center justify-center gap-3 rounded-card py-16 text-center shadow-none"
                     data-testid="dashboard-error"
                 >
                     <div className="flex flex-col items-center gap-1 text-body text-text-muted">
@@ -101,21 +107,21 @@ function DashboardPage() {
                     </Button>
                 </Card>
             ) : loading ? (
-                <div className="flex flex-col gap-3" role="status" aria-label="Loading">
-                    <div className="grid grid-cols-3 gap-3">
+                <div className="flex min-h-0 flex-1 flex-col gap-3" role="status" aria-label="Loading">
+                    <div className="grid shrink-0 grid-cols-3 gap-3">
                         {Array.from({ length: 3 }).map((_, i) => (
                             <Skeleton key={i} className="h-24 w-full rounded-card" />
                         ))}
                     </div>
-                    <Skeleton className="h-44 w-full rounded-card" />
-                    <div className="grid grid-cols-[1.6fr_1fr] gap-3">
-                        <Skeleton className="h-40 w-full rounded-card" />
-                        <Skeleton className="h-40 w-full rounded-card" />
+                    <Skeleton className="h-44 w-full shrink-0 rounded-card" />
+                    <div className={BOTTOM_ROW}>
+                        <Skeleton className="h-full w-full rounded-card" />
+                        <Skeleton className="h-full w-full rounded-card" />
                     </div>
                 </div>
             ) : (
                 <>
-                    <div className="mb-4 grid grid-cols-3 gap-3" data-testid="dashboard-metrics">
+                    <div className="mb-4 grid shrink-0 grid-cols-3 gap-3" data-testid="dashboard-metrics">
                         <MetricCard
                             label="Nodes"
                             value={`${cluster?.nodes ?? 0}`}
@@ -139,7 +145,7 @@ function DashboardPage() {
                         />
                     </div>
 
-                    <Card className="gap-0 rounded-card py-0 shadow-none" data-testid="workload-health">
+                    <Card className="shrink-0 gap-0 rounded-card py-0 shadow-none" data-testid="workload-health">
                         <div className="flex items-center border-b border-border px-3.5 py-3">
                             <div className="text-body font-semibold">Workload health</div>
                             <div className="flex-1" />
@@ -199,23 +205,25 @@ function DashboardPage() {
                         </div>
                     </Card>
 
-                    <div className="mt-3 grid grid-cols-[1.6fr_1fr] items-start gap-3">
-                        <Card className="min-w-0 gap-0 rounded-card py-0 shadow-none" data-testid="recent-events">
-                            <div className="flex items-center border-b border-border px-3.5 py-3">
+                    <div className={cn('mt-3', BOTTOM_ROW)}>
+                        <Card className={cn(PANEL_CARD, 'min-w-0')} data-testid="recent-events">
+                            <div className="flex shrink-0 items-center border-b border-border px-3.5 py-3">
                                 <div className="text-body font-semibold">Recent events</div>
                             </div>
-                            <EventsList events={events} emptyMessage="No recent events." />
+                            <div className="min-h-0 flex-1 overflow-auto">
+                                <EventsList events={events} emptyMessage="No recent events." />
+                            </div>
                         </Card>
 
-                        <Card className="min-w-0 gap-0 rounded-card py-0 shadow-none" data-testid="alerts">
-                            <div className="flex items-center border-b border-border px-3.5 py-3">
+                        <Card className={cn(PANEL_CARD, 'min-w-0')} data-testid="alerts">
+                            <div className="flex shrink-0 items-center border-b border-border px-3.5 py-3">
                                 <div className="text-body font-semibold">Alerts</div>
                                 <div className="flex-1" />
                                 <Badge variant={alertTone} className="rounded-sm" data-testid="alert-count">
                                     {alerts.length}
                                 </Badge>
                             </div>
-                            <div role="list" aria-label="Alerts">
+                            <div className="min-h-0 flex-1 overflow-auto" role="list" aria-label="Alerts">
                                 {alerts.length === 0 && (
                                     <div className="px-3.5 py-6 text-center text-cell text-text-muted">
                                         No active alerts.
