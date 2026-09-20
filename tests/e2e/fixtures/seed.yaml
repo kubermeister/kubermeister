@@ -80,7 +80,7 @@ metadata:
   namespace: km-e2e
 type: Opaque
 data:
-  # "super-secret-value"; the app must never read or render this value.
+  # "super-secret-value"; the app reads it only for the key the user reveals or copies.
   password: c3VwZXItc2VjcmV0LXZhbHVl
 ---
 apiVersion: v1

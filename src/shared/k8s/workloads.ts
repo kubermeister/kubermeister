@@ -208,10 +208,16 @@ export const configMapEntrySchema = z.object({
     value: z.string(),
 });
 
-/** One Secret key. The value is never read: only the key name and a fixed mask cross the bridge. */
+/** One Secret key. Listing a Secret reads no value: only the key name and a fixed mask cross the bridge. */
 export const secretEntrySchema = z.object({ key: z.string(), masked: z.string() });
 
 export const namespacedNameSchema = z.object({ name: z.string().min(1), namespace: namespaceNameSchema });
+
+/** The one key a reveal or a copy asks for, so a read never answers the whole map. */
+export const secretKeySchema = namespacedNameSchema.extend({ key: z.string().min(1) });
+
+/** One revealed Secret value. Bytes that are not text travel base64 encoded, with `binary` saying so. */
+export const secretValueSchema = z.object({ key: z.string(), value: z.string(), binary: z.boolean() });
 
 export type DeploymentStatus = z.infer<typeof deploymentStatusSchema>;
 export type Deployment = z.infer<typeof deploymentSchema>;
@@ -243,4 +249,6 @@ export type Secret = z.infer<typeof secretSchema>;
 export type SecretDetail = z.infer<typeof secretDetailSchema>;
 export type ConfigMapEntry = z.infer<typeof configMapEntrySchema>;
 export type SecretEntry = z.infer<typeof secretEntrySchema>;
+export type SecretKey = z.infer<typeof secretKeySchema>;
+export type SecretValue = z.infer<typeof secretValueSchema>;
 export type NamespacedName = z.infer<typeof namespacedNameSchema>;

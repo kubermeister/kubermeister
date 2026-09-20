@@ -159,6 +159,31 @@ describe('config readers', () => {
         expect(entries.every((e) => e.masked === config.SECRET_MASK)).toBe(true);
     });
 
+    it('reveals one key at a time, decoded, and keeps unreadable bytes base64', async () => {
+        core.readNamespacedSecret.mockResolvedValue(
+            secret({
+                data: {
+                    password: Buffer.from('super-secret-value').toString('base64'),
+                    'keystore.p12': Buffer.from([0x30, 0x82, 0xff, 0xfe]).toString('base64'),
+                },
+            }),
+        );
+        await expect(config.revealSecretValue('app-secret', 'team-a', 'password')).resolves.toEqual({
+            key: 'password',
+            value: 'super-secret-value',
+            binary: false,
+        });
+        await expect(config.revealSecretValue('app-secret', 'team-a', 'keystore.p12')).resolves.toEqual({
+            key: 'keystore.p12',
+            value: Buffer.from([0x30, 0x82, 0xff, 0xfe]).toString('base64'),
+            binary: true,
+        });
+    });
+
+    it('answers nothing for a key the secret does not carry', async () => {
+        await expect(config.revealSecretValue('app-secret', 'team-a', 'absent')).resolves.toBeNull();
+    });
+
     it('returns null and empty entries for objects that do not exist', async () => {
         core.readNamespacedConfigMap.mockRejectedValue(new ApiException(404, 'x', null, {}));
         core.readNamespacedSecret.mockRejectedValue(new ApiException(404, 'x', null, {}));
@@ -166,6 +191,7 @@ describe('config readers', () => {
         await expect(config.getConfigMapEntries('gone', 'team-a')).resolves.toEqual([]);
         await expect(config.getSecret('gone', 'team-a')).resolves.toBeNull();
         await expect(config.getSecretEntries('gone', 'team-a')).resolves.toEqual([]);
+        await expect(config.revealSecretValue('gone', 'team-a', 'password')).resolves.toBeNull();
     });
 
     it('classifies failures under their channel ops', async () => {
@@ -173,6 +199,9 @@ describe('config readers', () => {
         await expect(config.listSecrets()).rejects.toMatchObject({ kind: 'forbidden', op: 'resources.list' });
         core.readNamespacedSecret.mockRejectedValue(new ApiException(403, 'x', { message: 'denied' }, {}));
         await expect(config.getSecretEntries('app-secret', 'team-a')).rejects.toMatchObject({ op: 'secrets.entries' });
+        await expect(config.revealSecretValue('app-secret', 'team-a', 'password')).rejects.toMatchObject({
+            op: 'secrets.reveal',
+        });
         core.readNamespacedConfigMap.mockRejectedValue(new ApiException(403, 'x', { message: 'denied' }, {}));
         await expect(config.getConfigMapEntries('app-config', 'team-a')).rejects.toMatchObject({
             op: 'configMaps.entries',

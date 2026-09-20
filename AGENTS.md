@@ -305,9 +305,13 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - `resources.meta` answers the two parts of `metadata` no view model carries, the controlling owner
   reference and the finalizers holding a deletion open, for any kind at all; `ResourceDetail` adds
   that card to the Labels tab itself rather than thirty screens passing the same three values.
-- **Secret values cross the bridge in one place only**: `secrets.entries` returns key names with a
-  fixed mask, and the Manifest tab (`resources.getYaml`) shows the object as the cluster holds it,
-  values included, because that is what editing it requires.
+- **A Secret value crosses the bridge one key at a time**: `secrets.entries` returns key names with
+  a fixed mask, and `secrets.reveal` answers the single key a reveal or a copy asked for, so no read
+  hands the renderer the whole map. The Manifest tab (`resources.getYaml`) shows the object as the
+  cluster holds it, values included, because that is what editing it requires.
+- A revealed value is held by `useSecretReveal` (`src/renderer/lib/secret-reveal.ts`) alone, never in
+  the query cache: it masks itself again after `REVEAL_TIMEOUT_MS` and goes when the page does, and a
+  copy puts it on the clipboard without ever rendering it.
 
 ### Writes
 

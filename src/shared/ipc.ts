@@ -78,6 +78,8 @@ import {
     rolloutComparisonSchema,
     rolloutStatusSchema,
     secretEntrySchema,
+    secretKeySchema,
+    secretValueSchema,
 } from './k8s/workloads.js';
 
 const noInput = z.object({});
@@ -198,6 +200,7 @@ export const ipcSchemas = {
     'deployments.compare': { input: rolloutCompareInputSchema, output: rolloutComparisonSchema },
     'configMaps.entries': { input: namespacedNameSchema, output: z.array(configMapEntrySchema) },
     'secrets.entries': { input: namespacedNameSchema, output: z.array(secretEntrySchema) },
+    'secrets.reveal': { input: secretKeySchema, output: secretValueSchema.nullable() },
     'services.ports': { input: namespacedNameSchema, output: z.array(servicePortSchema) },
     'services.endpoints': { input: namespacedNameSchema, output: z.array(serviceEndpointSchema) },
     'ingresses.rules': { input: namespacedNameSchema, output: z.array(ingressRuleSchema) },

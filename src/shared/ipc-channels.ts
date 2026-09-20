@@ -52,6 +52,7 @@ export const IPC_CHANNELS = [
     'deployments.compare',
     'configMaps.entries',
     'secrets.entries',
+    'secrets.reveal',
     'services.ports',
     'services.endpoints',
     'ingresses.rules',

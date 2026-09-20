@@ -247,7 +247,7 @@ test('lists the seeded job and cron job and opens the job detail', async () => {
     await expect(cron).toContainText('true');
 });
 
-test('shows config map entries and masks secret values', async () => {
+test('shows config map entries, masks secret values and reveals one on demand', async () => {
     const { window } = launched;
     await window.getByTestId('sidebar').getByRole('link', { name: 'Config Maps' }).click();
     await window.getByTestId('configmaps-table').locator('[data-configmap="app-config"]').getByRole('link').click();
@@ -264,8 +264,15 @@ test('shows config map entries and masks secret values', async () => {
     const secret = window.getByTestId('secret-page');
     await expect(secret).toContainText('type: Opaque');
     await window.getByRole('tab', { name: /Keys/ }).click();
-    await expect(secret.getByTestId('secret-keys').getByRole('cell', { name: 'password' })).toBeVisible();
+    const keys = secret.getByTestId('secret-keys');
+    await expect(keys.getByRole('cell', { name: 'password', exact: true })).toBeVisible();
+    // Masked until it is asked for: nothing on the screen carries the value yet.
     await expect(window.getByText(/super-secret-value/)).toHaveCount(0);
+
+    await keys.getByRole('button', { name: 'Reveal password' }).click();
+    await expect(secret.getByTestId('value-password')).toHaveText('super-secret-value');
+    await keys.getByRole('button', { name: 'Hide password' }).click();
+    await expect(secret.getByTestId('value-password')).toHaveCount(0);
 });
 
 test('shows the events stream, the namespace quota and its limit range', async () => {

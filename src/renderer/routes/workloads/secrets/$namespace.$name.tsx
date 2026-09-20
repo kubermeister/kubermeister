@@ -6,7 +6,7 @@ import { eventsTab, labelsTab, ResourceDetail, type DetailTabGroup } from '@/com
 import { manifestTab } from '@/components/templates/manifest-panel';
 import { EditResourceButton } from '@/components/templates/edit-resource-button';
 import { DeleteResourceButton } from '@/components/templates/delete-resource-button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SecretKeysCard } from '@/components/secret/keys-card';
 import { ipcQueryKey, useIpcQuery } from '@/lib/query';
 import { useResource } from '@/lib/resources';
 import { useRefreshIntervalMs } from '@/lib/settings';
@@ -52,28 +52,7 @@ function SecretDetailPage() {
                     label: 'Keys',
                     icon: KeyIcon,
                     count: entries.length || undefined,
-                    content: (
-                        <DetailCard title="Data" desc="Values are masked here; the Manifest tab shows them as-is">
-                            <Table data-testid="secret-keys">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[200px]">Key</TableHead>
-                                        <TableHead>Value</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {entries.map((entry) => (
-                                        <TableRow key={entry.key}>
-                                            <TableCell className="font-mono text-primary">{entry.key}</TableCell>
-                                            <TableCell className="font-mono tracking-widest text-text-muted">
-                                                {entry.masked}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </DetailCard>
-                    ),
+                    content: <SecretKeysCard name={name} namespace={namespace} entries={entries} />,
                 },
             ],
         },
