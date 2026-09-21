@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, shell } from 'electron';
+import { app, BrowserWindow, screen, shell } from 'electron';
 import { join } from 'node:path';
 import { isExternalWebUrl, isInternalNavigation } from './security.js';
 import { getSettings, updateSettings } from './settings/store.js';
@@ -25,14 +25,28 @@ export function openExternally(url: string): void {
     if (isExternalWebUrl(url)) void shell.openExternal(url);
 }
 
+/**
+ * Linux is the only platform where the window has to carry its own icon: macOS takes it from the
+ * `.app` bundle and Windows from the executable's resources, while a Linux window with none of its
+ * own falls back to the desktop's placeholder unless the shell can match it to an installed desktop
+ * entry — and an AppImage installs no entry at all until the user integrates it. The PNG rides
+ * along as an extra resource because `files` packages nothing but `out/`.
+ */
+export function windowIcon(): string | undefined {
+    if (process.platform !== 'linux') return undefined;
+    return app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(__dirname, '../../resources/icon.png');
+}
+
 export function createMainWindow(): BrowserWindow {
     // Reading the screen needs the app to be ready, which it is by the time a window is created.
     const saved = getSettings().window.bounds;
     const bounds = saved ? usableBounds(saved, screen.getDisplayMatching(saved).workArea) : undefined;
+    const icon = windowIcon();
     const window = new BrowserWindow({
         width: 1200,
         height: 800,
         show: false,
+        ...(icon ? { icon } : {}),
         ...(bounds ?? {}),
         webPreferences: WEB_PREFERENCES,
     });
