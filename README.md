@@ -172,13 +172,13 @@ only tells you when a version is out and links to the download. Upgrading is ins
 
 ### Updating
 
-The app checks for updates shortly after launch and every few hours. When a new version is found, a
-pill appears in the top bar and a notification offers to update; the download runs in the background
-and a restart finishes it (quitting the app installs it too). Only the changed parts are fetched, so
-an update is usually a fraction of the installer's size, and the popover names what it is
-downloading. Settings › Updates chooses between being asked first (the default), downloading
-silently, or never checking automatically, and its About card shows the installed version and a
-**Check for updates** button; the same check is in the application menu and the ⌘K palette.
+The app checks for updates shortly after launch and every few hours. A new version is fetched in
+the background and installed the next time you quit; a pill in the top bar says one is ready and a
+restart finishes it sooner. Only the changed parts are fetched, so an update is usually a fraction
+of the installer's size, and the popover names what it is downloading. Settings › Updates chooses
+between that, being asked before anything is downloaded, or never checking automatically, and its
+About card shows the installed version and a **Check for updates** button; the same check is in the
+application menu and the ⌘K palette.
 
 That is the macOS app, the Windows installer and the Linux AppImage, each of which can replace
 itself. A package the system owns — the Linux `.deb`, and Homebrew — cannot be replaced by the app

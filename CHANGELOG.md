@@ -31,6 +31,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   is read when it is added and again whenever you refresh it, its index is cached on disk, and any
   username and password go into this system's keychain rather than the settings file.
 
+### Changed
+
+- A new version is now downloaded in the background and installed the next time the app quits,
+  rather than waiting behind a button nobody had a reason to press. Settings › Updates still offers
+  being asked before anything is downloaded, or never checking at all, and an install already set
+  to one of those keeps it.
+
 ### Fixed
 
 - The Linux AppImage starts on Ubuntu 23.10 and newer. It was built on a runtime that loads

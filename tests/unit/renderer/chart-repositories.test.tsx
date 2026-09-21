@@ -35,11 +35,11 @@ const ghcr = {
 let repositories: unknown[] = [];
 
 const settings = {
-    version: 1,
+    version: 2,
     session: { lastContext: 'alpha', lastNamespace: null, restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2000, terminalFontSize: 12, forwards: [] },
-    updates: { mode: 'check', checkIntervalHours: 4 },
+    updates: { mode: null, checkIntervalHours: 4 },
     charts: { repositories: [] },
     window: { bounds: null },
 };

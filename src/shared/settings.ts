@@ -65,11 +65,22 @@ const dataSchema = z.object({
  */
 export const UPDATE_MODES = ['check', 'download', 'off'] as const;
 
+export type UpdateMode = (typeof UPDATE_MODES)[number];
+
+/**
+ * What an unset mode means. The app releases often and installs on quit, so a version that has been
+ * found is worth having on disk: an announcement the user has to act on leaves a fix sitting behind
+ * a click nobody has a reason to make, which is how a release can reach a machine that was told
+ * about it and never take.
+ */
+export const DEFAULT_UPDATE_MODE: UpdateMode = 'download';
+
 /** Scheduled update check cadences offered in Settings, in hours. */
 export const UPDATE_CHECK_INTERVAL_OPTIONS = [1, 4, 12, 24] as const;
 
 const updatesSchema = z.object({
-    mode: z.enum(UPDATE_MODES),
+    /** The mode the user picked, or null for {@link DEFAULT_UPDATE_MODE}, so changing it moves them too. */
+    mode: z.enum(UPDATE_MODES).nullable(),
     /** Hours between scheduled checks; how often the app reaches out is the user's to decide. */
     checkIntervalHours: z.number().int().min(1).max(168),
 });
@@ -95,8 +106,11 @@ const windowSchema = z.object({
     bounds: windowBoundsSchema.nullable(),
 });
 
+/** The shape the file on disk is written in; {@link parseSettings} migrates every older one. */
+export const SETTINGS_VERSION = 2;
+
 export const settingsSchema = z.object({
-    version: z.literal(1),
+    version: z.literal(SETTINGS_VERSION),
     session: sessionSchema,
     connection: connectionSchema,
     data: dataSchema,
@@ -132,14 +146,13 @@ export type Settings = z.infer<typeof settingsSchema>;
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 export type SettingsInput = z.infer<typeof settingsInputSchema>;
 export type WindowBounds = z.infer<typeof windowBoundsSchema>;
-export type UpdateMode = (typeof UPDATE_MODES)[number];
 
 export const DEFAULT_SETTINGS: Settings = {
-    version: 1,
+    version: SETTINGS_VERSION,
     session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },
-    updates: { mode: 'check', checkIntervalHours: 4 },
+    updates: { mode: null, checkIntervalHours: 4 },
     charts: { repositories: [] },
     window: { bounds: null },
 };
@@ -159,11 +172,31 @@ function parseSection<T extends Record<string, unknown>>(schema: z.ZodType<T>, v
     return result.success ? result.data : fallback;
 }
 
+/**
+ * A version 1 file recorded no difference between a mode the user picked and the default the app
+ * wrote back with every save, and that default was `check`, so the `check` such a file carries is
+ * read as no choice at all and follows {@link DEFAULT_UPDATE_MODE}. `download` and `off` were only
+ * ever written by somebody choosing them, so they survive untouched.
+ */
+function migrateV1(file: Record<string, unknown>): Record<string, unknown> {
+    if (!isRecord(file.updates) || file.updates.mode !== 'check') return file;
+    const { mode: _chosenByDefault, ...updates } = file.updates;
+    return { ...file, updates };
+}
+
+/** The file's own sections, migrated to the current version; an unreadable file contributes none. */
+function readFile(raw: unknown): Record<string, unknown> {
+    if (!isRecord(raw)) return {};
+    if (raw.version === SETTINGS_VERSION) return raw;
+    if (raw.version === 1) return migrateV1(raw);
+    return {};
+}
+
 /** Coerce arbitrary parsed JSON into valid {@link Settings}; never throws. */
 export function parseSettings(raw: unknown): Settings {
-    const file = isRecord(raw) && raw.version === 1 ? raw : {};
+    const file = readFile(raw);
     return {
-        version: 1,
+        version: SETTINGS_VERSION,
         session: parseSection(sessionSchema, file.session, DEFAULT_SETTINGS.session),
         connection: parseSection(connectionSchema, file.connection, DEFAULT_SETTINGS.connection),
         data: parseSection(dataSchema, file.data, DEFAULT_SETTINGS.data),
