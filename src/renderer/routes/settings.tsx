@@ -11,6 +11,7 @@ import {
     UPDATE_MODES,
     type UpdateMode,
 } from '../../shared/settings';
+import { bugReportUrl } from '../../shared/bug-report';
 import { releasePageUrl } from '../../shared/updates';
 import { SettingsPage } from '@/components/templates/settings-page';
 import { Field, FormCard, FormSelect, Toggle } from '@/components/templates/settings-form';
@@ -325,6 +326,16 @@ function AboutCard() {
                         <Button size="sm" variant="ghost" asChild>
                             <a href={releasePageUrl(state.version)} target="_blank" rel="noreferrer">
                                 What&apos;s new
+                                <ExternalLinkIcon />
+                            </a>
+                        </Button>
+                    )}
+                    {/* The version and the platform are on this very card, so the form arrives with
+                        them filled in rather than asking the reporter to copy them across. */}
+                    {info.data && (
+                        <Button size="sm" variant="ghost" asChild>
+                            <a href={bugReportUrl(info.data)} target="_blank" rel="noreferrer">
+                                Report a bug
                                 <ExternalLinkIcon />
                             </a>
                         </Button>

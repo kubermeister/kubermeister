@@ -23,6 +23,7 @@ describe('IPC contract', () => {
             chrome: '152',
             node: '24',
             platform: 'darwin',
+            arch: 'arm64',
         };
         expect(ipcSchemas['app.info'].output.safeParse(valid).success).toBe(true);
         const { node: _node, ...missingNode } = valid;

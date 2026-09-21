@@ -33,6 +33,7 @@ const data: Record<string, unknown> = {
         chrome: '152.0.0.0',
         node: '24.21.0',
         platform: 'darwin',
+        arch: 'arm64',
     },
     'settings.get': settings,
     'contexts.list': [{ name: 'alpha', cluster: 'a', user: 'u', current: true }],
@@ -145,6 +146,18 @@ describe('settings screen', () => {
             expect(invoke).toHaveBeenCalledWith('settings.set', { updates: { checkIntervalHours: 24 } }),
         );
         expect(select).toHaveTextContent('Once a day');
+    });
+
+    it('links a bug report prefilled with the version and the operating system', async () => {
+        renderRoutes(routeTree, '/settings');
+        const about = await screen.findByTestId('about-card');
+        const link = await within(about).findByRole('link', { name: /Report a bug/ });
+        const url = new URL(link.getAttribute('href')!);
+        expect(url.origin + url.pathname).toBe('https://github.com/kubermeister/kubermeister/issues/new');
+        expect(url.searchParams.get('template')).toBe('bug_report.yml');
+        // Both come off this very card, so nobody retypes them into the form.
+        expect(url.searchParams.get('version')).toBe('0.2.1');
+        expect(url.searchParams.get('os')).toBe('macOS (Apple silicon)');
     });
 
     it('shows this install and the last check, and runs a check on demand', async () => {
