@@ -392,6 +392,9 @@ test('lists the cluster definitions and the seeded helm release', async () => {
     await expect(page.getByTestId('release-revisions')).toContainText('Install complete');
     await window.getByRole('tab', { name: /Values/ }).click();
     await expect(page.getByTestId('release-values')).toContainText('replicaCount: 2');
+    // The objects the running revision rendered, as Helm stored them alongside its values.
+    await window.getByRole('tab', { name: /Manifest/ }).click();
+    await expect(page.getByTestId('release-manifest')).toContainText('demo-config');
 
     await sidebar.getByRole('link', { name: 'Helm charts' }).click();
     await expect(window.getByTestId('charts-table').locator('[data-chart="demo"]')).toContainText('3.0.0');

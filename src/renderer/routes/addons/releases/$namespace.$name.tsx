@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { FileTextIcon, HistoryIcon, RocketIcon } from 'lucide-react';
+import { CodeIcon, FileTextIcon, HistoryIcon, RocketIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/data-display/status-badge';
+import { YamlEditor } from '@/components/data-display/yaml-editor';
 import { ReleaseRollbackButton } from '@/components/release/release-rollback-button';
 import { UninstallReleaseButton } from '@/components/release/uninstall-release-button';
 import { DetailCard } from '@/components/templates/detail-cards';
@@ -94,6 +95,30 @@ function ReleaseDetailPage() {
                                 {release?.values ?? '# No user-supplied values — the release uses chart defaults.'}
                             </pre>
                         </DetailCard>
+                    ),
+                },
+            ],
+        },
+        {
+            label: 'INSPECT',
+            items: [
+                {
+                    id: 'manifest',
+                    label: 'Manifest',
+                    icon: CodeIcon,
+                    // The objects the revision rendered, as Helm stored them. It is history rather
+                    // than a live read, so it is never editable: rolling back is what changes it.
+                    fill: true,
+                    content: (
+                        <div className="flex min-h-0 flex-1 flex-col" data-testid="release-manifest">
+                            <YamlEditor
+                                value={release?.manifest ?? '# This revision rendered no objects of its own.\n'}
+                                onValueChange={() => {}}
+                                readOnly
+                                aria-label="Rendered manifest"
+                                className="min-h-0 flex-1"
+                            />
+                        </div>
                     ),
                 },
             ],
