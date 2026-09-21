@@ -40,6 +40,7 @@ const settings = {
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2000, terminalFontSize: 12, forwards: [] },
     updates: { mode: null, checkIntervalHours: 4 },
+    network: { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null },
     charts: { repositories: [] },
     window: { bounds: null },
 };

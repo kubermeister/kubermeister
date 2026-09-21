@@ -22,6 +22,7 @@ import {
     customResourceListOutputSchema,
 } from './k8s/custom.js';
 import { describeDocumentSchema, describeInputSchema } from './k8s/describe.js';
+import { kindSchemaInputSchema, kindSchemaSchema } from './k8s/openapi.js';
 import { drainPlanInputSchema, drainPlanSchema } from './k8s/drain.js';
 import { ownedPodsInputSchema, ownerChainSchema } from './k8s/owners.js';
 import { podSchema } from './k8s/pods.js';
@@ -138,7 +139,7 @@ export const updateStateSchema = z.object({
 
 /** One startup preflight check. `error` blocks the app, `warning` lets it open. */
 const startupCheckSchema = z.object({
-    id: z.enum(['kubeconfig', 'context', 'cluster']),
+    id: z.enum(['kubeconfig', 'network', 'context', 'cluster']),
     label: z.string(),
     status: z.enum(['ok', 'warning', 'error']),
     /** What was found, shown to the user as the reason. */
@@ -178,6 +179,9 @@ export const ipcSchemas = {
     // Kubeconfig path changes are dialog-gated: the renderer never supplies a path string.
     'kubeconfig.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
     'kubeconfig.useDefault': { input: noInput, output: settingsSchema },
+    // The CA bundle is a path too, so it is chosen the same way and only ever cleared from here.
+    'caBundle.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
+    'caBundle.clear': { input: noInput, output: settingsSchema },
     'namespaces.list': { input: noInput, output: z.array(namespaceSchema) },
     'namespace.active': { input: noInput, output: activeNamespaceSchema },
     'cluster.active': { input: noInput, output: clusterSchema.nullable() },
@@ -233,6 +237,8 @@ export const ipcSchemas = {
     'resources.related': { input: relatedInputSchema, output: z.array(relatedGroupSchema) },
     'resources.getYaml': { input: manifestInputSchema, output: manifestSchema },
     'resources.describe': { input: describeInputSchema, output: describeDocumentSchema },
+    // Null when this cluster describes no such kind; the editor falls back to plain YAML.
+    'schemas.forKind': { input: kindSchemaInputSchema, output: kindSchemaSchema.nullable() },
     'resources.create': { input: manifestWriteSchema, output: writeResultSchema },
     'resources.replace': { input: manifestWriteSchema, output: writeResultSchema },
     'resources.delete': { input: deleteInputSchema, output: writeResultSchema },

@@ -78,6 +78,7 @@ const lifecycleMod = {
 };
 const ownersMod = { getPodOwners: vi.fn(), listOwnedPods: vi.fn() };
 const describeMod = { describeObject: vi.fn() };
+const schemasMod = { getKindSchema: vi.fn(), resetSchemaCache: vi.fn() };
 const alertsMod = { listAlerts: vi.fn() };
 const samplerMod = { resetHistory: vi.fn() };
 const streamsMod = { endAllStreams: vi.fn() };
@@ -106,6 +107,7 @@ vi.mock('../../../src/main/k8s/resources/write.js', () => writeMod);
 vi.mock('../../../src/main/k8s/resources/lifecycle.js', () => lifecycleMod);
 vi.mock('../../../src/main/k8s/resources/owners.js', () => ownersMod);
 vi.mock('../../../src/main/k8s/resources/describe.js', () => describeMod);
+vi.mock('../../../src/main/k8s/openapi/index.js', () => schemasMod);
 
 const { registerHandlers } = await import('../../../src/main/ipc/index.js');
 const { ipcSchemas } = await import('../../../src/shared/ipc.js');
@@ -268,16 +270,35 @@ describe('registerHandlers', () => {
         const order: string[] = [];
         streamsMod.endAllStreams.mockImplementation(() => order.push('streams'));
         samplerMod.resetHistory.mockImplementation(() => order.push('sampler'));
+        schemasMod.resetSchemaCache.mockImplementation(() => order.push('schemas'));
         context.setContext.mockImplementation(() => {
             order.push('switch');
             return { ...alpha, name: 'beta' };
         });
         await invoke('context.set', { name: 'beta' });
-        expect(order).toEqual(['streams', 'sampler', 'switch']);
+        expect(order).toEqual(['streams', 'sampler', 'schemas', 'switch']);
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The context changed to "beta"');
         // A namespace switch changes nothing about the connection, so streams stay up.
         await invoke('namespace.set', { namespace: 'x' });
         expect(streamsMod.endAllStreams).toHaveBeenCalledOnce();
+    });
+
+    it('answers a kind’s schema, and refuses a group-version that could leave the OpenAPI endpoint', async () => {
+        schemasMod.getKindSchema.mockResolvedValue({
+            apiVersion: 'apps/v1',
+            kind: 'Deployment',
+            document: 'apis/apps/v1',
+            name: 'io.k8s.api.apps.v1.Deployment',
+            definitions: { 'io.k8s.api.apps.v1.Deployment': { type: 'object' } },
+        });
+        await expect(invoke('schemas.forKind', { apiVersion: 'apps/v1', kind: 'Deployment' })).resolves.toMatchObject({
+            name: 'io.k8s.api.apps.v1.Deployment',
+        });
+        expect(schemasMod.getKindSchema).toHaveBeenCalledWith({ apiVersion: 'apps/v1', kind: 'Deployment' });
+
+        schemasMod.getKindSchema.mockResolvedValue(null);
+        await expect(invoke('schemas.forKind', { apiVersion: 'example.com/v1', kind: 'Widget' })).resolves.toBeNull();
+        await expect(invoke('schemas.forKind', { apiVersion: '../secrets', kind: 'Widget' })).rejects.toThrow();
     });
 
     it('refuses a malformed namespace before it can become the active selection', async () => {
@@ -327,6 +348,42 @@ describe('registerHandlers', () => {
         // Streams and sampled usage belong to the kubeconfig that was just left.
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The kubeconfig changed');
         expect(samplerMod.resetHistory).toHaveBeenCalledOnce();
+    });
+
+    it('reloads the connection when the proxy or the CA bundle changes, and only then', async () => {
+        await invoke('settings.set', { data: { refreshIntervalSec: 30 } });
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+        // Writing the value it already had is not a change either.
+        await invoke('settings.set', { network: { proxyMode: 'env' } });
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+
+        await invoke('settings.set', { network: { proxyMode: 'manual', proxyUrl: 'http://proxy:3128' } });
+        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        // Every stream was made on the old route to the cluster.
+        expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+        expect(samplerMod.resetHistory).toHaveBeenCalledOnce();
+    });
+
+    it('picks a CA bundle through the native dialog and reloads the client', async () => {
+        dialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/etc/corp/ca.pem'] });
+        await expect(invoke('caBundle.pick', {})).resolves.toEqual({ path: '/etc/corp/ca.pem' });
+        expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: '/etc/corp/ca.pem' } });
+        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+    });
+
+    it('leaves the CA bundle alone when its picker is cancelled', async () => {
+        dialog.showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] });
+        await expect(invoke('caBundle.pick', {})).resolves.toEqual({ path: null });
+        expect(store.updateSettings).not.toHaveBeenCalled();
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+    });
+
+    it('clears the CA bundle and reloads', async () => {
+        await expect(invoke('caBundle.clear', {})).resolves.toMatchObject({ network: { caBundlePath: null } });
+        expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: null } });
+        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
     });
 
     it('leaves settings alone when the picker is cancelled', async () => {

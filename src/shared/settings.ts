@@ -86,6 +86,38 @@ const updatesSchema = z.object({
 });
 
 /**
+ * Where the proxy for a cluster call comes from. `env` follows the proxy variables the environment
+ * sets, the way kubectl does; `manual` uses the one named here and nothing else; `off` connects
+ * straight out whatever the environment says. A cluster whose kubeconfig entry carries its own
+ * `proxy-url` always uses that: the file is the more specific answer and the app never rewrites it.
+ */
+export const PROXY_MODES = ['env', 'manual', 'off'] as const;
+
+/** The schemes a proxy can speak; anything else is a typo, or a URL that means something else. */
+const PROXY_SCHEMES = ['http:', 'https:', 'socks:', 'socks4:', 'socks5:', 'socks5h:'];
+
+/** Whether a string is a proxy address the connection could actually be made through. */
+export function isProxyUrl(value: string): boolean {
+    try {
+        const url = new URL(value);
+        return PROXY_SCHEMES.includes(url.protocol) && url.hostname.length > 0;
+    } catch {
+        return false;
+    }
+}
+
+const networkSchema = z.object({
+    /** Where the proxy comes from; see {@link PROXY_MODES}. */
+    proxyMode: z.enum(PROXY_MODES),
+    /** The proxy used under `manual`, as a full URL; null means no proxy at all. */
+    proxyUrl: z.string().refine(isProxyUrl, 'Expected an http, https or socks proxy URL.').nullable(),
+    /** Hosts that never go through a proxy, spelled as `NO_PROXY` spells them; null follows `NO_PROXY` itself. */
+    noProxy: z.string().nullable(),
+    /** A PEM file of extra certificate authorities to trust for cluster TLS, beside the usual ones. */
+    caBundlePath: z.string().nullable(),
+});
+
+/**
  * Chart sources this install knows. Only what identifies a source lives here: its credential is in
  * the OS keychain and its index in a cache file beside this one, so the settings file stays
  * something a user can read, copy between machines and check into a dotfiles repository.
@@ -115,6 +147,7 @@ export const settingsSchema = z.object({
     connection: connectionSchema,
     data: dataSchema,
     updates: updatesSchema,
+    network: networkSchema,
     charts: chartsSchema,
     window: windowSchema,
 });
@@ -125,20 +158,24 @@ export const settingsPatchSchema = z.object({
     connection: connectionSchema.partial().optional(),
     data: dataSchema.partial().optional(),
     updates: updatesSchema.partial().optional(),
+    network: networkSchema.partial().optional(),
     charts: chartsSchema.partial().optional(),
     window: windowSchema.partial().optional(),
 });
 
 /**
- * What the renderer may set through `settings.set`. The kubeconfig path is excluded on purpose:
- * pointing the app at an arbitrary file is a native-dialog action (`kubeconfig.pick`), never a raw
- * renderer-supplied string, so a compromised renderer cannot probe files or trigger exec plugins.
+ * What the renderer may set through `settings.set`. Every file path is excluded on purpose: pointing
+ * the app at an arbitrary file is a native-dialog action (`kubeconfig.pick`, `caBundle.pick`), never
+ * a raw renderer-supplied string, so a compromised renderer cannot probe files or trigger exec
+ * plugins. The rest of the network section is an ordinary preference and stays settable.
  *
  * The chart repositories are excluded for a different reason: adding or removing one also writes
  * the OS keychain and the on-disk index cache, so the list is only ever edited through the
  * `chartRepositories.*` channels, which keep all three in step.
  */
-export const settingsInputSchema = settingsPatchSchema.omit({ connection: true, window: true, charts: true });
+export const settingsInputSchema = settingsPatchSchema
+    .omit({ connection: true, window: true, network: true, charts: true })
+    .extend({ network: networkSchema.omit({ caBundlePath: true }).partial().optional() });
 
 export type RememberedForward = z.infer<typeof rememberedForwardSchema>;
 export type ChartSettings = z.infer<typeof chartsSchema>;
@@ -146,6 +183,8 @@ export type Settings = z.infer<typeof settingsSchema>;
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 export type SettingsInput = z.infer<typeof settingsInputSchema>;
 export type WindowBounds = z.infer<typeof windowBoundsSchema>;
+export type NetworkSettings = z.infer<typeof networkSchema>;
+export type ProxyMode = (typeof PROXY_MODES)[number];
 
 export const DEFAULT_SETTINGS: Settings = {
     version: SETTINGS_VERSION,
@@ -153,6 +192,7 @@ export const DEFAULT_SETTINGS: Settings = {
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },
     updates: { mode: null, checkIntervalHours: 4 },
+    network: { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null },
     charts: { repositories: [] },
     window: { bounds: null },
 };
@@ -201,6 +241,7 @@ export function parseSettings(raw: unknown): Settings {
         connection: parseSection(connectionSchema, file.connection, DEFAULT_SETTINGS.connection),
         data: parseSection(dataSchema, file.data, DEFAULT_SETTINGS.data),
         updates: parseSection(updatesSchema, file.updates, DEFAULT_SETTINGS.updates),
+        network: parseSection(networkSchema, file.network, DEFAULT_SETTINGS.network),
         charts: parseSection(chartsSchema, file.charts, DEFAULT_SETTINGS.charts),
         window: parseSection(windowSchema, file.window, DEFAULT_SETTINGS.window),
     };
@@ -214,6 +255,7 @@ export function mergeSettings(current: Settings, patch: SettingsPatch): Settings
         connection: { ...current.connection, ...patch.connection },
         data: { ...current.data, ...patch.data },
         updates: { ...current.updates, ...patch.updates },
+        network: { ...current.network, ...patch.network },
         charts: { ...current.charts, ...patch.charts },
         window: { ...current.window, ...patch.window },
     };

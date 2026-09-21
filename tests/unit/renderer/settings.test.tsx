@@ -23,6 +23,7 @@ const settings = {
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 45 },
     updates: { mode: null as string | null, checkIntervalHours: 4 },
+    network: { proxyMode: 'env', proxyUrl: null as string | null, noProxy: null as string | null, caBundlePath: null },
 };
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date', checkedAt: new Date(Date.now() - 5 * 60_000).toISOString() },
@@ -49,12 +50,13 @@ describe('settings screen', () => {
         invoke.mockReset();
         invoke.mockImplementation(async (channel: string, input: unknown) => {
             if (channel === 'settings.set') {
-                const patch = input as { session?: object; data?: object; updates?: object };
+                const patch = input as { session?: object; data?: object; updates?: object; network?: object };
                 return {
                     ...settings,
                     session: { ...settings.session, ...patch.session },
                     data: { ...settings.data, ...patch.data },
                     updates: { ...settings.updates, ...patch.updates },
+                    network: { ...settings.network, ...patch.network },
                 };
             }
             return data[channel];
@@ -242,6 +244,81 @@ describe('settings screen', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Use default' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('kubeconfig.useDefault', {}));
         await waitFor(() => expect(shown).toHaveTextContent('(default)'));
+    });
+
+    it('chooses where cluster traffic goes and keeps the proxy it is given', async () => {
+        renderRoutes(routeTree, '/settings');
+        await screen.findByTestId('settings-page');
+        const mode = screen.getByRole('combobox', { name: 'Proxy' });
+        await waitFor(() => expect(mode).toHaveTextContent('Follow the environment'));
+        // The proxy address only exists once the app is the one naming it.
+        expect(screen.queryByRole('textbox', { name: 'Proxy URL' })).not.toBeInTheDocument();
+
+        await userEvent.click(mode);
+        const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+        expect(options).toEqual(['Follow the environment', 'Use this proxy', 'Connect directly']);
+        await userEvent.click(screen.getByRole('option', { name: 'Use this proxy' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { network: { proxyMode: 'manual' } }));
+
+        const url = await screen.findByRole('textbox', { name: 'Proxy URL' });
+        await userEvent.type(url, 'http://proxy.corp:3128');
+        await userEvent.tab();
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('settings.set', {
+                network: { proxyUrl: 'http://proxy.corp:3128' },
+            }),
+        );
+    });
+
+    it('refuses to save something that is not a proxy URL, and says so', async () => {
+        renderRoutes(routeTree, '/settings');
+        await screen.findByTestId('settings-page');
+        await userEvent.click(screen.getByRole('combobox', { name: 'Proxy' }));
+        await userEvent.click(await screen.findByRole('option', { name: 'Use this proxy' }));
+        const url = await screen.findByRole('textbox', { name: 'Proxy URL' });
+        invoke.mockClear();
+        await userEvent.type(url, 'proxy.corp:3128');
+        await userEvent.tab();
+        expect(url).toHaveAttribute('aria-invalid', 'true');
+        expect(invoke.mock.calls.filter(([c]) => c === 'settings.set')).toHaveLength(0);
+    });
+
+    it('saves the bypass list, and clears it when it is emptied', async () => {
+        settings.network.noProxy = '.corp.example';
+        renderRoutes(routeTree, '/settings');
+        const bypass = await screen.findByRole('textbox', { name: 'Never proxy these hosts' });
+        await waitFor(() => expect(bypass).toHaveValue('.corp.example'));
+        await userEvent.clear(bypass);
+        await userEvent.tab();
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { network: { noProxy: null } }));
+        settings.network.noProxy = null;
+    });
+
+    it('points at a CA bundle through the native dialog and clears it again', async () => {
+        let path: string | null = null;
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'caBundle.pick') {
+                path = '/etc/corp/ca.pem';
+                return { path };
+            }
+            if (channel === 'caBundle.clear') {
+                path = null;
+                return { ...settings, network: { ...settings.network, caBundlePath: null } };
+            }
+            if (channel === 'settings.get') {
+                return { ...settings, network: { ...settings.network, caBundlePath: path } };
+            }
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/settings');
+        const shown = await screen.findByTestId('ca-bundle-path');
+        expect(shown).toHaveTextContent('The system certificate authorities only');
+        expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+        await userEvent.click(screen.getByRole('button', { name: 'Choose file…' }));
+        await waitFor(() => expect(shown).toHaveTextContent('/etc/corp/ca.pem'));
+        await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('caBundle.clear', {}));
+        await waitFor(() => expect(shown).toHaveTextContent('The system certificate authorities only'));
     });
 
     it('ignores a cancelled dialog', async () => {

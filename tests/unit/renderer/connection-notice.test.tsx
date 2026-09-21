@@ -45,6 +45,21 @@ const brokenContext: StartupReport = {
     ],
 };
 
+const unreadableBundle: StartupReport = {
+    ok: false,
+    checks: [
+        { id: 'kubeconfig', label: 'Kubeconfig file', status: 'ok', detail: 'Kubeconfig loaded' },
+        {
+            id: 'network',
+            label: 'Proxy and certificates',
+            status: 'error',
+            detail: 'The CA bundle at /etc/corp/ca.pem could not be read.',
+            hint: 'Fix or clear the CA bundle in Settings.',
+        },
+        { id: 'cluster', label: 'Cluster connection', status: 'warning', detail: 'Skipped' },
+    ],
+};
+
 let report: StartupReport;
 let kubeconfigPath: string | null;
 
@@ -99,6 +114,20 @@ describe('ConnectionNotice', () => {
         expect(await screen.findByText(/names cluster "nowhere"/)).toBeInTheDocument();
         expect(screen.getByText(/Switch to another context/)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    });
+
+    it('names a CA bundle it cannot read, and offers only the fixes that would help', async () => {
+        report = unreadableBundle;
+        renderWithQuery(<ConnectionNotice />);
+        const notice = await screen.findByTestId('connection-notice');
+        expect(notice).toHaveTextContent('CA bundle unreadable');
+        await userEvent.click(notice);
+        expect(await screen.findByText(/\/etc\/corp\/ca\.pem could not be read/)).toBeInTheDocument();
+        expect(screen.getByText('Fix or clear the CA bundle in Settings.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+        // Another kubeconfig would not make this file readable.
+        expect(screen.queryByRole('button', { name: 'Choose kubeconfig…' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Use default kubeconfig' })).not.toBeInTheDocument();
     });
 
     it('offers no reset to the default when no path override is set', async () => {

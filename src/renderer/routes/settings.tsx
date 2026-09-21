@@ -5,22 +5,32 @@ import { ExternalLinkIcon, MonitorIcon, MoonIcon, SunIcon, type LucideIcon } fro
 import {
     DEFAULT_UPDATE_MODE,
     LOG_BUFFER_OPTIONS,
+    PROXY_MODES,
     READ_TIMEOUT_OPTIONS,
     REFRESH_INTERVAL_OPTIONS,
     TERMINAL_FONT_SIZES,
     UPDATE_CHECK_INTERVAL_OPTIONS,
     UPDATE_MODES,
+    isProxyUrl,
+    type ProxyMode,
     type UpdateMode,
 } from '../../shared/settings';
 import { bugReportUrl } from '../../shared/bug-report';
 import { releasePageUrl } from '../../shared/updates';
 import { ChartRepositoriesCard } from '@/components/settings/chart-repositories-card';
 import { SettingsPage } from '@/components/templates/settings-page';
-import { Field, FormCard, FormSelect, Toggle } from '@/components/templates/settings-form';
+import { Field, FormCard, FormInput, FormSelect, Toggle } from '@/components/templates/settings-form';
 import { Button } from '@/components/ui/button';
 import { useTheme, type Theme } from '@/components/theme-provider';
 import { useIpcQuery } from '@/lib/query';
-import { pickKubeconfig, resetKubeconfig, updateSettings, useSettings } from '@/lib/settings';
+import {
+    clearCaBundle,
+    pickCaBundle,
+    pickKubeconfig,
+    resetKubeconfig,
+    updateSettings,
+    useSettings,
+} from '@/lib/settings';
 import { describeUpdate, downloadUpdate, installUpdate, useUpdater } from '@/lib/updates';
 import { cn } from '@/lib/utils';
 
@@ -46,6 +56,14 @@ const UPDATE_MODE_LABELS: Record<UpdateMode, string> = {
 const modeForLabel = (label: string): UpdateMode =>
     UPDATE_MODES.find((mode) => UPDATE_MODE_LABELS[mode] === label) ?? DEFAULT_UPDATE_MODE;
 
+const PROXY_MODE_LABELS: Record<ProxyMode, string> = {
+    env: 'Follow the environment',
+    manual: 'Use this proxy',
+    off: 'Connect directly',
+};
+const proxyModeForLabel = (label: string): ProxyMode =>
+    PROXY_MODES.find((mode) => PROXY_MODE_LABELS[mode] === label) ?? 'env';
+
 const checkIntervalLabel = (hours: number) =>
     hours === 1
         ? 'Every hour'
@@ -68,9 +86,13 @@ function SettingsScreen() {
     const { theme, setTheme } = useTheme();
     const client = useQueryClient();
     const { data: settings } = useSettings();
-    const [kubeconfigBusy, setKubeconfigBusy] = useState(false);
+    const [connectionBusy, setConnectionBusy] = useState(false);
 
     const kubeconfigPath = settings?.connection.kubeconfigPath ?? null;
+    const proxyMode = settings?.network.proxyMode ?? 'env';
+    const proxyUrl = settings?.network.proxyUrl ?? '';
+    const noProxy = settings?.network.noProxy ?? '';
+    const caBundlePath = settings?.network.caBundlePath ?? null;
     const updateMode = settings?.updates.mode ?? DEFAULT_UPDATE_MODE;
     const checkIntervalHours = settings?.updates.checkIntervalHours ?? 4;
     const refreshSec = settings?.data.refreshIntervalSec ?? 12;
@@ -89,12 +111,12 @@ function SettingsScreen() {
     );
     const checkIntervalByLabel = new Map(checkIntervals.map((hours) => [checkIntervalLabel(hours), hours]));
 
-    const runKubeconfig = async (action: () => Promise<void>) => {
-        setKubeconfigBusy(true);
+    const runConnection = async (action: () => Promise<void>) => {
+        setConnectionBusy(true);
         try {
             await action();
         } finally {
-            setKubeconfigBusy(false);
+            setConnectionBusy(false);
         }
     };
 
@@ -249,18 +271,100 @@ function SettingsScreen() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    disabled={kubeconfigBusy}
-                                    onClick={() => void runKubeconfig(() => pickKubeconfig(client))}
+                                    disabled={connectionBusy}
+                                    onClick={() => void runConnection(() => pickKubeconfig(client))}
                                 >
                                     Browse…
                                 </Button>
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    disabled={kubeconfigBusy || !kubeconfigPath}
-                                    onClick={() => void runKubeconfig(() => resetKubeconfig(client))}
+                                    disabled={connectionBusy || !kubeconfigPath}
+                                    onClick={() => void runConnection(() => resetKubeconfig(client))}
                                 >
                                     Use default
+                                </Button>
+                            </div>
+                        </div>
+                    </Field>
+                </FormCard>
+
+                <FormCard
+                    title="Proxy"
+                    desc="How cluster traffic reaches the API server. A context whose kubeconfig sets its own proxy-url always uses that one."
+                >
+                    <Field label="Proxy">
+                        <FormSelect
+                            value={PROXY_MODE_LABELS[proxyMode]}
+                            options={PROXY_MODES.map((mode) => PROXY_MODE_LABELS[mode])}
+                            onValueChange={(label) =>
+                                void updateSettings(client, { network: { proxyMode: proxyModeForLabel(label) } })
+                            }
+                        />
+                    </Field>
+                    {proxyMode === 'env' && (
+                        <p className="mt-1 text-cell text-text-muted">
+                            HTTPS_PROXY, HTTP_PROXY and NO_PROXY are read the way kubectl reads them, from your login
+                            shell as well as this window, so a launch from the Dock proxies what a terminal would.
+                        </p>
+                    )}
+                    {proxyMode === 'manual' && (
+                        <Field label="Proxy URL" hint="http, https or socks5">
+                            <FormInput
+                                value={proxyUrl}
+                                placeholder="http://proxy.example:3128"
+                                validate={isProxyUrl}
+                                onCommit={(value) =>
+                                    void updateSettings(client, { network: { proxyUrl: value || null } })
+                                }
+                            />
+                        </Field>
+                    )}
+                    {proxyMode !== 'off' && (
+                        <Field label="Never proxy these hosts" hint="Comma separated, as NO_PROXY spells it">
+                            <FormInput
+                                value={noProxy}
+                                placeholder=".corp.example, 10.0.0.0/8"
+                                onCommit={(value) =>
+                                    void updateSettings(client, { network: { noProxy: value || null } })
+                                }
+                            />
+                        </Field>
+                    )}
+                </FormCard>
+
+                <FormCard
+                    title="Certificate authority"
+                    desc="Certificates to trust for cluster TLS beside the usual ones, for a private authority or a proxy that inspects traffic."
+                >
+                    <Field
+                        label="CA bundle"
+                        hint="Choosing a file goes through a native dialog; the app never accepts a typed path."
+                    >
+                        <div className="flex flex-col gap-2">
+                            <span
+                                className="truncate font-mono text-cell text-text-2"
+                                title={caBundlePath ?? undefined}
+                                data-testid="ca-bundle-path"
+                            >
+                                {caBundlePath ?? 'The system certificate authorities only'}
+                            </span>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={connectionBusy}
+                                    onClick={() => void runConnection(() => pickCaBundle(client))}
+                                >
+                                    Choose file…
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={connectionBusy || !caBundlePath}
+                                    onClick={() => void runConnection(() => clearCaBundle(client))}
+                                >
+                                    Clear
                                 </Button>
                             </div>
                         </div>

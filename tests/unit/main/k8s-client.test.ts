@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS, type Settings } from '../../../src/shared/settings';
 
 const FIXTURE = resolve('tests/unit/fixtures/kubeconfig.yaml');
 const INVALID_ENTRIES = resolve('tests/unit/fixtures/kubeconfig-invalid-entries.yaml');
+const REMOTE = resolve('tests/unit/fixtures/kubeconfig-remote.yaml');
 
 let settings: Settings;
 vi.mock('../../../src/main/settings/store.js', () => ({
@@ -19,11 +20,16 @@ async function loadClient() {
     return import('../../../src/main/k8s/client.js');
 }
 
-function withSettings(patch: Partial<Settings['session']>, kubeconfigPath: string | null = FIXTURE): void {
+function withSettings(
+    patch: Partial<Settings['session']>,
+    kubeconfigPath: string | null = FIXTURE,
+    network: Partial<Settings['network']> = {},
+): void {
     settings = {
-        version: 1,
+        ...DEFAULT_SETTINGS,
         session: { ...DEFAULT_SETTINGS.session, ...patch },
         connection: { kubeconfigPath },
+        network: { ...DEFAULT_SETTINGS.network, ...network },
     };
 }
 
@@ -107,6 +113,27 @@ describe('kubeConfig', () => {
         reloadKubeConfig();
         expect(kubeConfig()).not.toBe(first);
         expect(getActiveNamespace()).toBe('team-a');
+    });
+});
+
+describe('the loaded config', () => {
+    it('carries the proxy the settings ask for, so every client built from it goes through it', async () => {
+        withSettings({}, REMOTE, { proxyMode: 'manual', proxyUrl: 'http://proxy.corp:3128' });
+        const { kubeConfig, currentCluster } = await loadClient();
+        expect(kubeConfig().getCurrentCluster()?.proxyUrl).toBe('http://proxy.corp:3128');
+        expect(currentCluster()?.proxyUrl).toBe('http://proxy.corp:3128');
+    });
+
+    it('goes straight out when the settings say to connect directly', async () => {
+        withSettings({}, REMOTE, { proxyMode: 'off', proxyUrl: 'http://proxy.corp:3128' });
+        const { kubeConfig } = await loadClient();
+        expect(kubeConfig().getCurrentCluster()?.proxyUrl).toBeUndefined();
+    });
+
+    it('leaves a cluster on this machine unproxied, whatever the settings say', async () => {
+        withSettings({}, FIXTURE, { proxyMode: 'manual', proxyUrl: 'http://proxy.corp:3128' });
+        const { kubeConfig } = await loadClient();
+        expect(kubeConfig().getCurrentCluster()?.proxyUrl).toBeUndefined();
     });
 });
 

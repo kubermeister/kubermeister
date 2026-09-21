@@ -43,6 +43,24 @@ export async function pickKubeconfig(client: QueryClient): Promise<void> {
     await recheckConnection(client);
 }
 
+/**
+ * Point the app at a bundle of extra certificate authorities, or stop trusting one. Both go through
+ * main, which is where the file is chosen and where the connection is remade, and both reset the
+ * cluster reads, since what they trust has changed.
+ */
+export async function pickCaBundle(client: QueryClient): Promise<void> {
+    const { path } = await invoke('caBundle.pick', {});
+    if (path === null) return;
+    await client.invalidateQueries({ queryKey: SETTINGS_KEY });
+    await recheckConnection(client);
+}
+
+export async function clearCaBundle(client: QueryClient): Promise<void> {
+    const settings = await invoke('caBundle.clear', {});
+    client.setQueryData(SETTINGS_KEY, settings);
+    await recheckConnection(client);
+}
+
 export async function resetKubeconfig(client: QueryClient): Promise<void> {
     const settings = await invoke('kubeconfig.useDefault', {});
     client.setQueryData(SETTINGS_KEY, settings);

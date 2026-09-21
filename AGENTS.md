@@ -623,11 +623,24 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   `problem` so the selector marks the entry, the `context` startup check reports it (the cluster
   probe is skipped) and the notice reads "Context unusable" with a hint to switch. A context switch
   reruns the startup checks so the notice follows the current context.
+- **The proxy and the extra certificate authorities are written onto the loaded `KubeConfig`**
+  (`src/main/k8s/proxy.ts`, applied by `loadKubeConfig`), per cluster, because that is the one place
+  every path already reads: the undici dispatcher the client library builds for `fetch`, and the
+  agent behind the exec and port-forward websockets. The library reads no proxy variable itself. A
+  cluster whose kubeconfig entry carries `proxy-url` keeps it in every mode, loopback is never
+  proxied, and `HTTPS_PROXY`/`HTTP_PROXY` are read per scheme with no cross-scheme fallback, so the
+  app proxies exactly what a kubectl in the same shell would. The `network` settings section
+  overrides all of it: a proxy of its own, a bypass list standing in for `NO_PROXY`, or no proxy at
+  all. A CA bundle is **added** to what is trusted, never substituted for it: the cluster's own
+  authority, or Node's roots when it has none, is concatenated with the bundle into `caData`, the way
+  `NODE_EXTRA_CA_CERTS` adds rather than replaces. A bundle that cannot be read changes nothing and
+  is reported by the `network` startup check, since the connection is not altered behind the notice.
 - No `kubectl` dependency; the client library handles exec credential plugins itself. Two things
   make that work outside a terminal:
-  - main adopts the login shell's PATH at startup (`src/main/shell-path.ts`), because a Finder or
-    Dock launch inherits launchd's `/usr/bin:/bin:/usr/sbin:/sbin` and a kubeconfig written by
-    `aws eks update-kubeconfig` names its plugin by bare command;
+  - main adopts the login shell's PATH and proxy variables at startup (`src/main/shell-env.ts`),
+    because a Finder or Dock launch inherits launchd's `/usr/bin:/bin:/usr/sbin:/sbin` and none of
+    the proxy variables, and a kubeconfig written by `aws eks update-kubeconfig` names its plugin by
+    bare command; a variable the launch environment already carries is left alone;
   - every loaded `KubeConfig` has its authenticators wrapped (`src/main/k8s/exec-auth.ts`) so a
     plugin that is missing or exits non-zero surfaces as `unauthorized` with a sentence naming the
     plugin, not as the CLI's stderr under "Something went wrong".
@@ -641,9 +654,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - The settings screen at `/settings` edits them through `settings.set`; the application menu
   (`src/main/menu.ts`) opens it with `Cmd+,` on macOS by pushing `open-settings`.
 - Theme lives in renderer `localStorage`, not here, because it must apply before first paint.
-- The renderer can never set the kubeconfig path; that goes through the native dialog channel
-  `kubeconfig.pick`. It cannot set `window.bounds` either: `settingsInputSchema` omits the section,
-  main writes it alone.
+- The renderer can never set a file path: the kubeconfig goes through the native dialog channel
+  `kubeconfig.pick` and the CA bundle through `caBundle.pick`/`caBundle.clear`, which is why
+  `settingsInputSchema` drops `network.caBundlePath` while the rest of the section stays settable.
+  A write that changes the proxy or the bundle ends the streams and reloads the kubeconfig, since
+  both are read once, when it loads. It cannot set `window.bounds` either: `settingsInputSchema`
+  omits the section, main writes it alone.
 - `KUBERMEISTER_USER_DATA` redirects `userData`, which is how tests isolate the app.
 
 ## Release model

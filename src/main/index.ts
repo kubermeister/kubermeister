@@ -5,7 +5,7 @@ import { registerStreamHandlers, stopAllStreams } from './ipc/streams.js';
 import { stopSampler } from './k8s/sampler.js';
 import { installApplicationMenu } from './menu.js';
 import { getSettings } from './settings/store.js';
-import { adoptLoginShellPath } from './shell-path.js';
+import { adoptLoginShellEnv } from './shell-env.js';
 import { startUpdater } from './updater.js';
 import { createMainWindow } from './window.js';
 
@@ -19,12 +19,13 @@ if (process.env.KUBERMEISTER_USER_DATA) app.setPath('userData', process.env.KUBE
 if (!app.isPackaged) app.setName('Kubermeister');
 
 // A kubeconfig written by `aws eks update-kubeconfig` names its credential plugin by bare command,
-// which a Finder or Dock launch cannot find under launchd's PATH. The login shell's PATH is looked
-// up while Electron starts and awaited before any IPC handler can reach the cluster.
-const shellPathReady = adoptLoginShellPath();
+// which a Finder or Dock launch cannot find under launchd's PATH, and the same launch carries none
+// of the proxy variables the user's shell sets. Both are looked up while Electron starts and
+// awaited before any IPC handler can reach the cluster.
+const shellEnvReady = adoptLoginShellEnv();
 
 void app.whenReady().then(async () => {
-    await shellPathReady;
+    await shellEnvReady;
     // The read ceiling is a setting; apply the saved one before the first cluster call can run.
     setReadTimeoutSec(getSettings().data.readTimeoutSec);
     installApplicationMenu();
