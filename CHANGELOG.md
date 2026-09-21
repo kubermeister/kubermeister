@@ -1,0 +1,23 @@
+# Changelog
+
+What changed in each release, written for somebody deciding whether to update. It is kept by hand:
+the release notes on GitHub already list every pull request, and a second copy of that list would
+say no more than the first. A line here is about the app, not about the change — what it now does,
+or what stopped going wrong — and work nobody outside the repository would notice is left out.
+
+This file starts at the version below. Releases before it are described on the
+[releases page](https://github.com/kubermeister/kubermeister/releases).
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- The Create screen starts a Job, a PersistentVolumeClaim, a ServiceAccount, a Role, a RoleBinding,
+  a NetworkPolicy or a HorizontalPodAutoscaler, alongside the kinds it already offered.
+- A Helm release's detail screen shows the objects a revision rendered, beside the values it was
+  installed with.
+- Help › Report a Bug… and a link on Settings › About open the bug report form with the version and
+  the operating system already filled in.
