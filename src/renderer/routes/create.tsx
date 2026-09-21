@@ -17,207 +17,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { YamlEditor } from '@/components/data-display/yaml-editor';
 import { useNavigateTo } from '@/components/layout/nav-link';
 import { useIpcQuery } from '@/lib/query';
+import { TEMPLATES, type Template } from '@/lib/create-templates';
 import { useCreateResource } from '@/lib/writes';
 import { KINDS, KIND_REGISTRY } from '../../shared/k8s/registry';
 
 export const Route = createFileRoute('/create')({ component: CreateResourcePage });
-
-interface Template {
-    id: string;
-    label: string;
-    api: string;
-    yaml: string;
-}
-
-/**
- * Starter manifests the template selector inserts. None names a namespace: the active selection
- * supplies one when the object is written.
- */
-const TEMPLATES: Template[] = [
-    {
-        id: 'deployment',
-        label: 'Deployment',
-        api: 'apps/v1',
-        yaml: `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-deployment
-  labels:
-    app: my-app
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: my-app
-  template:
-    metadata:
-      labels:
-        app: my-app
-    spec:
-      containers:
-        - name: app
-          image: nginx:1.27
-          ports:
-            - containerPort: 80
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-`,
-    },
-    {
-        id: 'statefulset',
-        label: 'StatefulSet',
-        api: 'apps/v1',
-        yaml: `apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: my-statefulset
-spec:
-  serviceName: my-statefulset
-  replicas: 1
-  selector:
-    matchLabels:
-      app: my-statefulset
-  template:
-    metadata:
-      labels:
-        app: my-statefulset
-    spec:
-      containers:
-        - name: app
-          image: nginx:1.27
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
-`,
-    },
-    {
-        id: 'daemonset',
-        label: 'DaemonSet',
-        api: 'apps/v1',
-        yaml: `apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: my-daemonset
-spec:
-  selector:
-    matchLabels:
-      app: my-daemonset
-  template:
-    metadata:
-      labels:
-        app: my-daemonset
-    spec:
-      containers:
-        - name: agent
-          image: busybox:1.36
-          command: ['sh', '-c', 'while true; do sleep 3600; done']
-`,
-    },
-    {
-        id: 'cronjob',
-        label: 'CronJob',
-        api: 'batch/v1',
-        yaml: `apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: my-cronjob
-spec:
-  # Five-field cron expression: minute hour day-of-month month day-of-week
-  schedule: '0 2 * * *'
-  concurrencyPolicy: Forbid
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          restartPolicy: Never
-          containers:
-            - name: job
-              image: busybox:1.36
-              command: ['sh', '-c', 'echo hello']
-`,
-    },
-    {
-        id: 'service',
-        label: 'Service',
-        api: 'v1',
-        yaml: `apiVersion: v1
-kind: Service
-metadata:
-  name: my-service
-spec:
-  type: ClusterIP
-  selector:
-    app: my-app
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
-      protocol: TCP
-`,
-    },
-    {
-        id: 'ingress',
-        label: 'Ingress',
-        api: 'networking.k8s.io/v1',
-        yaml: `apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-ingress
-spec:
-  # ingressClassName: nginx
-  rules:
-    - host: app.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: my-service
-                port:
-                  number: 80
-`,
-    },
-    {
-        id: 'configmap',
-        label: 'ConfigMap',
-        api: 'v1',
-        yaml: `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: my-config
-data:
-  LOG_LEVEL: info
-  config.yaml: |
-    key: value
-`,
-    },
-    {
-        id: 'secret',
-        label: 'Secret',
-        api: 'v1',
-        yaml: `apiVersion: v1
-kind: Secret
-metadata:
-  name: my-secret
-type: Opaque
-# stringData takes plain text; the API server stores it base64-encoded.
-stringData:
-  password: change-me
-`,
-    },
-];
 
 /**
  * Where to land once an object exists, taken from the kind registry so the two cannot drift. A kind
@@ -302,8 +106,10 @@ function CreateResourcePage() {
                     <SelectContent>
                         {TEMPLATES.map((tpl) => (
                             <SelectItem key={tpl.id} value={tpl.id}>
-                                {tpl.label}
-                                <span className="ml-1 font-mono text-caption text-text-muted">{tpl.api}</span>
+                                {/* The space is literal, not a margin: it separates the two in the
+                                    accessible name, where "Service" and "ServiceAccount" otherwise
+                                    read as one word run together with their api version. */}
+                                {tpl.label} <span className="font-mono text-caption text-text-muted">{tpl.api}</span>
                             </SelectItem>
                         ))}
                     </SelectContent>
