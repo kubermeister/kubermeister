@@ -7,7 +7,11 @@ import { useIpcQuery } from '@/lib/query';
 import { pickKubeconfig, recheckConnection, resetKubeconfig, useSettings } from '@/lib/settings';
 
 /** The pill's words for each check that can fail; the popover carries the check's own sentence. */
-const LABELS = { kubeconfig: 'Kubeconfig not loaded', context: 'Context unusable' } as const;
+const LABELS = {
+    kubeconfig: 'Kubeconfig not loaded',
+    context: 'Context unusable',
+    network: 'CA bundle unreadable',
+} as const;
 
 /**
  * A kubeconfig that would not load, or a current context whose cluster or user the file does not
@@ -60,15 +64,18 @@ export function ConnectionNotice() {
                     <Button size="sm" disabled={busy} onClick={() => void run(() => recheckConnection(client))}>
                         {busy ? 'Checking…' : 'Try again'}
                     </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => void run(() => pickKubeconfig(client))}
-                    >
-                        Choose kubeconfig…
-                    </Button>
-                    {settings.data?.connection.kubeconfigPath && (
+                    {/* A bundle that cannot be read is fixed on Settings, not by choosing another kubeconfig. */}
+                    {problem.id !== 'network' && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => void run(() => pickKubeconfig(client))}
+                        >
+                            Choose kubeconfig…
+                        </Button>
+                    )}
+                    {problem.id !== 'network' && settings.data?.connection.kubeconfigPath && (
                         <Button
                             size="sm"
                             variant="ghost"

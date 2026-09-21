@@ -137,7 +137,7 @@ export const updateStateSchema = z.object({
 
 /** One startup preflight check. `error` blocks the app, `warning` lets it open. */
 const startupCheckSchema = z.object({
-    id: z.enum(['kubeconfig', 'context', 'cluster']),
+    id: z.enum(['kubeconfig', 'network', 'context', 'cluster']),
     label: z.string(),
     status: z.enum(['ok', 'warning', 'error']),
     /** What was found, shown to the user as the reason. */
@@ -177,6 +177,9 @@ export const ipcSchemas = {
     // Kubeconfig path changes are dialog-gated: the renderer never supplies a path string.
     'kubeconfig.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
     'kubeconfig.useDefault': { input: noInput, output: settingsSchema },
+    // The CA bundle is a path too, so it is chosen the same way and only ever cleared from here.
+    'caBundle.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
+    'caBundle.clear': { input: noInput, output: settingsSchema },
     'namespaces.list': { input: noInput, output: z.array(namespaceSchema) },
     'namespace.active': { input: noInput, output: activeNamespaceSchema },
     'cluster.active': { input: noInput, output: clusterSchema.nullable() },

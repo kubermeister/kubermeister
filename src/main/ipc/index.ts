@@ -65,6 +65,7 @@ import {
 import { getResource, listResources } from '../k8s/resources/index.js';
 import { getDrainPlan } from '../k8s/drain.js';
 import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
+import type { Settings } from '../../shared/settings.js';
 import { getSettings, updateSettings } from '../settings/store.js';
 import { runStartupChecks } from '../startup/checks.js';
 import { applyCheckInterval, checkForUpdates, downloadUpdate, getUpdateState, installUpdate } from '../updater.js';
@@ -90,6 +91,40 @@ async function pickKubeconfig(): Promise<string | null> {
     leaveConnection('The kubeconfig changed');
     reloadKubeConfig();
     return path;
+}
+
+/**
+ * Point the app at a bundle of extra certificate authorities, through the same native dialog the
+ * kubeconfig uses and for the same reason: a path the renderer supplied would be a file it chose to
+ * have read.
+ */
+async function pickCaBundle(): Promise<string | null> {
+    const owner = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options: Electron.OpenDialogOptions = {
+        title: 'Choose a CA bundle',
+        properties: ['openFile', 'showHiddenFiles'],
+        filters: [
+            { name: 'Certificates', extensions: ['pem', 'crt', 'cer', 'ca-bundle'] },
+            { name: 'All files', extensions: ['*'] },
+        ],
+    };
+    const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options);
+    const path = result.canceled ? undefined : result.filePaths[0];
+    if (!path) return null;
+    updateSettings({ network: { caBundlePath: path } });
+    reconnect();
+    return path;
+}
+
+/** The route to the cluster changed, so nothing made over the old one may carry on. */
+function reconnect(): void {
+    leaveConnection('The proxy settings changed');
+    reloadKubeConfig();
+}
+
+/** Whether a settings write changed how the app reaches the cluster, which the loaded config holds. */
+function networkChanged(before: Settings['network'], after: Settings['network']): boolean {
+    return (['proxyMode', 'proxyUrl', 'noProxy', 'caBundlePath'] as const).some((key) => before[key] !== after[key]);
 }
 
 /**
@@ -129,12 +164,17 @@ const handlers: Handlers = {
     'namespace.set': async ({ namespace }) => setNamespace(namespace),
     'settings.get': async () => getSettings(),
     'settings.set': async (patch) => {
+        const before = getSettings().network;
         const settings = updateSettings(patch);
         setReadTimeoutSec(settings.data.readTimeoutSec);
         applyCheckInterval(settings.updates.checkIntervalHours);
+        // The proxy and the CA bundle are read once, when the kubeconfig loads, so a change to either
+        // only reaches the cluster after a reload.
+        if (networkChanged(before, settings.network)) reconnect();
         return settings;
     },
     'kubeconfig.pick': async () => ({ path: await pickKubeconfig() }),
+    'caBundle.pick': async () => ({ path: await pickCaBundle() }),
     'namespaces.list': () => listNamespaces(),
     'namespace.active': () => getActiveNamespaceInfo(),
     'cluster.active': () => getActiveCluster(),
@@ -196,6 +236,11 @@ const handlers: Handlers = {
     'cronJobs.trigger': (input) => triggerCronJob(input),
     'cronJobs.suspend': (input) => setCronJobSuspended(input),
     'autoscalers.update': (input) => updateAutoscaler(input),
+    'caBundle.clear': async () => {
+        const settings = updateSettings({ network: { caBundlePath: null } });
+        reconnect();
+        return settings;
+    },
     'kubeconfig.useDefault': async () => {
         const settings = updateSettings({ connection: { kubeconfigPath: null } });
         leaveConnection('The kubeconfig changed');

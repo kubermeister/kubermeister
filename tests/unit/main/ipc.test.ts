@@ -322,6 +322,42 @@ describe('registerHandlers', () => {
         expect(samplerMod.resetHistory).toHaveBeenCalledOnce();
     });
 
+    it('reloads the connection when the proxy or the CA bundle changes, and only then', async () => {
+        await invoke('settings.set', { data: { refreshIntervalSec: 30 } });
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+        // Writing the value it already had is not a change either.
+        await invoke('settings.set', { network: { proxyMode: 'env' } });
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+
+        await invoke('settings.set', { network: { proxyMode: 'manual', proxyUrl: 'http://proxy:3128' } });
+        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        // Every stream was made on the old route to the cluster.
+        expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+        expect(samplerMod.resetHistory).toHaveBeenCalledOnce();
+    });
+
+    it('picks a CA bundle through the native dialog and reloads the client', async () => {
+        dialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/etc/corp/ca.pem'] });
+        await expect(invoke('caBundle.pick', {})).resolves.toEqual({ path: '/etc/corp/ca.pem' });
+        expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: '/etc/corp/ca.pem' } });
+        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+    });
+
+    it('leaves the CA bundle alone when its picker is cancelled', async () => {
+        dialog.showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] });
+        await expect(invoke('caBundle.pick', {})).resolves.toEqual({ path: null });
+        expect(store.updateSettings).not.toHaveBeenCalled();
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+    });
+
+    it('clears the CA bundle and reloads', async () => {
+        await expect(invoke('caBundle.clear', {})).resolves.toMatchObject({ network: { caBundlePath: null } });
+        expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: null } });
+        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+    });
+
     it('leaves settings alone when the picker is cancelled', async () => {
         dialog.showOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] });
         await expect(invoke('kubeconfig.pick', {})).resolves.toEqual({ path: null });
