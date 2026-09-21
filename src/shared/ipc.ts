@@ -9,6 +9,7 @@ import {
     releaseUninstallInputSchema,
     releaseWriteResultSchema,
 } from './k8s/addons.js';
+import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
 import { kubeContextSchema } from './k8s/contexts.js';
 import { manifestInputSchema, manifestSchema } from './k8s/manifest.js';
 import { namespaceDetailInputSchema, namespaceDetailSchema } from './k8s/namespaces.js';
@@ -224,6 +225,10 @@ export const ipcSchemas = {
     'releases.rollback': { input: releaseRollbackInputSchema, output: releaseWriteResultSchema },
     'releases.uninstall': { input: releaseUninstallInputSchema, output: releaseWriteResultSchema },
     'helmCharts.list': { input: noInput, output: z.array(helmChartSchema) },
+    'chartRepositories.list': { input: noInput, output: z.array(chartRepositoryStatusSchema) },
+    'chartRepositories.add': { input: chartRepositoryInputSchema, output: chartRepositoryStatusSchema },
+    'chartRepositories.refresh': { input: chartRepositoryNameInputSchema, output: chartRepositoryStatusSchema },
+    'chartRepositories.remove': { input: chartRepositoryNameInputSchema, output: chartRepositoryNameInputSchema },
     'namespaces.detail': { input: namespaceDetailInputSchema, output: namespaceDetailSchema.nullable() },
     'customResources.list': { input: customResourceListInputSchema, output: customResourceListOutputSchema },
     'customResources.get': { input: customResourceGetInputSchema, output: customResourceGetOutputSchema },

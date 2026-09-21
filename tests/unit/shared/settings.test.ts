@@ -29,6 +29,7 @@ describe('parseSettings', () => {
                 noProxy: '.corp.example',
                 caBundlePath: '/etc/corp/ca.pem',
             },
+            charts: { repositories: [{ name: 'bitnami', kind: 'classic', url: 'https://charts.example.com' }] },
             window: { bounds: { x: 0, y: 0, width: 1200, height: 800 } },
         };
         expect(parseSettings(valid)).toEqual(valid);
@@ -72,6 +73,7 @@ describe('parseSettings', () => {
             },
             updates: { mode: null, checkIntervalHours: 4 },
             network: { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null },
+            charts: { repositories: [] },
             window: { bounds: null },
         });
     });
@@ -93,6 +95,22 @@ describe('parseSettings', () => {
             expect(parseSettings({ version: SETTINGS_VERSION, updates: { checkIntervalHours: bad } }).updates).toEqual(
                 defaults,
             );
+        }
+    });
+
+    it('starts an install with no chart repositories, and keeps only entries it can use', () => {
+        // Nothing before version 2 had a charts section at all.
+        expect(parseSettings({ version: 1 }).charts).toEqual({ repositories: [] });
+        const bitnami = { name: 'bitnami', kind: 'classic', url: 'https://charts.example.com' };
+        expect(
+            parseSettings({ version: SETTINGS_VERSION, charts: { repositories: [bitnami] } }).charts.repositories,
+        ).toEqual([bitnami]);
+        // The section is parsed as a whole, so one unusable entry takes the list with it rather
+        // than leaving a repository behind whose name could become a cache path.
+        for (const bad of [{ ...bitnami, name: '../escape' }, { ...bitnami, kind: 'git' }, { name: 'bitnami' }]) {
+            expect(parseSettings({ version: SETTINGS_VERSION, charts: { repositories: [bad] } }).charts).toEqual({
+                repositories: [],
+            });
         }
     });
 
@@ -276,6 +294,14 @@ describe('patch schemas', () => {
         expect(settingsInputSchema.safeParse({ session: { lastNamespace: 'kube-system' } }).success).toBe(true);
         const withPath = settingsInputSchema.safeParse({ connection: { kubeconfigPath: '/etc/passwd' } });
         expect(withPath.success && 'connection' in withPath.data).toBe(false);
+    });
+
+    it('refuses the chart repositories from the renderer input schema', () => {
+        // Adding one also writes the keychain and the index cache, so the list is never patched
+        // straight into the settings file.
+        const patch = settingsInputSchema.safeParse({ charts: { repositories: [] } });
+        expect(patch.success && 'charts' in patch.data).toBe(false);
+        expect(settingsPatchSchema.safeParse({ charts: { repositories: [] } }).success).toBe(true);
     });
 
     it('lets the renderer change the update mode', () => {

@@ -36,6 +36,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   certificate authority the system does not already trust. Those certificates are added to the ones
   already trusted, never put in their place.
 
+- Settings holds the chart repositories and OCI registries Kubermeister reads charts from. Each one
+  is read when it is added and again whenever you refresh it, its index is cached on disk, and any
+  username and password go into this system's keychain rather than the settings file.
+
 ### Changed
 
 - A new version is now downloaded in the background and installed the next time the app quits,

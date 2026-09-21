@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -83,5 +83,42 @@ describe('git hooks', () => {
                 rmSync(plain, { recursive: true, force: true });
             }
         });
+    });
+});
+
+/**
+ * The scope list is written out three times: for the developer's commit (`.githooks/commit-msg`),
+ * for the PR title the squash commit on `main` takes (`.github/workflows/pr-title.yml`), and for
+ * the reader (AGENTS.md). Nothing makes them one list, so this is what makes them agree — a scope
+ * added to the hook alone passes locally and then fails the title check on a PR that is otherwise
+ * ready.
+ */
+describe('the commit scopes', () => {
+    const read = (path: string) => readFileSync(resolve(path), 'utf8');
+
+    function hookScopes(): string[] {
+        const line = /^scopes='([^']+)'/m.exec(read('.githooks/commit-msg'));
+        if (!line) throw new Error('.githooks/commit-msg declares no scopes');
+        return line[1].split('|');
+    }
+
+    function workflowScopes(): string[] {
+        const block = /\n {10}scopes: \|\n((?: {12}\S+\n)+)/.exec(read('.github/workflows/pr-title.yml'));
+        if (!block) throw new Error('pr-title.yml declares no scopes');
+        return block[1].trim().split(/\s+/);
+    }
+
+    function documentedScopes(): string[] {
+        // The bullet wraps over several lines and ends at the sentence that follows the list.
+        const bullet = /- \*\*scope\*\* \(required\): ([\s\S]*?)\. /.exec(read('AGENTS.md'));
+        if (!bullet) throw new Error('AGENTS.md documents no scopes');
+        return [...bullet[1].matchAll(/`([a-z0-9]+)`/g)].map((match) => match[1]);
+    }
+
+    it('are the same list in the hook, the PR title check and AGENTS.md', () => {
+        const hook = hookScopes();
+        expect(hook.length).toBeGreaterThan(1);
+        expect(workflowScopes()).toEqual(hook);
+        expect(documentedScopes()).toEqual(hook);
     });
 });

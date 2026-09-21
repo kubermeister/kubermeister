@@ -56,7 +56,13 @@ export function useIpcQuery<C extends IpcChannel, TData = IpcOutput<C>>(
 }
 
 /** Channels whose data does not come from the cluster, so a scope switch leaves them in place. */
-const APP_LEVEL_CHANNELS = new Set<string>(['startupChecks', 'contexts.list', 'settings.get']);
+const APP_LEVEL_CHANNELS = new Set<string>([
+    'startupChecks',
+    'contexts.list',
+    'settings.get',
+    // Chart sources belong to this install, not to the cluster it happens to be pointed at.
+    'chartRepositories.list',
+]);
 
 function isClusterQuery(queryKey: QueryKey): boolean {
     const channel = String(queryKey[0]);

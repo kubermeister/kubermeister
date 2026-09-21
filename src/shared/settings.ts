@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { chartRepositorySchema, MAX_CHART_REPOSITORIES } from './charts.js';
 
 /**
  * Persisted application settings: the app's own durable state, written to a JSON file the main
@@ -116,6 +117,15 @@ const networkSchema = z.object({
     caBundlePath: z.string().nullable(),
 });
 
+/**
+ * Chart sources this install knows. Only what identifies a source lives here: its credential is in
+ * the OS keychain and its index in a cache file beside this one, so the settings file stays
+ * something a user can read, copy between machines and check into a dotfiles repository.
+ */
+const chartsSchema = z.object({
+    repositories: z.array(chartRepositorySchema).max(MAX_CHART_REPOSITORIES),
+});
+
 const windowBoundsSchema = z.object({
     x: z.number(),
     y: z.number(),
@@ -138,6 +148,7 @@ export const settingsSchema = z.object({
     data: dataSchema,
     updates: updatesSchema,
     network: networkSchema,
+    charts: chartsSchema,
     window: windowSchema,
 });
 
@@ -148,6 +159,7 @@ export const settingsPatchSchema = z.object({
     data: dataSchema.partial().optional(),
     updates: updatesSchema.partial().optional(),
     network: networkSchema.partial().optional(),
+    charts: chartsSchema.partial().optional(),
     window: windowSchema.partial().optional(),
 });
 
@@ -156,12 +168,17 @@ export const settingsPatchSchema = z.object({
  * the app at an arbitrary file is a native-dialog action (`kubeconfig.pick`, `caBundle.pick`), never
  * a raw renderer-supplied string, so a compromised renderer cannot probe files or trigger exec
  * plugins. The rest of the network section is an ordinary preference and stays settable.
+ *
+ * The chart repositories are excluded for a different reason: adding or removing one also writes
+ * the OS keychain and the on-disk index cache, so the list is only ever edited through the
+ * `chartRepositories.*` channels, which keep all three in step.
  */
 export const settingsInputSchema = settingsPatchSchema
-    .omit({ connection: true, window: true, network: true })
+    .omit({ connection: true, window: true, network: true, charts: true })
     .extend({ network: networkSchema.omit({ caBundlePath: true }).partial().optional() });
 
 export type RememberedForward = z.infer<typeof rememberedForwardSchema>;
+export type ChartSettings = z.infer<typeof chartsSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 export type SettingsInput = z.infer<typeof settingsInputSchema>;
@@ -176,6 +193,7 @@ export const DEFAULT_SETTINGS: Settings = {
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },
     updates: { mode: null, checkIntervalHours: 4 },
     network: { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null },
+    charts: { repositories: [] },
     window: { bounds: null },
 };
 
@@ -224,6 +242,7 @@ export function parseSettings(raw: unknown): Settings {
         data: parseSection(dataSchema, file.data, DEFAULT_SETTINGS.data),
         updates: parseSection(updatesSchema, file.updates, DEFAULT_SETTINGS.updates),
         network: parseSection(networkSchema, file.network, DEFAULT_SETTINGS.network),
+        charts: parseSection(chartsSchema, file.charts, DEFAULT_SETTINGS.charts),
         window: parseSection(windowSchema, file.window, DEFAULT_SETTINGS.window),
     };
 }
@@ -237,6 +256,7 @@ export function mergeSettings(current: Settings, patch: SettingsPatch): Settings
         data: { ...current.data, ...patch.data },
         updates: { ...current.updates, ...patch.updates },
         network: { ...current.network, ...patch.network },
+        charts: { ...current.charts, ...patch.charts },
         window: { ...current.window, ...patch.window },
     };
 }
