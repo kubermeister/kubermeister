@@ -97,7 +97,8 @@ A few rules hold everywhere:
 ## Requirements
 
 - macOS 12 or newer (Apple silicon or Intel), Windows 10 or newer (x64), or a Linux distribution
-  that can run an AppImage or a `.deb` (x64).
+  that can run an AppImage or install a `.deb` (x64). The AppImage carries its own runtime and needs
+  nothing installed first.
 - A kubeconfig with at least one context. Any cluster the current Kubernetes API speaks to should
   work; releases are tested end to end against k3s.
 - [metrics-server](https://github.com/kubernetes-sigs/metrics-server) for usage figures and
@@ -108,6 +109,19 @@ A few rules hold everywhere:
 Every version is a `vX.Y.Z` tag on the
 [Releases](https://github.com/kubermeister/kubermeister/releases) page, with installers for each
 platform attached.
+
+A `SHA256SUMS` file is attached to each release. To check a download against it, from the directory
+holding both:
+
+```sh
+sha256sum --ignore-missing -c SHA256SUMS      # Linux
+shasum -a 256 --ignore-missing -c SHA256SUMS  # macOS
+```
+
+```powershell
+# Windows: compare the printed hash with the line for your file in SHA256SUMS
+Get-FileHash .\Kubermeister-*-win-x64.exe -Algorithm SHA256
+```
 
 ### macOS
 
@@ -131,28 +145,47 @@ once per install.
 
 ### Linux
 
-**AppImage** (any distribution): download `linux-x86_64.AppImage`, make it executable, and run it.
+Two packages, and the choice decides how the app is updated and whether it appears in your
+launcher. Both are x64.
+
+**AppImage** — one file, no install, **updates itself**. Download `linux-x86_64.AppImage`, make it
+executable, and run it.
 
 ```sh
 chmod +x Kubermeister-*-linux-x86_64.AppImage
 ./Kubermeister-*-linux-x86_64.AppImage
 ```
 
-**Debian / Ubuntu**: download `linux-amd64.deb` and install it.
+It adds no menu entry and no icon of its own, so it is a file you keep somewhere and run, unless you
+integrate it with something like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
+
+**Debian / Ubuntu** — installs properly, **updated by you**. Download `linux-amd64.deb` and install
+it.
 
 ```sh
 sudo apt install ./Kubermeister-*-linux-amd64.deb
 ```
 
+This one lands in the launcher with its icon, and `apt` owns it: the app never replaces itself, it
+only tells you when a version is out and links to the download. Upgrading is installing the new
+`.deb` over it.
+
 ### Updating
 
-The app checks for updates shortly after launch and every few hours. When a new version is found, a
-pill appears in the top bar and a notification offers to update; the download runs in the background
-and a restart finishes it (quitting the app installs it too). Settings › Updates chooses between
-being asked first (the default), downloading silently, or never checking automatically, and its
+The app checks for updates shortly after launch and every few hours. A new version is fetched in
+the background and installed the next time you quit; a pill in the top bar says one is ready and a
+restart finishes it sooner. Only the changed parts are fetched, so an update is usually a fraction
+of the installer's size, and the popover names what it is downloading. Settings › Updates chooses
+between that, being asked before anything is downloaded, or never checking automatically, and its
 About card shows the installed version and a **Check for updates** button; the same check is in the
-application menu and the ⌘K palette. Installing a newer download over the existing app also works;
-settings are kept. Homebrew users can run `brew upgrade` as well.
+application menu and the ⌘K palette.
+
+That is the macOS app, the Windows installer and the Linux AppImage, each of which can replace
+itself. A package the system owns — the Linux `.deb`, and Homebrew — cannot be replaced by the app
+without lying to the package manager about what is installed, so it is never tried: the app says a
+new version exists and links to it, and you install it the way you installed this one (`brew
+upgrade` for Homebrew). Installing a newer download over the existing app always works, and settings
+are kept either way.
 
 ## Building from source
 
