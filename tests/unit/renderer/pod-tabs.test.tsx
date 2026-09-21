@@ -228,12 +228,15 @@ describe('LogViewer', () => {
         expect(onSinceChange).toHaveBeenCalledWith({ label: '1 hour', seconds: 3600 });
     });
 
-    it('offers marking beside the other two search toggles', async () => {
+    it('offers highlighting beside the other two search toggles', async () => {
         const onSearchChange = vi.fn();
         renderWithQuery(<LogViewer {...props} lines={[]} onSearchChange={onSearchChange} />);
-        const mark = screen.getByRole('button', { name: 'Mark' });
-        expect(mark).toHaveAttribute('aria-pressed', 'false');
-        await userEvent.click(mark);
+        const highlight = screen.getByRole('button', { name: 'Highlight matches' });
+        expect(highlight).toHaveAttribute('aria-pressed', 'false');
+        // It shows an icon and nothing else, so the name it carries is all a screen reader has.
+        expect(highlight).toHaveTextContent('');
+        expect(highlight.querySelector('svg')).toBeInTheDocument();
+        await userEvent.click(highlight);
         expect(onSearchChange).toHaveBeenCalledWith({ ...NO_SEARCH, highlight: true });
     });
 });
@@ -349,7 +352,7 @@ describe('LogsTab', () => {
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('all good');
 
-        await userEvent.click(screen.getByRole('button', { name: 'Mark' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Highlight matches' }));
         await userEvent.type(screen.getByRole('textbox', { name: 'Filter log lines' }), 'boom');
         // Nothing is hidden, so the console never says it was narrowed.
         await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('2 lines'));
