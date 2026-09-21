@@ -42,9 +42,15 @@ This file is the project's agent instructions. `CLAUDE.md` only imports it, so e
 
 ### Issues are the plan
 
-- There is no board and no other backlog: the open milestones (one per upcoming minor version) and
-  their issues are what is going to happen. A session resumes from `gh issue list` filtered by
-  milestone or by the `ready` label.
+- There is no board: the open milestones (one per upcoming minor version) and their issues are what
+  is going to happen. A session resumes from `gh issue list` filtered by milestone or by the
+  `ready` label.
+- **An issue has a milestone.** Something worth keeping but not scheduled is an idea, and ideas live
+  in the repository's **Ideas** discussion category, not in the issue list, which would otherwise
+  stop being the plan. `gh discussion list` reads them beside `gh issue list`.
+- An idea becomes an issue on the day it gets a milestone, filed the same way as any other work; an
+  issue that turns out to have no release it belongs to moves the other way and closes as not
+  planned pointing at its discussion.
 - A bug found in real use gets an issue before its fix.
 - A PR that resolves an issue ends its body with the one-line paragraph `Closes #N.` (a sentence,
   not a trailer).
