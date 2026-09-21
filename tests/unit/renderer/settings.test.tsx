@@ -22,7 +22,7 @@ const settings = {
     session: { lastContext: 'alpha', lastNamespace: 'team-a', restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 45 },
-    updates: { mode: 'check', checkIntervalHours: 4 },
+    updates: { mode: null as string | null, checkIntervalHours: 4 },
 };
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date', checkedAt: new Date(Date.now() - 5 * 60_000).toISOString() },
@@ -117,10 +117,11 @@ describe('settings screen', () => {
         expect(options).toEqual(['5 seconds', '10 seconds', '12 seconds', '15 seconds', '30 seconds', '60 seconds']);
     });
 
-    it('persists the update mode through the bridge', async () => {
+    it('shows the default until a mode is chosen, then persists the choice', async () => {
         renderRoutes(routeTree, '/settings');
         const select = await screen.findByRole('combobox', { name: 'When a new version is found' });
-        await waitFor(() => expect(select).toHaveTextContent('Notify me and let me choose'));
+        // Nobody has chosen: the screen names the mode the app would use, not an empty control.
+        await waitFor(() => expect(select).toHaveTextContent('Download in the background'));
         await userEvent.click(select);
         const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
         expect(options).toEqual([
@@ -128,9 +129,9 @@ describe('settings screen', () => {
             'Download in the background',
             'Never check automatically',
         ]);
-        await userEvent.click(screen.getByRole('option', { name: 'Download in the background' }));
-        await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { updates: { mode: 'download' } }));
-        expect(select).toHaveTextContent('Download in the background');
+        await userEvent.click(screen.getByRole('option', { name: 'Notify me and let me choose' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { updates: { mode: 'check' } }));
+        expect(select).toHaveTextContent('Notify me and let me choose');
     });
 
     it('persists the update check interval through the bridge, folding in a non-preset value', async () => {

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { ExternalLinkIcon, MonitorIcon, MoonIcon, SunIcon, type LucideIcon } from 'lucide-react';
 import {
+    DEFAULT_UPDATE_MODE,
     LOG_BUFFER_OPTIONS,
     READ_TIMEOUT_OPTIONS,
     REFRESH_INTERVAL_OPTIONS,
@@ -42,7 +43,7 @@ const UPDATE_MODE_LABELS: Record<UpdateMode, string> = {
     off: 'Never check automatically',
 };
 const modeForLabel = (label: string): UpdateMode =>
-    UPDATE_MODES.find((mode) => UPDATE_MODE_LABELS[mode] === label) ?? 'check';
+    UPDATE_MODES.find((mode) => UPDATE_MODE_LABELS[mode] === label) ?? DEFAULT_UPDATE_MODE;
 
 const checkIntervalLabel = (hours: number) =>
     hours === 1
@@ -69,7 +70,7 @@ function SettingsScreen() {
     const [kubeconfigBusy, setKubeconfigBusy] = useState(false);
 
     const kubeconfigPath = settings?.connection.kubeconfigPath ?? null;
-    const updateMode = settings?.updates.mode ?? 'check';
+    const updateMode = settings?.updates.mode ?? DEFAULT_UPDATE_MODE;
     const checkIntervalHours = settings?.updates.checkIntervalHours ?? 4;
     const refreshSec = settings?.data.refreshIntervalSec ?? 12;
     const readTimeoutSec = settings?.data.readTimeoutSec ?? 60;

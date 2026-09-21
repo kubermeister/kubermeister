@@ -2,6 +2,7 @@ import { app } from 'electron';
 import electronUpdater, { type UpdateInfo } from 'electron-updater';
 import { load as loadYaml } from 'js-yaml';
 import type { UpdateState } from '../shared/ipc.js';
+import { DEFAULT_UPDATE_MODE } from '../shared/settings.js';
 import { compareVersions, releaseFeedUrl } from '../shared/updates.js';
 import { broadcast } from './ipc/push.js';
 import { getSettings } from './settings/store.js';
@@ -106,7 +107,7 @@ async function checkPublished(): Promise<void> {
 }
 
 function mode() {
-    return getSettings().updates.mode;
+    return getSettings().updates.mode ?? DEFAULT_UPDATE_MODE;
 }
 
 let checkIntervalMs = 0;

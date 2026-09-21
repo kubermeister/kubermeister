@@ -27,6 +27,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Every release carries a `SHA256SUMS` file, so a download can be checked before it is run.
 
+### Changed
+
+- A new version is now downloaded in the background and installed the next time the app quits,
+  rather than waiting behind a button nobody had a reason to press. Settings › Updates still offers
+  being asked before anything is downloaded, or never checking at all, and an install already set
+  to one of those keeps it.
+
 ### Fixed
 
 - The Linux AppImage starts on Ubuntu 23.10 and newer. It was built on a runtime that loads
