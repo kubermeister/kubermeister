@@ -110,6 +110,19 @@ Every version is a `vX.Y.Z` tag on the
 [Releases](https://github.com/kubermeister/kubermeister/releases) page, with installers for each
 platform attached.
 
+A `SHA256SUMS` file is attached to each release. To check a download against it, from the directory
+holding both:
+
+```sh
+sha256sum --ignore-missing -c SHA256SUMS      # Linux
+shasum -a 256 --ignore-missing -c SHA256SUMS  # macOS
+```
+
+```powershell
+# Windows: compare the printed hash with the line for your file in SHA256SUMS
+Get-FileHash .\Kubermeister-*-win-x64.exe -Algorithm SHA256
+```
+
 ### macOS
 
 Download the `.dmg` for your Mac: `mac-arm64` for Apple silicon, `mac-x64` for Intel. Open it and
