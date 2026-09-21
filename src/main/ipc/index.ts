@@ -29,6 +29,7 @@ import {
     listCustomResourceInstances,
 } from '../k8s/resources/custom.js';
 import { describeObject } from '../k8s/resources/describe.js';
+import { getKindSchema, resetSchemaCache } from '../k8s/openapi/index.js';
 import { getPodOwners, listOwnedPods } from '../k8s/resources/owners.js';
 import {
     evictPod,
@@ -103,6 +104,8 @@ function leaveConnection(reason: string): void {
     // subscriber's teardown has not run yet, since they hold a watch on the cluster being left.
     stopAllInformers();
     resetHistory();
+    // The documents read from the cluster being left; the copies on disk are keyed by context and stay.
+    resetSchemaCache();
 }
 
 const handlers: Handlers = {
@@ -186,6 +189,7 @@ const handlers: Handlers = {
     'resources.related': ({ kind, name, namespace }) => getRelated(kind, name, namespace),
     'resources.getYaml': ({ kind, name, namespace }) => getObjectYaml(kind, name, namespace),
     'resources.describe': (input) => describeObject(input),
+    'schemas.forKind': (input) => getKindSchema(input),
     'resources.create': (input) => createResource(input),
     'resources.replace': (input) => replaceResource(input),
     'resources.delete': (input) => deleteResource(input),

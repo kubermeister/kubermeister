@@ -70,6 +70,7 @@ export const IPC_CHANNELS = [
     'resources.related',
     'resources.getYaml',
     'resources.describe',
+    'schemas.forKind',
     'resources.create',
     'resources.replace',
     'resources.delete',

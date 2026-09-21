@@ -21,6 +21,7 @@ import {
     customResourceListOutputSchema,
 } from './k8s/custom.js';
 import { describeDocumentSchema, describeInputSchema } from './k8s/describe.js';
+import { kindSchemaInputSchema, kindSchemaSchema } from './k8s/openapi.js';
 import { drainPlanInputSchema, drainPlanSchema } from './k8s/drain.js';
 import { ownedPodsInputSchema, ownerChainSchema } from './k8s/owners.js';
 import { podSchema } from './k8s/pods.js';
@@ -228,6 +229,8 @@ export const ipcSchemas = {
     'resources.related': { input: relatedInputSchema, output: z.array(relatedGroupSchema) },
     'resources.getYaml': { input: manifestInputSchema, output: manifestSchema },
     'resources.describe': { input: describeInputSchema, output: describeDocumentSchema },
+    // Null when this cluster describes no such kind; the editor falls back to plain YAML.
+    'schemas.forKind': { input: kindSchemaInputSchema, output: kindSchemaSchema.nullable() },
     'resources.create': { input: manifestWriteSchema, output: writeResultSchema },
     'resources.replace': { input: manifestWriteSchema, output: writeResultSchema },
     'resources.delete': { input: deleteInputSchema, output: writeResultSchema },
