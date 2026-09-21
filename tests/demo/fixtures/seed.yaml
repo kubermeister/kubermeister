@@ -141,10 +141,14 @@ spec:
         - name: checkout
           image: busybox:1.36
           command: ['sh', '-c']
+          # The script logs no timestamp of its own, because a pod's Logs tab stamps every line
+          # already and a line carrying one too renders the time twice.
+          #
+          # Nothing explanatory may go *inside* `args`: the pod template is what the Manifest tab
+          # and the revision diff put on screen, so a comment written there is a comment published
+          # in the screenshot.
           args:
             - |
-              # No timestamp of its own. A pod's Logs tab stamps every line already, so a line that
-              # carries one too renders the time twice and reads as a bug in the console.
               i=0
               while true; do
                 i=$((i+1))
@@ -639,11 +643,12 @@ spec:
         - name: indexer
           image: busybox:1.36
           command: ['sh', '-c']
+          # Wall-clock bursts rather than a fixed iteration count, which would be a different length
+          # of burn on every machine. The period is long against the sampler's 12 s, so a soak of a
+          # couple of minutes covers three cycles. Kept out of `args` itself: that is pod template,
+          # which the Manifest tab and the revision diff put on screen.
           args:
             - |
-              # Wall-clock bursts rather than a fixed iteration count, which would be a different
-              # length of burn on every machine. The period is long against the sampler's 12 s so a
-              # soak of a couple of minutes covers three cycles.
               while true; do
                 end=$(( $(date +%s) + 20 ))
                 while [ $(date +%s) -lt $end ]; do

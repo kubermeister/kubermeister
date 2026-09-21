@@ -182,10 +182,11 @@ test('pods-list', async () => {
     await goto('/workloads/pods');
     const table = window.getByTestId('pods-table');
     await expect(table).toBeVisible({ timeout: 30_000 });
-    // The three deliberately broken workloads are what makes this more than a list of green rows.
-    // `CrashLoop` rather than the kubelet's `CrashLoopBackOff`: the list shows a `PodStatus` from
-    // the app's own vocabulary, not the raw waiting reason.
-    await expect(table).toContainText('CrashLoop', { timeout: 120_000 });
+    // The deliberately broken workloads are what makes this more than a list of green rows. It
+    // waits on the unschedulable one rather than the crash loop: a crash looping pod is only
+    // `CrashLoop` while it sits in the backoff, and reads `Running` in the moment between restarts,
+    // so gating the shot on it would fail whenever the shutter caught that moment.
+    await expect(table).toContainText('Pending', { timeout: 120_000 });
     await shoot('pods-list');
 });
 
@@ -207,7 +208,12 @@ test('node-drain-plan', async () => {
     const { window } = launched;
     await goto(`/overview/nodes/${nodeName()}`);
     await expect(window.getByTestId('node-page')).toBeVisible({ timeout: 30_000 });
-    await window.getByRole('button', { name: 'Drain' }).click();
+    // The page's test id appears before its header actions have rendered, so the button is waited
+    // for on its own rather than on `click`'s own ceiling, which this shot has already exhausted
+    // once on a cold run.
+    const drain = window.getByRole('button', { name: 'Drain', exact: true });
+    await expect(drain).toBeVisible({ timeout: 90_000 });
+    await drain.click();
     // What a drain would do, before anything is written. Nothing here presses the button.
     await expect(window.getByTestId('drain-plan')).toBeVisible({ timeout: 60_000 });
     await shoot('node-drain-plan');
@@ -247,6 +253,9 @@ test('namespace-detail', async () => {
     const { window } = launched;
     await goto(`/overview/namespaces/${NAMESPACE}`);
     await expect(window.getByTestId('namespace-page')).toBeVisible({ timeout: 30_000 });
+    // The roll-up of what lives in the namespace is the point of this screen, and it is a tab of
+    // its own rather than the one the detail opens on.
+    await openTab(window, 'Contents');
     await expect(window.getByTestId('namespace-counts')).toBeVisible({ timeout: 30_000 });
     await shoot('namespace-detail');
 });
@@ -283,9 +292,11 @@ test('workload-logs', async () => {
     await expect(window.getByTestId('deployment-page')).toBeVisible({ timeout: 30_000 });
     await openTab(window, 'Logs');
     const viewer = window.getByTestId('log-viewer');
-    // Three pods followed at once, each line coloured by the pod it came from.
+    // Three pods followed at once, each line coloured by the pod it came from. The wait is long on
+    // purpose: the tab opens by reading each pod's tail in turn, so the first screenful is one pod
+    // at a time, and only the lines that arrive live are interleaved — which is the point of it.
     await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('checkout', { timeout: 90_000 });
-    await window.waitForTimeout(4_000);
+    await window.waitForTimeout(20_000);
     await shoot('workload-logs');
 });
 
@@ -334,9 +345,25 @@ test('deployment-compare', async () => {
     // A second revision to compare against: the demo cluster is seeded with one rollout only.
     await page.getByRole('button', { name: 'Restart' }).click();
     await window.getByRole('alertdialog').getByRole('button', { name: 'Restart' }).click();
+    // The restart raises a toast over the bottom corner, which would sit across the diff. It is
+    // waited out rather than dismissed, since nothing else here should be teaching the app that a
+    // toast can be closed from underneath it.
+    await expect(window.getByText(/restarting/)).toBeHidden({ timeout: 30_000 });
     await openTab(window, /History/);
     await expect(page.getByTestId('rollout-history').locator('[data-revision="2"]')).toBeVisible({ timeout: 60_000 });
+
+    // Both pickers are chosen here rather than left at their defaults. They are seeded from the
+    // rollout list with `useState`, so a tab opened before the second revision has loaded fixes
+    // both on #1 and the card reads "No differences" — an empty diff is the one thing this shot
+    // must not be.
+    await page.getByRole('combobox', { name: 'From revision' }).click();
+    await window.getByRole('option', { name: '#1' }).click();
+    await page.getByRole('combobox', { name: 'To revision' }).click();
+    await window.getByRole('option', { name: '#2' }).click();
+
     const diff = page.getByTestId('revision-diff');
     await expect(diff).toBeVisible({ timeout: 60_000 });
+    // A restart changes exactly one thing in the template, and that is what the diff shows.
+    await expect(diff).toContainText('restartedAt', { timeout: 30_000 });
     await shoot('deployment-compare');
 });

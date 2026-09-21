@@ -19,6 +19,8 @@ export const K3S_IMAGE = 'rancher/k3s:v1.36.4-k3s1';
 /** Reads as a cluster somebody runs, since the top bar and the dashboard both name it. */
 export const CONTEXT_NAME = 'orbit-production';
 export const NAMESPACE = 'production';
+/** Names the node, which heads the Nodes list, the node page and the drain dialog. */
+export const NODE_NAME = 'orbit-node-01';
 export const KUBECONFIG_PATH = resolve('tests/demo/.kubeconfig');
 export const CONTAINER_NAME = 'km-demo-cluster';
 export const CLUSTER_STATE_PATH = resolve('tests/demo/.cluster.json');
@@ -71,7 +73,12 @@ export async function ensureCluster(): Promise<void> {
     // is what gives the cluster an IngressClass and an Ingress with an address, and servicelb is
     // what keeps traefik's own Service from sitting Pending in the screenshot of the Services list.
     // The command has to be given in full: `K3sContainer` disables traefik in its own default.
-    const container = new K3sContainer(K3S_IMAGE).withCommand(['server']).withName(CONTAINER_NAME).withReuse();
+    // `--node-name` because a k3s node otherwise takes the container's id, and every shot of the
+    // Nodes list, a node's page and the drain dialog would be headed by a docker hash.
+    const container = new K3sContainer(K3S_IMAGE)
+        .withCommand(['server', `--node-name=${NODE_NAME}`])
+        .withName(CONTAINER_NAME)
+        .withReuse();
     started = await container.start();
     const containerId = started.getId();
     writeFileSync(KUBECONFIG_PATH, started.getKubeConfig().replace(/\bdefault\b/g, CONTEXT_NAME));
