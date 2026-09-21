@@ -1,0 +1,12 @@
+{{- if .Values.tracing.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-tracing
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: platform-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.tracing.endpoint | quote }}
+{{- end }}

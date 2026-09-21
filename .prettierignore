@@ -5,3 +5,6 @@ release/
 package-lock.json
 src/renderer/routeTree.gen.ts
 coverage/
+
+# Go templates, not YAML: prettier cannot parse a Helm chart template.
+tests/demo/fixtures/chart/templates/

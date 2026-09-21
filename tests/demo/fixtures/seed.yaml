@@ -1,0 +1,740 @@
+# The demo cluster's contents. Unlike the end-to-end seed, which gives the specs one stable object
+# per screen, this one exists to be photographed: the names read like an application somebody runs,
+# there is more than one namespace, and several workloads are broken on purpose, because a
+# screenshot of an all-green cluster is a screenshot of nothing.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    environment: production
+    team: payments
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+  labels:
+    environment: staging
+    team: payments
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    environment: production
+    team: platform
+---
+# Generous enough that nothing here is refused admission: the deliberately unschedulable workload
+# below has to read as Pending on the Pods screen, not as a create the quota turned away.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: production-quota
+  namespace: production
+spec:
+  hard:
+    pods: '40'
+    requests.cpu: '8'
+    requests.memory: 16Gi
+    persistentvolumeclaims: '10'
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: production-limits
+  namespace: production
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 10m
+        memory: 32Mi
+      default:
+        cpu: 200m
+        memory: 128Mi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-config
+  namespace: production
+data:
+  LOG_LEVEL: info
+  FEATURE_EXPRESS_CHECKOUT: 'true'
+  currency.yaml: |
+    default: EUR
+    supported:
+      - EUR
+      - USD
+      - GBP
+---
+# Invented values: nothing here is a credential for anything. The Secret screen's whole point is
+# that it masks them, so the screenshot needs keys that look like the ones people actually keep.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: payments-credentials
+  namespace: production
+type: Opaque
+stringData:
+  DATABASE_URL: postgres://checkout@payments-db.production:5432/checkout
+  JWT_SIGNING_KEY: 5f4dcc3b5aa765d61d8327deb882cf99
+  GATEWAY_API_KEY: demo_key_not_a_real_credential_0001
+  WEBHOOK_SIGNING_SECRET: whsec_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkout
+  namespace: production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: checkout-reader
+  namespace: production
+rules:
+  - apiGroups: ['']
+    resources: ['configmaps', 'secrets']
+    verbs: ['get', 'list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: checkout-reader
+  namespace: production
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: checkout-reader
+subjects:
+  - kind: ServiceAccount
+    name: checkout
+    namespace: production
+---
+# The workload every shot of a pod, a log console and the Related tab is taken against. It mounts a
+# ConfigMap, reads a Secret through envFrom and runs as a ServiceAccount of its own, so the Related
+# tab has three kinds of relation to explain rather than one.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: production
+  labels:
+    app: checkout
+    app.kubernetes.io/component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+        app.kubernetes.io/component: api
+    spec:
+      serviceAccountName: checkout
+      containers:
+        - name: checkout
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              # No timestamp of its own. A pod's Logs tab stamps every line already, so a line that
+              # carries one too renders the time twice and reads as a bug in the console.
+              i=0
+              while true; do
+                i=$((i+1))
+                case $((i % 17)) in
+                  7)  echo "ERROR checkout  order=ord_71$i  gateway timeout after 3000ms, scheduling retry" ;;
+                  3)  echo "WARN  checkout  order=ord_71$i  capture retried (attempt 2 of 3)" ;;
+                  11) echo "INFO  checkout  POST /api/v1/orders 201 $((i % 60 + 30))ms order=ord_71$i" ;;
+                  *)  echo "INFO  checkout  GET /api/v1/cart 200 $((i % 40 + 8))ms" ;;
+                esac
+                sleep 2
+              done
+          envFrom:
+            - secretRef:
+                name: payments-credentials
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: checkout-config
+                  key: LOG_LEVEL
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /etc/checkout
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: checkout-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  namespace: production
+spec:
+  selector:
+    app: checkout
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: production
+  labels:
+    app: payments-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+    spec:
+      containers:
+        - name: payments-api
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
+            limits:
+              cpu: 300m
+              memory: 192Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api
+  namespace: production
+spec:
+  selector:
+    app: payments-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: payments-api
+  namespace: production
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: payments.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: payments-api
+                port:
+                  number: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payments-api
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: payments-api
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+# Covers the running pods and allows no disruption, so it reads Blocked and the node's drain plan
+# has something real to stop on.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payments-api
+  namespace: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: payments-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-worker
+  namespace: production
+  labels:
+    app: ingest-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ingest-worker
+  template:
+    metadata:
+      labels:
+        app: ingest-worker
+    spec:
+      containers:
+        - name: worker
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              while true; do
+                echo "INFO  ingest  batch drained, 0 messages pending"
+                sleep 7
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: production
+spec:
+  clusterIP: None
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: production
+  labels:
+    app: redis
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - name: redis
+              containerPort: 6379
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        resources:
+          requests:
+            storage: 256Mi
+---
+# Broken on purpose #1: an image that does not exist, so the alerts panel carries an image pull
+# failure and the Pods list has an ImagePullBackOff row.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-sync
+  namespace: production
+  labels:
+    app: image-sync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: image-sync
+  template:
+    metadata:
+      labels:
+        app: image-sync
+    spec:
+      containers:
+        - name: sync
+          image: registry.example.com/platform/image-sync:v2.4.1
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+# Broken on purpose #2: exits non-zero, so the kubelet emits the Warning BackOff events the crash
+# loop alert is derived from (a CrashLoopBackOff pod is phase Running, so no selector finds it).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-exporter
+  namespace: production
+  labels:
+    app: legacy-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-exporter
+  template:
+    metadata:
+      labels:
+        app: legacy-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "FATAL exporter  cannot reach metrics backend: connection refused"
+              exit 1
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+# Broken on purpose #3: a node selector nothing matches, which is Pending without disturbing the
+# quota the way an enormous resource request would.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report-builder
+  namespace: production
+  labels:
+    app: report-builder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: report-builder
+  template:
+    metadata:
+      labels:
+        app: report-builder
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/gpu: 'true'
+      containers:
+        - name: builder
+          image: busybox:1.36
+          command: ['sh', '-c', 'sleep 3600']
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate-0041
+  namespace: production
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: busybox:1.36
+          command: ['sh', '-c', 'echo "applied 3 migrations"; sleep 2']
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nightly-reconcile
+  namespace: production
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: reconcile
+          image: busybox:1.36
+          command: ['sh', '-c', 'echo "reconcile failed: ledger out of balance"; exit 1']
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: usage-rollup
+  namespace: production
+spec:
+  schedule: '0 3 * * *'
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: rollup
+              image: busybox:1.36
+              command: ['sh', '-c', 'echo "rolled up 1d of usage"']
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: checkout-uploads
+  namespace: production
+spec:
+  accessModes: ['ReadWriteOnce']
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: staging
+  labels:
+    app: checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+        - name: checkout
+          image: busybox:1.36
+          command: ['sh', '-c', 'while true; do echo "INFO  checkout  ready"; sleep 9; done']
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: staging
+  labels:
+    app: payments-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+    spec:
+      containers:
+        - name: payments-api
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: platform
+  labels:
+    app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: busybox:1.36
+          command: ['sh', '-c', 'while true; do echo "INFO  node-exporter  scraped 148 series"; sleep 15; done']
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+---
+# Burns CPU in bursts so the cluster's usage series is a shape rather than a flat line. The
+# dashboard screenshot lives or dies on this: both series share one axis, so on a 12-core node a
+# single busy shell loop is 3% against memory's 46% and reads as no line at all. Three replicas
+# bursting together swing the cluster average by roughly a quarter, which draws.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-indexer
+  namespace: platform
+  labels:
+    app: search-indexer
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: search-indexer
+  template:
+    metadata:
+      labels:
+        app: search-indexer
+    spec:
+      containers:
+        - name: indexer
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              # Wall-clock bursts rather than a fixed iteration count, which would be a different
+              # length of burn on every machine. The period is long against the sampler's 12 s so a
+              # soak of a couple of minutes covers three cycles.
+              while true; do
+                end=$(( $(date +%s) + 20 ))
+                while [ $(date +%s) -lt $end ]; do
+                  n=0
+                  while [ $n -lt 20000 ]; do n=$((n+1)); done
+                done
+                sleep 25
+              done
+          resources:
+            requests:
+              cpu: 100m
+              memory: 32Mi
+            limits:
+              # A whole core each, so three of them bursting together move the cluster average by
+              # about a quarter on a 12-core machine. Throttled below that the line stays flat.
+              cpu: '1'
+              memory: 128Mi
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: production-critical
+value: 100000
+globalDefault: false
+description: Payment path workloads that must be scheduled ahead of everything else.
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: sandboxed
+handler: runc
+scheduling:
+  nodeSelector:
+    kubernetes.io/os: linux
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: require-team-label
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['apps']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE']
+        resources: ['deployments']
+  validations:
+    - expression: "has(object.metadata.labels) && 'app' in object.metadata.labels"
+      message: every deployment must carry an app label
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: queues.messaging.example.com
+spec:
+  group: messaging.example.com
+  scope: Namespaced
+  names:
+    plural: queues
+    singular: queue
+    kind: Queue
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - name: Depth
+          type: integer
+          jsonPath: .status.depth
+        - name: Consumers
+          type: integer
+          jsonPath: .spec.consumers
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                consumers:
+                  type: integer
+                maxRetries:
+                  type: integer
+            status:
+              type: object
+              properties:
+                depth:
+                  type: integer
+                ready:
+                  type: boolean

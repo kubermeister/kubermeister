@@ -34,7 +34,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "screenshots": "playwright test --config playwright.demo.config.ts"
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
