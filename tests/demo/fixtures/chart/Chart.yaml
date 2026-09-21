@@ -1,0 +1,6 @@
+apiVersion: v2
+name: platform-agent
+description: A small chart installed into the demo cluster so the Helm screens read a real release.
+type: application
+version: 1.4.2
+appVersion: '2.8.0'

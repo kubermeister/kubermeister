@@ -1,0 +1,37 @@
+# Instances of the seeded definition, applied only once the API server serves the kind. Their
+# printer columns are what the instance browser renders, so each one carries a different status.
+apiVersion: messaging.example.com/v1
+kind: Queue
+metadata:
+  name: orders
+  namespace: production
+spec:
+  consumers: 4
+  maxRetries: 5
+status:
+  depth: 128
+  ready: true
+---
+apiVersion: messaging.example.com/v1
+kind: Queue
+metadata:
+  name: payment-captures
+  namespace: production
+spec:
+  consumers: 2
+  maxRetries: 10
+status:
+  depth: 12
+  ready: true
+---
+apiVersion: messaging.example.com/v1
+kind: Queue
+metadata:
+  name: receipt-emails
+  namespace: production
+spec:
+  consumers: 0
+  maxRetries: 3
+status:
+  depth: 4096
+  ready: false

@@ -72,6 +72,7 @@ const lifecycleMod = {
 };
 const ownersMod = { getPodOwners: vi.fn(), listOwnedPods: vi.fn() };
 const describeMod = { describeObject: vi.fn() };
+const schemasMod = { getKindSchema: vi.fn(), resetSchemaCache: vi.fn() };
 const alertsMod = { listAlerts: vi.fn() };
 const samplerMod = { resetHistory: vi.fn() };
 const streamsMod = { endAllStreams: vi.fn() };
@@ -99,6 +100,7 @@ vi.mock('../../../src/main/k8s/resources/write.js', () => writeMod);
 vi.mock('../../../src/main/k8s/resources/lifecycle.js', () => lifecycleMod);
 vi.mock('../../../src/main/k8s/resources/owners.js', () => ownersMod);
 vi.mock('../../../src/main/k8s/resources/describe.js', () => describeMod);
+vi.mock('../../../src/main/k8s/openapi/index.js', () => schemasMod);
 
 const { registerHandlers } = await import('../../../src/main/ipc/index.js');
 const { ipcSchemas } = await import('../../../src/shared/ipc.js');
@@ -261,16 +263,35 @@ describe('registerHandlers', () => {
         const order: string[] = [];
         streamsMod.endAllStreams.mockImplementation(() => order.push('streams'));
         samplerMod.resetHistory.mockImplementation(() => order.push('sampler'));
+        schemasMod.resetSchemaCache.mockImplementation(() => order.push('schemas'));
         context.setContext.mockImplementation(() => {
             order.push('switch');
             return { ...alpha, name: 'beta' };
         });
         await invoke('context.set', { name: 'beta' });
-        expect(order).toEqual(['streams', 'sampler', 'switch']);
+        expect(order).toEqual(['streams', 'sampler', 'schemas', 'switch']);
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The context changed to "beta"');
         // A namespace switch changes nothing about the connection, so streams stay up.
         await invoke('namespace.set', { namespace: 'x' });
         expect(streamsMod.endAllStreams).toHaveBeenCalledOnce();
+    });
+
+    it('answers a kind’s schema, and refuses a group-version that could leave the OpenAPI endpoint', async () => {
+        schemasMod.getKindSchema.mockResolvedValue({
+            apiVersion: 'apps/v1',
+            kind: 'Deployment',
+            document: 'apis/apps/v1',
+            name: 'io.k8s.api.apps.v1.Deployment',
+            definitions: { 'io.k8s.api.apps.v1.Deployment': { type: 'object' } },
+        });
+        await expect(invoke('schemas.forKind', { apiVersion: 'apps/v1', kind: 'Deployment' })).resolves.toMatchObject({
+            name: 'io.k8s.api.apps.v1.Deployment',
+        });
+        expect(schemasMod.getKindSchema).toHaveBeenCalledWith({ apiVersion: 'apps/v1', kind: 'Deployment' });
+
+        schemasMod.getKindSchema.mockResolvedValue(null);
+        await expect(invoke('schemas.forKind', { apiVersion: 'example.com/v1', kind: 'Widget' })).resolves.toBeNull();
+        await expect(invoke('schemas.forKind', { apiVersion: '../secrets', kind: 'Widget' })).rejects.toThrow();
     });
 
     it('refuses a malformed namespace before it can become the active selection', async () => {
