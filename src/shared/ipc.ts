@@ -108,6 +108,9 @@ export const updateStateSchema = z.object({
         'checking',
         'up-to-date',
         'available',
+        // A newer version exists and this install is replaced by hand: a package the system's own
+        // manager owns, which the app must never overwrite but can still say something about.
+        'manual',
         'downloading',
         'downloaded',
         'error',

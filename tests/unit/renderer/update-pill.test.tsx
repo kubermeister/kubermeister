@@ -90,6 +90,33 @@ describe('UpdatePill', () => {
         expect(invoke.mock.calls.filter(([c]) => c === 'update.download')).toHaveLength(2);
     });
 
+    it('sends a package the system owns to the release page instead of offering a download', async () => {
+        answer({ status: 'up-to-date' });
+        render(<UpdatePill />);
+        await act(async () => {});
+        act(() =>
+            push?.({
+                status: 'manual',
+                version: '0.5.0',
+                message: 'This package is managed by the system.',
+            }),
+        );
+        const pill = screen.getByTestId('update-pill');
+        expect(pill).toHaveTextContent('Update available');
+        expect(pill).toHaveAttribute('data-status', 'manual');
+
+        await userEvent.click(pill);
+        const popover = await screen.findByTestId('update-popover');
+        expect(popover).toHaveTextContent('Version 0.5.0 is available.');
+        expect(popover).toHaveTextContent('This package is managed by the system.');
+        // Nothing here may fetch or install it; the page it came from is the whole action.
+        expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Get the update/ })).toHaveAttribute(
+            'href',
+            'https://github.com/kubermeister/kubermeister/releases/tag/v0.5.0',
+        );
+    });
+
     it('shows download progress and then the restart, announcing readiness', async () => {
         answer({ status: 'downloading', version: '0.3.1', percent: 10 });
         render(<UpdatePill />);

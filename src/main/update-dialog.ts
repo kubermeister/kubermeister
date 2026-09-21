@@ -59,6 +59,18 @@ export function promptFor(state: UpdateState, currentVersion: string): UpdatePro
                 actions: linkable ? ['download', 'notes', 'dismiss'] : ['download', 'dismiss'],
             };
         }
+        case 'manual': {
+            // No Download button on purpose: this package is the system's to replace, so the box
+            // offers what the app can honestly do — name the version and open its page.
+            const linkable = state.version !== undefined;
+            return {
+                type: 'info',
+                message: `${named(state.version)} is available.`,
+                detail: paragraphs(`You have ${currentVersion}.`, state.message ?? ''),
+                buttons: linkable ? ['Release Notes', 'OK'] : ['OK'],
+                actions: linkable ? ['notes', 'dismiss'] : ['dismiss'],
+            };
+        }
         case 'downloading':
             return {
                 type: 'info',

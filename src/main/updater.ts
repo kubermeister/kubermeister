@@ -1,6 +1,8 @@
 import { app } from 'electron';
 import electronUpdater, { type UpdateInfo } from 'electron-updater';
+import { load as loadYaml } from 'js-yaml';
 import type { UpdateState } from '../shared/ipc.js';
+import { compareVersions, releaseFeedUrl } from '../shared/updates.js';
 import { broadcast } from './ipc/push.js';
 import { getSettings } from './settings/store.js';
 
@@ -50,15 +52,57 @@ function carry(current: UpdateState): Pick<UpdateState, 'version' | 'releaseDate
 }
 
 /**
- * Why the updater cannot run in this build, or `null` when it can. The update feed (the GitHub
- * releases of this repository) is embedded by electron-builder at package time, so development
- * builds have nothing to check against. Linux deb packages are managed by apt and only
- * the AppImage can replace itself.
+ * Why there is nothing to check against, or `null` when there is. Only a development build is in
+ * that position: the update feed is the GitHub releases of this repository, which a build made on
+ * somebody's machine was never published to.
  */
 function unsupportedReason(): string | null {
-    if (!app.isPackaged) return 'Development build';
-    if (process.platform === 'linux' && !process.env.APPIMAGE) return 'Installed from a .deb package';
-    return null;
+    return app.isPackaged ? null : 'Development build';
+}
+
+/**
+ * Whether this install can replace itself. Only the AppImage can on Linux, and its runtime is what
+ * sets `APPIMAGE`; a deb, an rpm or an AUR package belongs to the system's own package manager, and
+ * an app that overwrote its files would leave that manager's database describing something else.
+ */
+function installsItself(): boolean {
+    return process.platform !== 'linux' || !!process.env.APPIMAGE;
+}
+
+/** Said of an install the system's package manager owns, wherever the found version is shown. */
+const MANUAL_MESSAGE =
+    'This package is managed by the system, so the new version is installed the same way as this one.';
+
+/** How long the published feed has to answer before a check gives up. */
+const FEED_TIMEOUT_MS = 15_000;
+
+/**
+ * The version the releases page is offering. Read from the published feed rather than through
+ * electron-updater, which declines to look at all when it could not install what it found:
+ * `AppImageUpdater.isUpdaterActive()` is false without `APPIMAGE`, and `checkForUpdates` bails on
+ * that. Knowing a version exists needs no package manager, so it is answered separately.
+ */
+async function publishedVersion(): Promise<string> {
+    const response = await fetch(releaseFeedUrl(process.platform), {
+        signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+        headers: { accept: 'text/yaml, text/plain' },
+    });
+    if (!response.ok) throw new Error(`The release feed answered ${response.status}.`);
+    const feed: unknown = loadYaml(await response.text());
+    const version = typeof feed === 'object' && feed !== null ? (feed as { version?: unknown }).version : undefined;
+    if (typeof version !== 'string' || version.trim() === '') throw new Error('The release feed named no version.');
+    return version;
+}
+
+/** The check for an install that cannot replace itself: report the version, never fetch it. */
+async function checkPublished(): Promise<void> {
+    setState({ status: 'checking' });
+    const version = await publishedVersion();
+    if (compareVersions(version, app.getVersion()) <= 0) {
+        setState({ status: 'up-to-date', checkedAt: now() });
+        return;
+    }
+    setState({ status: 'manual', version, checkedAt: now(), message: MANUAL_MESSAGE });
 }
 
 function mode() {
@@ -107,6 +151,23 @@ export function startUpdater(): void {
         return;
     }
 
+    // An install the system owns gets the scheduling below and the feed check, and none of the
+    // library's wiring: nothing here may download or install for it.
+    if (installsItself()) wireAutoUpdater();
+
+    runScheduled = (): void => {
+        if (mode() === 'off') return;
+        void runCheck().catch((error: unknown) => {
+            // Nobody asked for this check; the failure is recorded, not announced.
+            setState({ status: 'error', message: errorMessage(error), background: true });
+        });
+    };
+    checkIntervalMs = getSettings().updates.checkIntervalHours * HOUR_MS;
+    scheduling = true;
+    scheduleNext(FIRST_CHECK_DELAY_MS, runScheduled);
+}
+
+function wireAutoUpdater(): void {
     autoUpdater.logger = console;
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
@@ -128,17 +189,6 @@ export function startUpdater(): void {
     );
     autoUpdater.on('update-downloaded', (info) => setState({ status: 'downloaded', ...describe(info) }));
     autoUpdater.on('error', (error) => setState({ status: 'error', message: errorMessage(error) }));
-
-    runScheduled = (): void => {
-        if (mode() === 'off') return;
-        void runCheck().catch((error: unknown) => {
-            // Nobody asked for this check; the failure is recorded, not announced.
-            setState({ status: 'error', message: errorMessage(error), background: true });
-        });
-    };
-    checkIntervalMs = getSettings().updates.checkIntervalHours * HOUR_MS;
-    scheduling = true;
-    scheduleNext(FIRST_CHECK_DELAY_MS, runScheduled);
 }
 
 function busy(): boolean {
@@ -148,6 +198,10 @@ function busy(): boolean {
 /** Checks unless a download is in flight or ready; rejects when the feed cannot be read. */
 async function runCheck(): Promise<void> {
     if (busy()) return;
+    if (!installsItself()) {
+        await checkPublished();
+        return;
+    }
     await autoUpdater.checkForUpdates();
 }
 

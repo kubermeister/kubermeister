@@ -46,6 +46,7 @@ export function pillLabel(state: UpdateState | null): { label: string; tone: Upd
     if (!state) return null;
     switch (state.status) {
         case 'available':
+        case 'manual':
             return { label: 'Update available', tone: 'accent' };
         case 'downloading':
             return { label: `Downloading ${state.percent ?? 0}%`, tone: 'neutral' };
@@ -102,6 +103,9 @@ export function describeUpdate(
             // Not the release notes: a generated changelog is a list of pull requests, and the
             // "What's new" link beside this is where it reads properly.
             return { title: `Version ${state.version ?? '?'} is available.`, detail: releasedOn(state) };
+        case 'manual':
+            // The version is the news; how to get it is the package manager's business, not ours.
+            return { title: `Version ${state.version ?? '?'} is available.`, detail: state.message };
         case 'downloading':
             return { title: `Downloading version ${state.version ?? '?'}… ${state.percent ?? 0}%` };
         case 'downloaded':

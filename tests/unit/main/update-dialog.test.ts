@@ -97,6 +97,25 @@ describe('promptFor', () => {
         });
     });
 
+    it('names the version but offers no download for a package the system owns', () => {
+        const prompt = promptFor(
+            { status: 'manual', version: '0.5.0', message: 'This package is managed by the system.' },
+            '0.4.9',
+        );
+        expect(prompt).toMatchObject({
+            type: 'info',
+            message: 'Kubermeister 0.5.0 is available.',
+            actions: ['notes', 'dismiss'],
+        });
+        expect(prompt.detail).toContain('You have 0.4.9.');
+        expect(prompt.detail).toContain('This package is managed by the system.');
+        expect(prompt.buttons).not.toContain('Download');
+    });
+
+    it('offers no release page for a package update that lost its version', () => {
+        expect(promptFor({ status: 'manual' }, '0.4.9')).toMatchObject({ actions: ['dismiss'] });
+    });
+
     it('explains an unsupported build and a failed check with the reason', () => {
         expect(promptFor({ status: 'unsupported', message: 'Development build' }, '0.4.0')).toMatchObject({
             type: 'info',
