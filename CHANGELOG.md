@@ -27,6 +27,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Every release carries a `SHA256SUMS` file, so a download can be checked before it is run.
 
+- Cluster calls go through your proxy. `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` are read the way
+  kubectl reads them, from your login shell as well as the window's own environment, so an app
+  started from the Dock reaches what a terminal reaches; Settings › Connection can name a proxy
+  instead, exclude hosts from it, or turn it off.
+
+- Settings › Connection can point at a CA bundle, for a cluster or an inspecting proxy whose
+  certificate authority the system does not already trust. Those certificates are added to the ones
+  already trusted, never put in their place.
+
 ### Changed
 
 - A new version is now downloaded in the background and installed the next time the app quits,

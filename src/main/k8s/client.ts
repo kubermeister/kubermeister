@@ -19,11 +19,13 @@ import {
     SchedulingV1Api,
     CoordinationV1Api,
     VersionApi,
+    type Cluster,
     type ConfigOptions,
 } from '@kubernetes/client-node';
 import { existsSync } from 'node:fs';
 import { K8sError } from './errors.js';
 import { guardCredentialPlugins } from './exec-auth.js';
+import { applyNetworkSettings } from './proxy.js';
 import { isNamespaceName } from '../../shared/k8s/names.js';
 import { getSettings } from '../settings/store.js';
 
@@ -111,6 +113,9 @@ function loadKubeConfig(): KubeConfig {
         throw new K8sError('kubeconfig', kubeconfigError() ?? 'The kubeconfig could not be loaded.', 'kubeconfig');
     }
     guardCredentialPlugins(next);
+    // The proxy and any extra certificate authorities are settled here, once, so every client, watch
+    // and websocket built from this config already goes the way the user asked.
+    applyNetworkSettings(next);
     return next;
 }
 
@@ -304,6 +309,11 @@ export async function getNamespaced<T>(
     const ns = resolveObjectNamespace(namespace);
     if (!ns) return undefined;
     return readOrNull(() => readOne(name, ns));
+}
+
+/** The cluster entry the current context names, as the app will connect to it, or null. */
+export function currentCluster(): Cluster | null {
+    return kubeConfig().getCurrentCluster();
 }
 
 /** The kube-context every call currently goes to; the stamp a write must match. */

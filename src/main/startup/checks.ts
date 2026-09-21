@@ -1,7 +1,9 @@
 import type { StartupCheck, StartupReport } from '../../shared/ipc.js';
-import { apis, currentContextProblem, kubeconfigError } from '../k8s/client.js';
+import { apis, currentCluster, currentContextProblem, kubeconfigError } from '../k8s/client.js';
 import { getCurrentContext } from '../k8s/context.js';
 import { withK8s } from '../k8s/errors.js';
+import { caBundleProblem, networkSummary } from '../k8s/proxy.js';
+import { getSettings } from '../settings/store.js';
 
 /** A probe against an unreachable API server must not hang the startup screen. */
 const CLUSTER_PROBE_TIMEOUT_MS = 5_000;
@@ -25,6 +27,26 @@ export function checkKubeconfig(): StartupCheck {
         };
     }
     return { ...base, status: 'ok', detail: 'Kubeconfig loaded' };
+}
+
+/**
+ * How the app will reach the cluster. A CA bundle that cannot be read is an error: it was chosen to
+ * make a connection work, so a TLS failure on every screen is the wrong way to learn the file has
+ * moved. Everything else is reported as it stands, since a proxy is only wrong once a call fails.
+ */
+export function checkNetwork(): StartupCheck {
+    const base = { id: 'network', label: 'Proxy and certificates' } as const;
+    const problem = caBundleProblem(getSettings().network.caBundlePath);
+    if (problem) {
+        return { ...base, status: 'error', detail: problem, hint: 'Fix or clear the CA bundle in Settings.' };
+    }
+    let cluster = null;
+    try {
+        cluster = currentCluster();
+    } catch {
+        // The kubeconfig has its own check; the summary is then about the settings alone.
+    }
+    return { ...base, status: 'ok', detail: networkSummary(cluster) };
 }
 
 /**
@@ -98,6 +120,7 @@ function skipped(id: 'context' | 'cluster', reason: string): StartupCheck {
  */
 export async function runStartupChecks(): Promise<StartupReport> {
     const kubeconfig = checkKubeconfig();
+    const network = checkNetwork();
     const context =
         kubeconfig.status === 'error' ? skipped('context', 'the kubeconfig could not be loaded.') : checkContext();
     const cluster =
@@ -106,6 +129,6 @@ export async function runStartupChecks(): Promise<StartupReport> {
             : context.status !== 'ok'
               ? skipped('cluster', 'there is no usable current context.')
               : await checkCluster();
-    const checks = [kubeconfig, context, cluster];
+    const checks = [kubeconfig, network, context, cluster];
     return { checks, ok: checks.every((check) => check.status !== 'error') };
 }

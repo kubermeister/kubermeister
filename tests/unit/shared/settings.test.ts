@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     DEFAULT_SETTINGS,
     SETTINGS_VERSION,
+    isProxyUrl,
     mergeSettings,
     parseSettings,
     settingsInputSchema,
@@ -22,6 +23,12 @@ describe('parseSettings', () => {
                 forwards: [],
             },
             updates: { mode: 'download', checkIntervalHours: 12 },
+            network: {
+                proxyMode: 'manual',
+                proxyUrl: 'http://proxy.corp:3128',
+                noProxy: '.corp.example',
+                caBundlePath: '/etc/corp/ca.pem',
+            },
             window: { bounds: { x: 0, y: 0, width: 1200, height: 800 } },
         };
         expect(parseSettings(valid)).toEqual(valid);
@@ -64,6 +71,7 @@ describe('parseSettings', () => {
                 forwards: [],
             },
             updates: { mode: null, checkIntervalHours: 4 },
+            network: { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null },
             window: { bounds: null },
         });
     });
@@ -171,6 +179,70 @@ describe('parseSettings', () => {
             defaults,
         );
         expect(parseSettings({ version: SETTINGS_VERSION, data: good }).data).toEqual(good);
+    });
+});
+
+describe('the network section', () => {
+    const defaults = { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null };
+
+    it('starts existing installs on the environment proxy and no CA bundle', () => {
+        // A file written before the section existed, migrated or not, carries none of it.
+        expect(parseSettings({ version: 1 }).network).toEqual(defaults);
+        expect(parseSettings({ version: SETTINGS_VERSION }).network).toEqual(defaults);
+        expect(DEFAULT_SETTINGS.network).toEqual(defaults);
+    });
+
+    it('keeps a usable proxy of every supported kind', () => {
+        for (const proxyUrl of [
+            'http://proxy.corp:3128',
+            'https://proxy.corp:3129',
+            'socks5://proxy.corp:1080',
+            'http://user:secret@proxy.corp:3128',
+        ]) {
+            expect(parseSettings({ version: SETTINGS_VERSION, network: { proxyUrl } }).network.proxyUrl).toBe(proxyUrl);
+        }
+    });
+
+    it('resets the section rather than keeping a proxy that is not a proxy URL', () => {
+        for (const proxyUrl of ['proxy.corp:3128', 'file:///etc/passwd', 'ftp://proxy.corp', 'not a url', '']) {
+            expect(parseSettings({ version: SETTINGS_VERSION, network: { proxyUrl } }).network).toEqual(defaults);
+        }
+        expect(parseSettings({ version: SETTINGS_VERSION, network: { proxyMode: 'sometimes' } }).network).toEqual(
+            defaults,
+        );
+    });
+
+    it('refuses the CA bundle path from the renderer input schema, like every other path', () => {
+        const parsed = settingsInputSchema.safeParse({ network: { caBundlePath: '/etc/passwd' } });
+        expect(parsed.success && 'caBundlePath' in (parsed.data.network ?? {})).toBe(false);
+    });
+
+    it('lets the renderer choose the proxy, its bypass list and none at all', () => {
+        expect(settingsInputSchema.safeParse({ network: { proxyMode: 'off' } }).success).toBe(true);
+        expect(
+            settingsInputSchema.safeParse({ network: { proxyMode: 'manual', proxyUrl: 'http://proxy:3128' } }).success,
+        ).toBe(true);
+        expect(settingsInputSchema.safeParse({ network: { noProxy: '.corp.example, 10.0.0.0/8' } }).success).toBe(true);
+        expect(settingsInputSchema.safeParse({ network: { proxyUrl: 'javascript:alert(1)' } }).success).toBe(false);
+        expect(settingsInputSchema.safeParse({ network: { proxyMode: 'maybe' } }).success).toBe(false);
+    });
+
+    it('merges into the section without disturbing the rest of it', () => {
+        const merged = mergeSettings(DEFAULT_SETTINGS, { network: { proxyMode: 'manual' } });
+        expect(merged.network).toEqual({ ...defaults, proxyMode: 'manual' });
+        expect(mergeSettings(merged, { network: { caBundlePath: '/ca.pem' } }).network.proxyMode).toBe('manual');
+    });
+});
+
+describe('isProxyUrl', () => {
+    it('accepts the schemes a proxy can speak and nothing else', () => {
+        expect(isProxyUrl('http://proxy:3128')).toBe(true);
+        expect(isProxyUrl('socks5h://proxy:1080')).toBe(true);
+        expect(isProxyUrl('http://proxy')).toBe(true);
+        expect(isProxyUrl('http://')).toBe(false);
+        expect(isProxyUrl('ws://proxy:3128')).toBe(false);
+        expect(isProxyUrl('proxy:3128')).toBe(false);
+        expect(isProxyUrl('')).toBe(false);
     });
 });
 

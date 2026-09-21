@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFieldControl } from './field';
@@ -63,4 +65,60 @@ export function Toggle({
 }) {
     const controlledProps = checked !== undefined ? { checked, onCheckedChange } : { defaultChecked, onCheckedChange };
     return <Switch {...controlledProps} disabled={disabled} aria-label={label} />;
+}
+
+/**
+ * A setting typed rather than chosen. It saves when the field is left or Enter is pressed, never on
+ * every keystroke, so a half-typed address is not written to disk and sent to the cluster; Escape
+ * puts the stored value back. A value `validate` refuses is marked and not saved, since the main
+ * process would reject it as a bug rather than as a typo.
+ */
+export function FormInput({
+    id,
+    value,
+    placeholder,
+    validate,
+    onCommit,
+}: {
+    id?: string;
+    value: string;
+    placeholder?: string;
+    validate?: (value: string) => boolean;
+    onCommit: (value: string) => void;
+}) {
+    const { id: fieldId } = useFieldControl(id);
+    const [draft, setDraft] = useState(value);
+    const [stored, setStored] = useState(value);
+    // The saved value changed elsewhere (another write, a reload): start again from it.
+    if (stored !== value) {
+        setStored(value);
+        setDraft(value);
+    }
+    const trimmed = draft.trim();
+    const invalid = trimmed.length > 0 && validate ? !validate(trimmed) : false;
+
+    const commit = () => {
+        if (invalid || trimmed === value) return;
+        onCommit(trimmed);
+    };
+
+    return (
+        <Input
+            id={fieldId}
+            value={draft}
+            placeholder={placeholder}
+            spellCheck={false}
+            aria-invalid={invalid || undefined}
+            className="h-8 text-body"
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    commit();
+                }
+                if (event.key === 'Escape') setDraft(value);
+            }}
+        />
+    );
 }
