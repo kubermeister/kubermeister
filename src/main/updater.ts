@@ -185,7 +185,13 @@ function wireAutoUpdater(): void {
         }
     });
     autoUpdater.on('download-progress', (progress) =>
-        setState({ status: 'downloading', ...carry(state), percent: Math.round(progress.percent) }),
+        setState({
+            status: 'downloading',
+            ...carry(state),
+            percent: Math.round(progress.percent),
+            transferred: progress.transferred,
+            total: progress.total,
+        }),
     );
     autoUpdater.on('update-downloaded', (info) => setState({ status: 'downloaded', ...describe(info) }));
     autoUpdater.on('error', (error) => setState({ status: 'error', message: errorMessage(error) }));

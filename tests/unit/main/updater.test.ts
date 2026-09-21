@@ -243,12 +243,20 @@ describe('startUpdater', () => {
         expect(downloadUpdate()).toBe(true);
         expect(autoUpdater.downloadUpdate).toHaveBeenCalledOnce();
         expect(getUpdateState()).toMatchObject({ status: 'downloading', version: '0.3.0', percent: 0 });
-        autoUpdater.emit('download-progress', { percent: 41.6 });
+        autoUpdater.emit('download-progress', {
+            percent: 41.6,
+            transferred: 5_242_880,
+            total: 12_582_912,
+        });
         expect(getUpdateState()).toEqual({
             status: 'downloading',
             version: '0.3.0',
             releaseDate: found.releaseDate,
             percent: 42,
+            // The library's own totals: for a differential download these count the ranges it
+            // fetches, so they are the size of the change rather than of the installer.
+            transferred: 5_242_880,
+            total: 12_582_912,
         });
         autoUpdater.emit('update-downloaded', found);
         expect(getUpdateState()).toEqual({

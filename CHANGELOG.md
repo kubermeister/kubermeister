@@ -22,6 +22,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Help › Report a Bug… and a link on Settings › About open the bug report form with the version and
   the operating system already filled in.
 
+- The update popover and Settings › About name the download size while an update comes down, so a
+  differential update shows the few megabytes it is actually fetching rather than a bare percentage.
+
 ### Fixed
 
 - A Linux install from the .deb package is told when a new version is released. It still never

@@ -82,6 +82,32 @@ function releasedOn(state: UpdateState): string | undefined {
 }
 
 /** One line for the popover and the Settings card, with an optional second line of detail. */
+/**
+ * A byte count as somebody reads it. 1024 to the step, the way a desktop reports a download, and one
+ * decimal place past a kilobyte so a size does not jump in whole megabytes while it is being watched.
+ */
+export function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${Math.round(bytes)} B`;
+    const units = ['KB', 'MB', 'GB'];
+    let value = bytes / 1024;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+    }
+    return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+/**
+ * "8.2 MB of 12.4 MB" while a download runs. The total is what this download will fetch, which for a
+ * differential one is the size of the change rather than of the installer, so it is worth naming.
+ */
+function downloadSize(state: UpdateState): string | undefined {
+    if (state.total === undefined) return undefined;
+    const transferred = Math.min(state.transferred ?? 0, state.total);
+    return `${formatBytes(transferred)} of ${formatBytes(state.total)}`;
+}
+
 export function describeUpdate(
     state: UpdateState | null,
     now: number = Date.now(),
@@ -107,7 +133,10 @@ export function describeUpdate(
             // The version is the news; how to get it is the package manager's business, not ours.
             return { title: `Version ${state.version ?? '?'} is available.`, detail: state.message };
         case 'downloading':
-            return { title: `Downloading version ${state.version ?? '?'}… ${state.percent ?? 0}%` };
+            return {
+                title: `Downloading version ${state.version ?? '?'}… ${state.percent ?? 0}%`,
+                detail: downloadSize(state),
+            };
         case 'downloaded':
             return {
                 title: `Version ${state.version ?? '?'} is ready to install.`,
