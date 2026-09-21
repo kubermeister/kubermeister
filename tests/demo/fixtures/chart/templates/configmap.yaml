@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: platform-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  TRACING_ENABLED: {{ .Values.tracing.enabled | quote }}

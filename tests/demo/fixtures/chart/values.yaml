@@ -1,0 +1,7 @@
+replicaCount: 1
+logLevel: info
+# The upgrade in the harness flips this on, so revision 2 adds an object revision 1 never had and
+# a rollback has something real to take away again.
+tracing:
+  enabled: false
+  endpoint: otel-collector.platform:4317

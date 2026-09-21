@@ -19,7 +19,7 @@ vi.mock('electron-updater', () => ({ default: { autoUpdater } }));
 const broadcast = vi.fn();
 vi.mock('../../../src/main/ipc/push.js', () => ({ broadcast }));
 
-let mode: UpdateMode = 'check';
+let mode: UpdateMode | null = 'check';
 let checkIntervalHours = 4;
 vi.mock('../../../src/main/settings/store.js', () => ({
     getSettings: () => ({ updates: { mode, checkIntervalHours } }),
@@ -234,6 +234,15 @@ describe('startUpdater', () => {
         expect(broadcast.mock.calls.map(([, state]) => (state as { status: string }).status)).not.toContain(
             'available',
         );
+    });
+
+    it('downloads for a user who never chose a mode, since that is what the default says', async () => {
+        mode = null;
+        const { startUpdater, getUpdateState } = await loadUpdater();
+        startUpdater();
+        autoUpdater.emit('update-available', found);
+        expect(autoUpdater.downloadUpdate).toHaveBeenCalledOnce();
+        expect(getUpdateState()).toMatchObject({ status: 'downloading', version: '0.3.0' });
     });
 
     it('carries the found version through download progress to ready-to-install', async () => {

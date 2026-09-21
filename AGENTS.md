@@ -605,7 +605,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 ### Settings
 
 - Settings (`src/shared/settings.ts`, `src/main/settings/store.ts`) are a versioned JSON file in
-  Electron's `userData`.
+  Electron's `userData`. `parseSettings` migrates every older `version` forward and falls back to
+  defaults for one it does not know; the whole object is rewritten on every save, so a value equal
+  to the default is no evidence that anybody chose it.
 - The settings screen at `/settings` edits them through `settings.set`; the application menu
   (`src/main/menu.ts`) opens it with `Cmd+,` on macOS by pushing `open-settings`.
 - Theme lives in renderer `localStorage`, not here, because it must apply before first paint.
@@ -690,11 +692,16 @@ through the next release.
 
 - `src/main/updater.ts` (electron-updater) reads the feed electron-builder embeds at package time;
   macOS updates need the `zip` target next to the dmg.
-- The library never downloads on its own: the `updates.mode` setting (`check` by default,
-  `download`, `off`) is read the moment a version is found, and `updates.checkIntervalHours` (4 by
-  default) spaces the scheduled checks after the 15 s launch delay. `applyCheckInterval` runs on
+- The library never downloads on its own: the `updates.mode` setting (`check`, `download`, `off`)
+  is read the moment a version is found, and `updates.checkIntervalHours` (4 by default) spaces the
+  scheduled checks after the 15 s launch delay. `applyCheckInterval` runs on
   every settings write and reschedules from now only when the value changed, so a write of anything
   else never pushes the next check out.
+- **A mode nobody picked is `null`, not a default written into the file**, and `null` reads as
+  `DEFAULT_UPDATE_MODE`, which is `download`: a release that has been found is worth having on
+  disk, since the app releases often and installs on quit, and an announcement waiting on a click
+  is a fix that never lands. Changing that constant moves everyone who never chose, and the Settings
+  select shows the resolved mode rather than an empty control.
 - Main pushes every transition as `update.state`, which `useUpdater` in
   `src/renderer/lib/updates.ts` mirrors for the top-bar `UpdatePill` (popover plus one-shot toasts)
   and the Settings About card; the palette reaches `update.check` too.

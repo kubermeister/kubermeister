@@ -4,5 +4,12 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["node", "@testing-library/jest-dom"]
   },
-  "include": ["tests/**/*.ts", "vitest.config.ts", "playwright.config.ts", "src/renderer/env.d.ts", "tests/**/*.tsx"]
+  "include": [
+    "tests/**/*.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "playwright.demo.config.ts",
+    "src/renderer/env.d.ts",
+    "tests/**/*.tsx"
+  ]
 }
