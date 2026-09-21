@@ -32,6 +32,12 @@ separate roadmap, so what the open issues and milestones say is what is going to
   Say so on the issue before starting, so two people do not build the same thing.
 - **Linking**: a pull request that resolves an issue ends its body with one line, `Closes #N.`,
   which closes the issue on merge and puts its number in the commit history.
+- **Not scheduled yet**: something worth keeping that no release is going to carry is an idea, and
+  ideas live in the repository's
+  [Ideas](https://github.com/kubermeister/kubermeister/discussions/categories/ideas) discussions
+  rather than sitting open in the issue list, which would otherwise stop being the plan. It says
+  what would bring it back, and it becomes an issue on the day it gets a milestone. There is no
+  label for this: an issue is either going to happen or it is a discussion.
 
 ## Setup
 
