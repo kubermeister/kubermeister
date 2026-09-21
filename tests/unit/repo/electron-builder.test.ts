@@ -6,6 +6,7 @@ const config = load(readFileSync('electron-builder.yml', 'utf8')) as {
     electronFuses?: Record<string, boolean>;
     mac?: { hardenedRuntime?: boolean };
     extraResources?: { from: string; to: string }[];
+    toolsets?: { appimage?: string };
 };
 
 describe('electron-builder fuses', () => {
@@ -35,6 +36,15 @@ describe('electron-builder fuses', () => {
 
     it('keeps the hardened runtime on for signed macOS builds', () => {
         expect(config.mac?.hardenedRuntime).toBe(true);
+    });
+});
+
+describe('the AppImage runtime', () => {
+    it('is pinned away from the default, whose runtime needs a library Ubuntu dropped', () => {
+        // electron-builder defaults `toolsets.appimage` to '0.0.0', the legacy toolset: that runtime
+        // dlopens libfuse.so.2, absent from Ubuntu since 23.10, and the AppImage dies at launch.
+        expect(config.toolsets?.appimage).toBeDefined();
+        expect(config.toolsets?.appimage).not.toBe('0.0.0');
     });
 });
 

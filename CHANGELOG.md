@@ -27,6 +27,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- The Linux AppImage starts on Ubuntu 23.10 and newer. It was built on a runtime that loads
+  libfuse2, which those releases no longer ship, so it failed at launch until that library was
+  installed by hand.
+
 - A Linux install from the .deb package is told when a new version is released. It still never
   installs one itself, since the package belongs to the system, but it names the version and links
   to the page to get it from.
