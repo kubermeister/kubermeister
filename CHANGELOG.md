@@ -25,6 +25,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The update popover and Settings › About name the download size while an update comes down, so a
   differential update shows the few megabytes it is actually fetching rather than a bare percentage.
 
+- Every release carries a `SHA256SUMS` file, so a download can be checked before it is run.
+
 ### Fixed
 
 - The Linux AppImage starts on Ubuntu 23.10 and newer. It was built on a runtime that loads

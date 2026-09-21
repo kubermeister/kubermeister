@@ -114,6 +114,24 @@ jobs:
       # Presence flag only; the token itself is used solely by the tap checkout below.
       HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
     steps:
+      # Installers are unsigned on Windows and on Linux, so a checksum is the only way to tell a
+      # good download from a truncated or tampered one. The digests come from the release itself
+      # rather than from re-hashing 800 MB of assets: the packaging action already compared each
+      # one against the file it uploaded, so a wrong digest would have failed the release there.
+      # Written before the release goes public, so it is never visible without its checksums.
+      - name: Publish the checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Installers only: the *.yml feeds are rewritten in place and the blockmaps are updater
+          # plumbing, neither of which anybody checks a download against.
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | select(.name | test("\\.(dmg|zip|exe|AppImage|deb)$")) | "\(.digest)  \(.name)"' \
+            | sed 's/^sha256://' | sort -k2 > SHA256SUMS
+          test -s SHA256SUMS || { echo "::error::no installers to checksum"; exit 1; }
+          cat SHA256SUMS
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+
       - name: Make the release public and latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
