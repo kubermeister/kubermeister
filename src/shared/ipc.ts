@@ -91,6 +91,8 @@ const appInfoSchema = z.object({
     chrome: z.string(),
     node: z.string(),
     platform: z.string(),
+    /** Tells the two macOS builds apart, which the bug report form asks the reporter to distinguish. */
+    arch: z.string(),
 });
 
 /**

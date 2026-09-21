@@ -113,6 +113,7 @@ const handlers: Handlers = {
         chrome: process.versions.chrome,
         node: process.versions.node,
         platform: process.platform,
+        arch: process.arch,
     }),
     'update.state': async () => getUpdateState(),
     'update.check': () => checkForUpdates(),

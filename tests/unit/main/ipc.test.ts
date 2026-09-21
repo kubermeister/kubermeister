@@ -148,6 +148,7 @@ describe('registerHandlers', () => {
             chrome: '152.0.0.0',
             node: process.versions.node,
             platform: process.platform,
+            arch: process.arch,
         });
     });
 
