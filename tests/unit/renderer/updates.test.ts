@@ -30,6 +30,14 @@ describe('pillLabel', () => {
         });
         expect(pillLabel({ status: 'error', message: 'offline' })).toEqual({ label: 'Update failed', tone: 'danger' });
     });
+
+    it('shows a version the user installs by hand the same as one the app can fetch', () => {
+        // The pill says a version exists; what it costs to get it is the popover's business.
+        expect(pillLabel({ status: 'manual', version: '0.5.0' })).toEqual({
+            label: 'Update available',
+            tone: 'accent',
+        });
+    });
 });
 
 describe('formatRelative', () => {
@@ -57,6 +65,12 @@ describe('describeUpdate', () => {
             detail: 'Checked 10 min ago.',
         });
         expect(describeUpdate({ status: 'up-to-date' })).toEqual({ title: "You're on the latest version." });
+        expect(
+            describeUpdate({ status: 'manual', version: '0.5.0', message: 'This package is managed by the system.' }),
+        ).toEqual({
+            title: 'Version 0.5.0 is available.',
+            detail: 'This package is managed by the system.',
+        });
         expect(describeUpdate({ status: 'downloading', version: '0.3.0', percent: 7 })).toEqual({
             title: 'Downloading version 0.3.0… 7%',
         });

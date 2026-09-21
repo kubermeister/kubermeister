@@ -21,3 +21,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   installed with.
 - Help › Report a Bug… and a link on Settings › About open the bug report form with the version and
   the operating system already filled in.
+
+### Fixed
+
+- A Linux install from the .deb package is told when a new version is released. It still never
+  installs one itself, since the package belongs to the system, but it names the version and links
+  to the page to get it from.

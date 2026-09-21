@@ -323,9 +323,11 @@ function AboutCard() {
                     )}
                     {/* The changelog is not in the app at all, so every card naming a version links to it. */}
                     {state?.version && state.status !== 'error' && (
-                        <Button size="sm" variant="ghost" asChild>
+                        // A package the system owns is fetched from the release page by hand, so for
+                        // that state the link is the action rather than a footnote beside one.
+                        <Button size="sm" variant={state.status === 'manual' ? 'default' : 'ghost'} asChild>
                             <a href={releasePageUrl(state.version)} target="_blank" rel="noreferrer">
-                                What&apos;s new
+                                {state.status === 'manual' ? 'Get the update' : <>What&apos;s new</>}
                                 <ExternalLinkIcon />
                             </a>
                         </Button>

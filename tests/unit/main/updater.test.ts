@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateMode } from '../../../src/shared/settings';
 
-const electron = { app: { isPackaged: true } };
+const electron = { app: { isPackaged: true, getVersion: () => '0.4.9' } };
 vi.mock('electron', () => electron);
 
 class FakeAutoUpdater extends EventEmitter {
@@ -26,6 +26,13 @@ vi.mock('../../../src/main/settings/store.js', () => ({
 }));
 
 const savedAppImage = process.env.APPIMAGE;
+const fetchFeed = vi.fn<(...args: unknown[]) => Promise<unknown>>();
+vi.stubGlobal('fetch', fetchFeed);
+const feedAnswering = (version: string) => ({
+    ok: true,
+    status: 200,
+    text: () => Promise.resolve(`version: ${version}\npath: Kubermeister-${version}-linux-x86_64.AppImage\n`),
+});
 let platform: NodeJS.Platform = 'darwin';
 vi.spyOn(process, 'platform', 'get').mockImplementation(() => platform);
 
@@ -56,6 +63,7 @@ describe('startUpdater', () => {
         autoUpdater.checkForUpdates.mockReset().mockResolvedValue(null);
         autoUpdater.downloadUpdate.mockReset().mockResolvedValue([]);
         autoUpdater.quitAndInstall.mockReset();
+        fetchFeed.mockReset().mockResolvedValue(feedAnswering('0.4.9'));
         broadcast.mockReset();
     });
 
@@ -73,11 +81,56 @@ describe('startUpdater', () => {
         expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
     });
 
-    it('is unsupported for Linux installs that are not an AppImage', async () => {
+    it('reads the published feed itself for a Linux install the package manager owns', async () => {
         platform = 'linux';
-        const { startUpdater, getUpdateState } = await loadUpdater();
+        fetchFeed.mockResolvedValue(feedAnswering('0.5.0'));
+        const { startUpdater, checkForUpdates, getUpdateState } = await loadUpdater();
         startUpdater();
-        expect(getUpdateState().status).toBe('unsupported');
+        await checkForUpdates();
+        // The library declines to look at all without APPIMAGE, so the feed is read directly.
+        expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+        expect(fetchFeed).toHaveBeenCalledWith(
+            'https://github.com/kubermeister/kubermeister/releases/latest/download/latest-linux.yml',
+            expect.anything(),
+        );
+        expect(getUpdateState()).toMatchObject({ status: 'manual', version: '0.5.0' });
+    });
+
+    it('offers no download for a package it must not replace', async () => {
+        platform = 'linux';
+        fetchFeed.mockResolvedValue(feedAnswering('0.5.0'));
+        const { startUpdater, checkForUpdates, downloadUpdate } = await loadUpdater();
+        startUpdater();
+        await checkForUpdates();
+        expect(downloadUpdate()).toBe(false);
+        expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
+    });
+
+    it('says a package install is up to date when the feed names no newer version', async () => {
+        platform = 'linux';
+        const { startUpdater, checkForUpdates } = await loadUpdater();
+        startUpdater();
+        // The feed answers the running version, and an older one must not read as an update either.
+        await expect(checkForUpdates()).resolves.toMatchObject({ status: 'up-to-date' });
+        fetchFeed.mockResolvedValue(feedAnswering('0.4.8'));
+        await expect(checkForUpdates()).resolves.toMatchObject({ status: 'up-to-date' });
+    });
+
+    it('reports a feed that will not answer or names no version as an error', async () => {
+        platform = 'linux';
+        fetchFeed.mockResolvedValue({ ok: false, status: 503, text: () => Promise.resolve('') });
+        const { startUpdater, checkForUpdates } = await loadUpdater();
+        startUpdater();
+        await expect(checkForUpdates()).resolves.toMatchObject({
+            status: 'error',
+            message: expect.stringContaining('503'),
+        });
+
+        fetchFeed.mockResolvedValue({ ok: true, status: 200, text: () => Promise.resolve('path: nothing.AppImage\n') });
+        await expect(checkForUpdates()).resolves.toMatchObject({
+            status: 'error',
+            message: 'The release feed named no version.',
+        });
     });
 
     it('is supported for Linux AppImage installs', async () => {
