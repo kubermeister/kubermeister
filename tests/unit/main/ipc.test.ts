@@ -54,6 +54,12 @@ const helmMod = {
     rollbackRelease: vi.fn(),
     uninstallRelease: vi.fn(),
 };
+const chartsMod = {
+    listChartRepositories: vi.fn(),
+    addChartRepository: vi.fn(),
+    refreshChartRepository: vi.fn(),
+    removeChartRepository: vi.fn(),
+};
 const manifestMod = { getObjectYaml: vi.fn() };
 const writeMod = {
     createResource: vi.fn(),
@@ -94,6 +100,7 @@ vi.mock('../../../src/main/k8s/resources/config.js', () => configMod);
 vi.mock('../../../src/main/k8s/resources/overview.js', () => overviewMod);
 vi.mock('../../../src/main/k8s/resources/network.js', () => networkMod);
 vi.mock('../../../src/main/k8s/resources/helm.js', () => helmMod);
+vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
 vi.mock('../../../src/main/k8s/resources/manifest.js', () => manifestMod);
 vi.mock('../../../src/main/k8s/resources/write.js', () => writeMod);
 vi.mock('../../../src/main/k8s/resources/lifecycle.js', () => lifecycleMod);
@@ -550,6 +557,44 @@ describe('registerHandlers', () => {
         await expect(invoke('releases.get', { name: '', namespace: 'kube-system' })).rejects.toThrow();
         // A release is looked up where its screen says it is, so the namespace is not optional.
         await expect(invoke('releases.get', { name: 'traefik' })).rejects.toThrow();
+    });
+
+    it('forwards the chart repository calls and refuses an input the contract does not allow', async () => {
+        const status = {
+            name: 'bitnami',
+            kind: 'classic',
+            url: 'https://charts.example.com',
+            hasCredentials: false,
+            chartCount: 12,
+            refreshedAt: '2026-09-22T10:00:00.000Z',
+        };
+        chartsMod.listChartRepositories.mockResolvedValue([status]);
+        chartsMod.addChartRepository.mockResolvedValue(status);
+        chartsMod.refreshChartRepository.mockResolvedValue(status);
+        chartsMod.removeChartRepository.mockResolvedValue({ name: 'bitnami' });
+
+        await expect(invoke('chartRepositories.list', {})).resolves.toHaveLength(1);
+        const input = { name: 'bitnami', kind: 'classic', url: 'https://charts.example.com' };
+        await expect(invoke('chartRepositories.add', input)).resolves.toMatchObject({ chartCount: 12 });
+        expect(chartsMod.addChartRepository).toHaveBeenCalledWith(input);
+        await expect(invoke('chartRepositories.refresh', { name: 'bitnami' })).resolves.toBeTruthy();
+        expect(chartsMod.refreshChartRepository).toHaveBeenCalledWith('bitnami');
+        await expect(invoke('chartRepositories.remove', { name: 'bitnami' })).resolves.toEqual({ name: 'bitnami' });
+        expect(chartsMod.removeChartRepository).toHaveBeenCalledWith('bitnami');
+
+        // A name that could leave the index cache directory, and a URL the kind is never served at.
+        await expect(invoke('chartRepositories.refresh', { name: '../escape' })).rejects.toThrow();
+        await expect(invoke('chartRepositories.add', { ...input, url: 'oci://ghcr.io/x' })).rejects.toThrow();
+        // A password bound for a plaintext repository never leaves the renderer.
+        await expect(
+            invoke('chartRepositories.add', {
+                ...input,
+                url: 'http://charts.example.com',
+                username: 'ara',
+                password: 'hunter2',
+            }),
+        ).rejects.toThrow();
+        expect(chartsMod.addChartRepository).toHaveBeenCalledOnce();
     });
 
     it('forwards the manifest read and rejects an unknown kind', async () => {

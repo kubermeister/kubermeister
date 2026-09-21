@@ -13,6 +13,7 @@ import {
 } from '../../shared/settings';
 import { bugReportUrl } from '../../shared/bug-report';
 import { releasePageUrl } from '../../shared/updates';
+import { ChartRepositoriesCard } from '@/components/settings/chart-repositories-card';
 import { SettingsPage } from '@/components/templates/settings-page';
 import { Field, FormCard, FormSelect, Toggle } from '@/components/templates/settings-form';
 import { Button } from '@/components/ui/button';
@@ -223,6 +224,10 @@ function SettingsScreen() {
                     </Field>
                 </FormCard>
                 <AboutCard />
+            </Section>
+
+            <Section title="Charts">
+                <ChartRepositoriesCard />
             </Section>
 
             <Section title="Connection">

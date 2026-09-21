@@ -14,6 +14,7 @@ describe('query helpers', () => {
         queryClient.setQueryData(['app.info', {}], {});
         queryClient.setQueryData(['update.state', {}], {});
         queryClient.setQueryData(['startupChecks', {}], {});
+        queryClient.setQueryData(['chartRepositories.list', {}], []);
         await invalidateClusterQueries();
         const state = (key: unknown[]) => queryClient.getQueryState(key);
         // Reset, not merely stale: a screen must not keep rendering the previous cluster's rows
@@ -22,7 +23,7 @@ describe('query helpers', () => {
         expect(state(['resources.list', { kind: 'Pod' }])?.data).toBeUndefined();
         expect(state(['contexts.list', {}])?.data).toEqual([{ name: 'alpha' }]);
         expect(state(['contexts.list', {}])?.isInvalidated).toBe(true);
-        for (const channel of ['settings.get', 'app.info', 'update.state', 'startupChecks']) {
+        for (const channel of ['settings.get', 'app.info', 'update.state', 'startupChecks', 'chartRepositories.list']) {
             expect(state([channel, {}])?.data).toBeDefined();
             expect(state([channel, {}])?.isInvalidated).toBe(false);
         }

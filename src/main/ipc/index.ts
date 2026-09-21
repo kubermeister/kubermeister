@@ -45,6 +45,12 @@ import {
     rollbackRelease,
     uninstallRelease,
 } from '../k8s/resources/helm.js';
+import {
+    addChartRepository,
+    listChartRepositories,
+    refreshChartRepository,
+    removeChartRepository,
+} from '../charts/repositories.js';
 import { getIngressRules, getServiceEndpoints, getServicePorts } from '../k8s/resources/network.js';
 import { listLimits, listQuotas } from '../k8s/resources/overview.js';
 import {
@@ -178,6 +184,10 @@ const handlers: Handlers = {
     'releases.rollback': (input) => rollbackRelease(input),
     'releases.uninstall': (input) => uninstallRelease(input),
     'helmCharts.list': () => listHelmCharts(),
+    'chartRepositories.list': () => listChartRepositories(),
+    'chartRepositories.add': (input) => addChartRepository(input),
+    'chartRepositories.refresh': ({ name }) => refreshChartRepository(name),
+    'chartRepositories.remove': ({ name }) => removeChartRepository(name),
     'namespaces.detail': ({ name }) => getNamespaceDetail(name),
     'customResources.list': ({ crd, namespace }) => listCustomResourceInstances(crd, namespace),
     'customResources.get': ({ crd, name, namespace }) => getCustomResourceInstance(crd, name, namespace),

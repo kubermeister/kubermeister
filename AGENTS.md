@@ -74,8 +74,8 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 ```
 
 - **type**: `feat` `fix` `perf` `refactor` `docs` `test` `chore` `ci` `build` `style` `revert`.
-- **scope** (required): `repo` `main` `preload` `renderer` `shared` `ipc` `k8s` `build` `ci`
-  `deps` `docs` `release`. A new area adds its scope here and in `.githooks/commit-msg` within
+- **scope** (required): `repo` `main` `preload` `renderer` `shared` `ipc` `k8s` `charts` `build`
+  `ci` `deps` `docs` `release`. A new area adds its scope here and in `.githooks/commit-msg` within
   the same change.
 - **subject**: lowercase, imperative, no trailing period, whole header 72 characters or fewer.
   Proper nouns that need capitals go in the body.
@@ -515,6 +515,34 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   uninstalled.
 - Objects annotated `helm.sh/resource-policy: keep` are never deleted by either, and are counted
   back to the caller.
+
+### Chart repositories
+
+- Chart sources live in `src/main/charts`, not in `src/main/k8s`: a configured repository is a fact
+  about the install, not about the cluster it happens to be pointed at. Nothing there touches the
+  API server, so the `data.readTimeoutSec` ceiling does not apply and each request carries its own,
+  the way `updater.ts` reads the release feed. `chartRepositories.list` is app-level in
+  `APP_LEVEL_CHANNELS`, so a context switch leaves it alone.
+- The three places a source is recorded are kept in step by `repositories.ts` alone: the list in
+  the settings file, the index cache under `userData/chart-index`, and the credential. That is why
+  `settingsInputSchema` omits the `charts` section — the renderer edits the list only through the
+  `chartRepositories.*` channels, never by patching settings.
+- **A password never reaches the settings file.** `credentials.ts` seals it with Electron's
+  `safeStorage`, whose key the OS holds (Keychain, libsecret, DPAPI), and writes the ciphertext to
+  `userData/chart-credentials.json`. A system with no secret store is told so rather than written
+  to in the clear, and a credential the local key can no longer open reads as absent. Only
+  `hasCredentials` crosses the bridge; the password itself never travels back.
+- **A source is read before it is recorded**, so an address that answers with no index is refused
+  when it is typed rather than reported as broken from then on; a credential stored for an add that
+  then failed is taken back out of the keychain.
+- A classic repository is read by downloading its `index.yaml`, capped and parsed by `index-file.ts`
+  into one summary per chart. A document that is not an index is refused rather than cached as an
+  empty repository, which is what a login page served with a 200 would otherwise look like.
+- An OCI registry publishes no index, so `registry.ts` does what `helm registry login` does: ping
+  `/v2/` and answer the bearer challenge. Its cache file records only when it last answered, which
+  is why the row shows no chart count.
+- A password is refused for a plaintext `http` URL (`sendsCredentialsInClear`); such a repository is
+  still usable anonymously.
 
 ### Container detail
 

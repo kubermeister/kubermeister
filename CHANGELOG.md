@@ -27,6 +27,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Every release carries a `SHA256SUMS` file, so a download can be checked before it is run.
 
+- Settings holds the chart repositories and OCI registries Kubermeister reads charts from. Each one
+  is read when it is added and again whenever you refresh it, its index is cached on disk, and any
+  username and password go into this system's keychain rather than the settings file.
+
 ### Fixed
 
 - The Linux AppImage starts on Ubuntu 23.10 and newer. It was built on a runtime that loads
