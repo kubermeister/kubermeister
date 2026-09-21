@@ -128,7 +128,9 @@ jobs:
           deb=$(ls release/*.deb)
           sudo apt-get install -y "./$deb"
           name=$(dpkg-deb -f "$deb" Package)
-          bin=$(dpkg -L "$name" | grep -E '^/opt/.+/[^/]+$' | xargs -I{} sh -c 'test -x "{}" && ! test -d "{}" && echo {}' | head -1)
+          # The package registers /usr/bin/<name> through update-alternatives, so what gets started
+          # here is the command a user would type rather than a path under /opt we guessed at.
+          bin=$(command -v "$name")
           echo "installed $name, starting $bin"
           set +e
           KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
