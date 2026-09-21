@@ -129,12 +129,6 @@
 - name: wontfix
   color: ffffff
   description: Out of scope for this app
-- name: parked
-  color: bfdadc
-  description: Out of the plan, reviewed in the far future
-- name: deferred
-  color: c2e0c6
-  description: Not scheduled, waits for users to need it
 - name: good first issue
   color: 7057ff
   description: Small, self-contained, well described

@@ -51,6 +51,10 @@ This file is the project's agent instructions. `CLAUDE.md` only imports it, so e
 - An idea becomes an issue on the day it gets a milestone, filed the same way as any other work; an
   issue that turns out to have no release it belongs to moves the other way and closes as not
   planned pointing at its discussion.
+- **There is no label for "not now."** A discussion is the whole mechanism, so nothing marks an
+  open issue as set aside: it is either going to happen or it is a discussion. Moving one is three
+  steps — create the discussion in Ideas carrying the issue's own words, comment the link on the
+  issue, close it as not planned keeping its labels.
 - A bug found in real use gets an issue before its fix.
 - A PR that resolves an issue ends its body with the one-line paragraph `Closes #N.` (a sentence,
   not a trailer).
