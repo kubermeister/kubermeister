@@ -78,6 +78,20 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - Breaking change: `!` after the scope, e.g. `feat(ipc)!: rename stream channels`.
 - **No trailers.** No `Co-Authored-By`, no `Signed-off-by`, nothing after the body.
 
+### The changelog
+
+- `CHANGELOG.md` is written by hand, in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+  form. The generated release notes are already the list of pull request titles, so this file is the
+  other thing: what the app now does, or what stopped going wrong, for somebody deciding whether to
+  update.
+- A change a user would notice adds one sentence under `## [Unreleased]`, in the section that fits
+  it (Added, Changed, Deprecated, Removed, Fixed, Security), present tense, naming no issue or pull
+  request. A refactor, a test, a dependency bump or anything else invisible from outside the
+  repository adds nothing, and an empty section is left out rather than written empty.
+- The file starts at the version it was introduced in; earlier releases stay on the releases page
+  rather than being reconstructed from their pull request titles, which is the very list the file
+  exists not to repeat.
+
 ## Architecture rules (load-bearing)
 
 ### Processes and boundaries
@@ -608,8 +622,10 @@ through the next release.
   draft release, package on three OSes, upload installers named
   `Kubermeister-<version>-<os>-<arch>.<ext>` plus electron-updater metadata (`latest*.yml`,
   blockmaps), publish as latest.
-- Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps package.json, then
-  `git tag vX.Y.Z && git push origin vX.Y.Z`.
+- Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps package.json **and turns
+  `## [Unreleased]` in `CHANGELOG.md` into `## [X.Y.Z] - YYYY-MM-DD` with a fresh empty
+  `## [Unreleased]` above it**, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The draft release
+  step prepends a link to the file above the generated notes, so the two are read together.
 - The `verify` job refuses a tag whose version differs from package.json and a tag whose commit is
   not on `main`, before anything is built: a tag on any other commit would still publish as latest
   and update the cask. A tag ruleset restricts creating, moving and deleting `v*` tags to admins.

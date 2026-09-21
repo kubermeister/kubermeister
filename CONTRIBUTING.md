@@ -111,6 +111,12 @@ comments only for _why_, and no `any` in TypeScript.
 - No trailers: no `Co-Authored-By`, no `Signed-off-by`. `Closes #N.` as the last paragraph is a
   sentence, not a trailer, and is how a pull request names the issue it resolves.
 - Mark a breaking change with `!` after the scope: `feat(ipc)!: rename stream channels`.
+- **Add a line to `CHANGELOG.md` under `## [Unreleased]` when the change is one a user would
+  notice**, in the section that fits it: Added, Changed, Deprecated, Removed, Fixed or Security.
+  Write about the app rather than about the patch — what it now does, or what stopped going wrong —
+  in one sentence, present tense, no issue or PR number, since the release notes already carry
+  those. A refactor, a test, a dependency bump or anything else invisible from outside the
+  repository gets no line.
 
 A pull request is reviewed once its checks pass. Reviews are about the change, not the person, and
 questions in a review are questions, not verdicts.
@@ -122,3 +128,7 @@ PR has merged, and releases are frequent, so a merged fix reaches users quickly.
 are generated from the merged pull request titles, sorted into sections by the label the title's
 type earns (`feat` under Features, `fix` under Fixes, and so on), which is one more reason the title
 has to read well on its own.
+
+The version bump PR is also where `## [Unreleased]` in `CHANGELOG.md` becomes `## [X.Y.Z] - YYYY-MM-DD`
+with a fresh empty `## [Unreleased]` above it. The release notes link to the file, so the generated
+list of pull requests and the written account of the release sit next to each other.
