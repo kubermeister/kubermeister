@@ -653,6 +653,12 @@ through the next release.
   with `--inspect`, which the fuse ignores: start the binary with `--remote-debugging-port` and
   connect with `chromium.connectOverCDP`, which reaches the renderer without the Node inspector.
 - Icons regenerate from `resources/icon.svg` with `resources/build-icon.sh`.
+- **A Linux window carries its own icon.** macOS reads the `.app` bundle and Windows the
+  executable's resources, but a Linux window with no icon of its own falls back to the desktop's
+  placeholder, and an AppImage installs no desktop entry to be matched against until the user
+  integrates it. `windowIcon` in `src/main/window.ts` resolves `resources/icon.png`, which
+  `extraResources` ships because `files` packages nothing but `out/`; that list stays at the top
+  level, since a platform block replaces it rather than adding to it.
 
 ### In-app updates
 

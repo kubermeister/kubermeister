@@ -37,14 +37,30 @@ class FakeBrowserWindow {
 
 const shell = { openExternal: vi.fn(() => Promise.resolve()) };
 const screen = { getDisplayMatching: vi.fn(() => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } })) };
-vi.mock('electron', () => ({ BrowserWindow: FakeBrowserWindow, screen, shell }));
+const app = { isPackaged: false };
+vi.mock('electron', () => ({ app, BrowserWindow: FakeBrowserWindow, screen, shell }));
 
 const settings = { window: { bounds: null as { x: number; y: number; width: number; height: number } | null } };
 const getSettings = vi.fn(() => settings);
 const updateSettings = vi.fn();
 vi.mock('../../../src/main/settings/store.js', () => ({ getSettings, updateSettings }));
 
-const { createMainWindow, WEB_PREFERENCES } = await import('../../../src/main/window.js');
+const { createMainWindow, WEB_PREFERENCES, windowIcon } = await import('../../../src/main/window.js');
+
+/** Neither the platform nor the unpacked resource directory is Electron's under Vitest. */
+function onPlatform(platform: NodeJS.Platform, resourcesPath: string, run: () => void): void {
+    const platformWas = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    const resourcesWas = Object.getOwnPropertyDescriptor(process, 'resourcesPath');
+    Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+    Object.defineProperty(process, 'resourcesPath', { value: resourcesPath, configurable: true });
+    try {
+        run();
+    } finally {
+        Object.defineProperty(process, 'platform', platformWas);
+        if (resourcesWas) Object.defineProperty(process, 'resourcesPath', resourcesWas);
+        else delete (process as { resourcesPath?: string }).resourcesPath;
+    }
+}
 
 function create(): FakeBrowserWindow {
     createMainWindow();
@@ -66,6 +82,7 @@ describe('the main window', () => {
         vi.clearAllMocks();
         FakeBrowserWindow.instances = [];
         settings.window.bounds = null;
+        app.isPackaged = false;
         delete process.env.ELECTRON_RENDERER_URL;
         delete process.env.KUBERMEISTER_SHOW_INACTIVE;
     });
@@ -124,6 +141,32 @@ describe('the main window', () => {
             expect(navigate(window, 'will-navigate', 'http://localhost:5173/#/nodes').prevented).toBe(false);
             expect(navigate(window, 'will-navigate', 'file:///app/out/renderer/index.html').prevented).toBe(true);
             expect(shell.openExternal).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('the icon', () => {
+        it('gives the Linux window the packaged PNG, since nothing else carries one there', () => {
+            app.isPackaged = true;
+            onPlatform('linux', '/opt/Kubermeister/resources', () => {
+                expect(windowIcon()).toBe('/opt/Kubermeister/resources/icon.png');
+                expect(create().options.icon).toBe('/opt/Kubermeister/resources/icon.png');
+            });
+        });
+
+        it('reads it from the repository while developing, where there is no resource directory', () => {
+            onPlatform('linux', '/unused', () => {
+                expect(windowIcon()).toMatch(/[/\\]resources[/\\]icon\.png$/);
+                expect(windowIcon()).not.toContain('/unused');
+            });
+        });
+
+        it('sets none on macOS and Windows, which take it from the bundle', () => {
+            for (const platform of ['darwin', 'win32'] as const) {
+                onPlatform(platform, '/unused', () => {
+                    expect(windowIcon()).toBeUndefined();
+                    expect(create().options).not.toHaveProperty('icon');
+                });
+            }
         });
     });
 
