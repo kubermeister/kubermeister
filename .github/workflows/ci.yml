@@ -78,6 +78,69 @@ jobs:
       - run: npm run build
       - run: xvfb-run --auto-servernum npm run test:e2e
 
+  # The artifact users install, started. Everything else in this file tests `out/` through the
+  # development Electron binary, so a packaged build that cannot launch passes every other gate —
+  # which is how the AppImage shipped needing a library Ubuntu dropped (#299). Linux only: it is
+  # where both packages are cheap to build and where one of them is a bare binary with its own
+  # runtime, and packaging three OSes on every pull request would cost more than it catches.
+  package:
+    name: package smoke (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run package
+
+      # A window that stays open is the signal: the app is meant to keep running, so `timeout`
+      # killing it is success and anything else is the process giving up on its own.
+      - name: The AppImage starts
+        run: |
+          app=$(ls release/*.AppImage)
+          chmod +x "$app"
+          # The step's shell runs under `-e`: without this the timeout's own exit status would
+          # abort before it can be read, and a killed process is what success looks like here.
+          set +e
+          KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
+            timeout --signal=TERM 30 xvfb-run --auto-servernum "$app" > appimage.log 2>&1
+          code=$?
+          set -e
+          cat appimage.log
+          if grep -qi 'libfuse' appimage.log; then
+            echo "::error::the AppImage runtime still wants libfuse"
+            exit 1
+          fi
+          if [ "$code" -ne 124 ]; then
+            echo "::error::the AppImage exited on its own with $code"
+            exit 1
+          fi
+
+      - name: The deb installs and starts
+        run: |
+          set -euo pipefail
+          deb=$(ls release/*.deb)
+          sudo apt-get install -y "./$deb"
+          name=$(dpkg-deb -f "$deb" Package)
+          bin=$(dpkg -L "$name" | grep -E '^/opt/.+/[^/]+$' | xargs -I{} sh -c 'test -x "{}" && ! test -d "{}" && echo {}' | head -1)
+          echo "installed $name, starting $bin"
+          set +e
+          KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
+            timeout --signal=TERM 30 xvfb-run --auto-servernum "$bin" > deb.log 2>&1
+          code=$?
+          set -e
+          cat deb.log
+          if [ "$code" -ne 124 ]; then
+            echo "::error::the installed app exited on its own with $code"
+            exit 1
+          fi
+
   build:
     name: build (${{ matrix.os }})
     strategy:
