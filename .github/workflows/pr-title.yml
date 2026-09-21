@@ -41,6 +41,7 @@ jobs:
             shared
             ipc
             k8s
+            charts
             build
             ci
             deps

@@ -75,8 +75,10 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 
 - **type**: `feat` `fix` `perf` `refactor` `docs` `test` `chore` `ci` `build` `style` `revert`.
 - **scope** (required): `repo` `main` `preload` `renderer` `shared` `ipc` `k8s` `charts` `build`
-  `ci` `deps` `docs` `release`. A new area adds its scope here and in `.githooks/commit-msg` within
-  the same change.
+  `ci` `deps` `docs` `release`. The list lives in three places — here, `.githooks/commit-msg` and
+  `.github/workflows/pr-title.yml`, which gates the PR title the squash commit takes — so a new
+  area adds its scope to all three in the same change, and `tests/unit/repo/githooks.test.ts`
+  fails when they drift apart.
 - **subject**: lowercase, imperative, no trailing period, whole header 72 characters or fewer.
   Proper nouns that need capitals go in the body.
 - Breaking change: `!` after the scope, e.g. `feat(ipc)!: rename stream channels`.
