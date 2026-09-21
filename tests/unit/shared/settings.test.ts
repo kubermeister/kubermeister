@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     DEFAULT_SETTINGS,
+    SETTINGS_VERSION,
     isProxyUrl,
     mergeSettings,
     parseSettings,
@@ -11,7 +12,7 @@ import {
 describe('parseSettings', () => {
     it('returns valid settings unchanged', () => {
         const valid = {
-            version: 1,
+            version: SETTINGS_VERSION,
             session: { lastContext: 'prod', lastNamespace: 'default', restoreOnLaunch: true },
             connection: { kubeconfigPath: '/tmp/kubeconfig' },
             data: {
@@ -41,12 +42,13 @@ describe('parseSettings', () => {
     });
 
     it('falls back to defaults on an unknown version', () => {
-        expect(parseSettings({ ...DEFAULT_SETTINGS, version: 2 })).toEqual(DEFAULT_SETTINGS);
+        expect(parseSettings({ ...DEFAULT_SETTINGS, version: 99 })).toEqual(DEFAULT_SETTINGS);
+        expect(parseSettings({ ...DEFAULT_SETTINGS, version: '2' })).toEqual(DEFAULT_SETTINGS);
     });
 
     it('resets only the section whose field has the wrong type', () => {
         const bad = {
-            version: 1,
+            version: SETTINGS_VERSION,
             session: { lastContext: 'prod', lastNamespace: null, restoreOnLaunch: 'yes' },
             connection: { kubeconfigPath: '/tmp/k' },
         };
@@ -56,9 +58,9 @@ describe('parseSettings', () => {
     });
 
     it('fills missing keys and sections with defaults and drops unknown keys', () => {
-        const partial = { version: 1, session: { lastContext: 'staging', bogus: 1 } };
+        const partial = { version: SETTINGS_VERSION, session: { lastContext: 'staging', bogus: 1 } };
         expect(parseSettings(partial)).toEqual({
-            version: 1,
+            version: SETTINGS_VERSION,
             session: { lastContext: 'staging', lastNamespace: null, restoreOnLaunch: true },
             connection: { kubeconfigPath: null },
             data: {
@@ -68,33 +70,74 @@ describe('parseSettings', () => {
                 terminalFontSize: 12,
                 forwards: [],
             },
-            updates: { mode: 'check', checkIntervalHours: 4 },
+            updates: { mode: null, checkIntervalHours: 4 },
             network: { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null },
             window: { bounds: null },
         });
     });
 
-    it('starts existing installs on notify-first updates every four hours and rejects unknown values', () => {
-        const defaults = { mode: 'check', checkIntervalHours: 4 };
-        expect(parseSettings({ version: 1 }).updates).toEqual(defaults);
+    it('leaves the update mode unset until it is chosen, every four hours, and rejects unknown values', () => {
+        const defaults = { mode: null, checkIntervalHours: 4 };
+        expect(parseSettings({ version: SETTINGS_VERSION }).updates).toEqual(defaults);
         // A file from before the interval existed keeps its mode and gains the default cadence.
-        expect(parseSettings({ version: 1, updates: { mode: 'off' } }).updates).toEqual({ ...defaults, mode: 'off' });
-        expect(parseSettings({ version: 1, updates: { mode: 'always' } }).updates).toEqual(defaults);
-        expect(parseSettings({ version: 1, updates: { checkIntervalHours: 24 } }).updates).toEqual({
+        expect(parseSettings({ version: SETTINGS_VERSION, updates: { mode: 'off' } }).updates).toEqual({
+            ...defaults,
+            mode: 'off',
+        });
+        expect(parseSettings({ version: SETTINGS_VERSION, updates: { mode: 'always' } }).updates).toEqual(defaults);
+        expect(parseSettings({ version: SETTINGS_VERSION, updates: { checkIntervalHours: 24 } }).updates).toEqual({
             ...defaults,
             checkIntervalHours: 24,
         });
         for (const bad of [0, -1, 1.5, 200, 'daily']) {
-            expect(parseSettings({ version: 1, updates: { checkIntervalHours: bad } }).updates).toEqual(defaults);
+            expect(parseSettings({ version: SETTINGS_VERSION, updates: { checkIntervalHours: bad } }).updates).toEqual(
+                defaults,
+            );
         }
     });
 
-    it('forgets saved window bounds that are not a full rectangle', () => {
-        expect(parseSettings({ version: 1, window: { bounds: { x: 0, y: 0, width: 800 } } }).window).toEqual({
-            bounds: null,
+    describe('migrating a version 1 file', () => {
+        it('reads the old default as no choice, so the current default applies', () => {
+            expect(parseSettings({ version: 1, updates: { mode: 'check', checkIntervalHours: 12 } }).updates).toEqual({
+                mode: null,
+                checkIntervalHours: 12,
+            });
+            expect(parseSettings({ version: 1 }).updates).toEqual({ mode: null, checkIntervalHours: 4 });
         });
+
+        it('keeps a mode nobody but the user could have written', () => {
+            expect(parseSettings({ version: 1, updates: { mode: 'off' } }).updates.mode).toBe('off');
+            expect(parseSettings({ version: 1, updates: { mode: 'download' } }).updates.mode).toBe('download');
+        });
+
+        it('carries every other section across unchanged and stamps the new version', () => {
+            const v1 = {
+                version: 1,
+                session: { lastContext: 'prod', lastNamespace: 'team-a', restoreOnLaunch: false },
+                connection: { kubeconfigPath: '/tmp/kubeconfig' },
+                updates: { mode: 'check', checkIntervalHours: 24 },
+                window: { bounds: { x: 1, y: 2, width: 800, height: 600 } },
+            };
+            const parsed = parseSettings(v1);
+            expect(parsed.version).toBe(SETTINGS_VERSION);
+            expect(parsed.session).toEqual(v1.session);
+            expect(parsed.connection).toEqual(v1.connection);
+            expect(parsed.window).toEqual(v1.window);
+        });
+
+        it('is not applied a second time once the migrated file has been written back', () => {
+            const migrated = parseSettings({ version: 1, updates: { mode: 'check', checkIntervalHours: 4 } });
+            const chosen = mergeSettings(migrated, { updates: { mode: 'check' } });
+            expect(parseSettings(chosen).updates.mode).toBe('check');
+        });
+    });
+
+    it('forgets saved window bounds that are not a full rectangle', () => {
+        expect(
+            parseSettings({ version: SETTINGS_VERSION, window: { bounds: { x: 0, y: 0, width: 800 } } }).window,
+        ).toEqual({ bounds: null });
         const bounds = { x: 10, y: 20, width: 800, height: 600 };
-        expect(parseSettings({ version: 1, window: { bounds } }).window).toEqual({ bounds });
+        expect(parseSettings({ version: SETTINGS_VERSION, window: { bounds } }).window).toEqual({ bounds });
     });
 
     it('resets a data section that is not usable, keeping one that is', () => {
@@ -113,15 +156,29 @@ describe('parseSettings', () => {
             terminalFontSize: 14,
             forwards: [],
         };
-        expect(parseSettings({ version: 1, data: { refreshIntervalSec: 'soon' } }).data).toEqual(defaults);
-        expect(parseSettings({ version: 1, data: { ...good, refreshIntervalSec: 0 } }).data).toEqual(defaults);
-        expect(parseSettings({ version: 1, data: { ...good, logBufferLines: 0 } }).data).toEqual(defaults);
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { refreshIntervalSec: 'soon' } }).data).toEqual(
+            defaults,
+        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, refreshIntervalSec: 0 } }).data).toEqual(
+            defaults,
+        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, logBufferLines: 0 } }).data).toEqual(
+            defaults,
+        );
         // A read ceiling under five seconds cuts every real cluster short; over ten minutes is a hang.
-        expect(parseSettings({ version: 1, data: { ...good, readTimeoutSec: 1 } }).data).toEqual(defaults);
-        expect(parseSettings({ version: 1, data: { ...good, readTimeoutSec: 601 } }).data).toEqual(defaults);
-        expect(parseSettings({ version: 1, data: { ...good, readTimeoutSec: 5 } }).data.readTimeoutSec).toBe(5);
-        expect(parseSettings({ version: 1, data: { ...good, terminalFontSize: 99 } }).data).toEqual(defaults);
-        expect(parseSettings({ version: 1, data: good }).data).toEqual(good);
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 1 } }).data).toEqual(
+            defaults,
+        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 601 } }).data).toEqual(
+            defaults,
+        );
+        expect(
+            parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 5 } }).data.readTimeoutSec,
+        ).toBe(5);
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, terminalFontSize: 99 } }).data).toEqual(
+            defaults,
+        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: good }).data).toEqual(good);
     });
 });
 
@@ -129,7 +186,9 @@ describe('the network section', () => {
     const defaults = { proxyMode: 'env', proxyUrl: null, noProxy: null, caBundlePath: null };
 
     it('starts existing installs on the environment proxy and no CA bundle', () => {
+        // A file written before the section existed, migrated or not, carries none of it.
         expect(parseSettings({ version: 1 }).network).toEqual(defaults);
+        expect(parseSettings({ version: SETTINGS_VERSION }).network).toEqual(defaults);
         expect(DEFAULT_SETTINGS.network).toEqual(defaults);
     });
 
@@ -140,15 +199,17 @@ describe('the network section', () => {
             'socks5://proxy.corp:1080',
             'http://user:secret@proxy.corp:3128',
         ]) {
-            expect(parseSettings({ version: 1, network: { proxyUrl } }).network.proxyUrl).toBe(proxyUrl);
+            expect(parseSettings({ version: SETTINGS_VERSION, network: { proxyUrl } }).network.proxyUrl).toBe(proxyUrl);
         }
     });
 
     it('resets the section rather than keeping a proxy that is not a proxy URL', () => {
         for (const proxyUrl of ['proxy.corp:3128', 'file:///etc/passwd', 'ftp://proxy.corp', 'not a url', '']) {
-            expect(parseSettings({ version: 1, network: { proxyUrl } }).network).toEqual(defaults);
+            expect(parseSettings({ version: SETTINGS_VERSION, network: { proxyUrl } }).network).toEqual(defaults);
         }
-        expect(parseSettings({ version: 1, network: { proxyMode: 'sometimes' } }).network).toEqual(defaults);
+        expect(parseSettings({ version: SETTINGS_VERSION, network: { proxyMode: 'sometimes' } }).network).toEqual(
+            defaults,
+        );
     });
 
     it('refuses the CA bundle path from the renderer input schema, like every other path', () => {
@@ -201,7 +262,7 @@ describe('mergeSettings', () => {
 
     it('is a no-op for an empty patch and keeps the version', () => {
         expect(mergeSettings(DEFAULT_SETTINGS, {})).toEqual(DEFAULT_SETTINGS);
-        expect(mergeSettings(DEFAULT_SETTINGS, { session: { lastNamespace: 'x' } }).version).toBe(1);
+        expect(mergeSettings(DEFAULT_SETTINGS, { session: { lastNamespace: 'x' } }).version).toBe(SETTINGS_VERSION);
     });
 });
 
@@ -220,6 +281,8 @@ describe('patch schemas', () => {
     it('lets the renderer change the update mode', () => {
         expect(settingsInputSchema.safeParse({ updates: { mode: 'off' } }).success).toBe(true);
         expect(settingsInputSchema.safeParse({ updates: { mode: 'sometimes' } }).success).toBe(false);
+        // Null is how a file says nobody chose, so the renderer may hand the choice back too.
+        expect(settingsInputSchema.safeParse({ updates: { mode: null } }).success).toBe(true);
         expect(mergeSettings(DEFAULT_SETTINGS, { updates: { mode: 'download' } }).updates).toEqual({
             mode: 'download',
             checkIntervalHours: 4,
