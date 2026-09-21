@@ -162,6 +162,31 @@ describe('helm releases', () => {
         expect(helm.releaseValues({ config: cyclic })).toBeUndefined();
     });
 
+    it('carries the rendered manifest of a revision, and nothing when it rendered none', () => {
+        expect(helm.releaseManifest({ ...deployed, manifest: 'kind: Service\n' })).toBe('kind: Service\n');
+        expect(helm.releaseManifest(deployed)).toBeUndefined();
+        expect(helm.releaseManifest({ ...deployed, manifest: '   \n' })).toBeUndefined();
+    });
+
+    it('cuts an oversized manifest on a line boundary and says so in the manifest itself', () => {
+        const line = `${'a'.repeat(99)}\n`;
+        const manifest = line.repeat(6000);
+        const cut = helm.releaseManifest({ ...deployed, manifest }) ?? '';
+        expect(cut.length).toBeLessThan(manifest.length);
+        // Whole lines only: the note is the sole trailing line, so nothing is cut mid-key.
+        const lines = cut.split('\n');
+        expect(lines.at(-2)).toMatch(/^# /);
+        expect(lines.filter((l) => l.startsWith('a')).every((l) => l.length === 99)).toBe(true);
+    });
+
+    it('puts values and the manifest on a release only when a detail read supplies them', () => {
+        expect(helm.toRelease(deployed, {}, NOW)).toMatchObject({ values: undefined, manifest: undefined });
+        expect(helm.toRelease(deployed, { values: 'a: 1\n', manifest: 'kind: Service\n' }, NOW)).toMatchObject({
+            values: 'a: 1\n',
+            manifest: 'kind: Service\n',
+        });
+    });
+
     it('keeps only the highest revision of each release', () => {
         expect(helm.latestPerRelease([superseded, deployed]).map((r) => r.version)).toEqual([2]);
         expect(

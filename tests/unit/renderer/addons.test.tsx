@@ -38,6 +38,7 @@ const release = {
     status: 'Deployed',
     updated: '1h ago',
     values: 'service:\n  type: LoadBalancer\n',
+    manifest: '# Source: traefik/templates/service.yaml\napiVersion: v1\nkind: Service\n',
 };
 const chart = {
     name: 'traefik',
@@ -181,6 +182,28 @@ describe('add-on details', () => {
         expect(toasts.success).toHaveBeenCalledWith('Release “traefik” uninstalled', {
             description: '4 object(s) removed, 1 kept by the chart.',
         });
+    });
+
+    it('shows the objects a revision rendered on its Manifest tab', async () => {
+        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        const page = await screen.findByTestId('release-page');
+        await waitFor(() => expect(page).toHaveTextContent('revision: 2'));
+        await userEvent.click(within(page).getByRole('tab', { name: /Manifest/ }));
+        const panel = await within(page).findByTestId('release-manifest');
+        // CodeMirror renders the document into its own content element.
+        await waitFor(() => expect(panel.textContent).toContain('kind: Service'));
+    });
+
+    it('says a revision rendered no objects rather than showing an empty manifest', async () => {
+        invoke.mockImplementation(async (channel: string) =>
+            channel === 'releases.get' ? { ...release, manifest: undefined } : data[channel],
+        );
+        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        const page = await screen.findByTestId('release-page');
+        await waitFor(() => expect(page).toHaveTextContent('revision: 2'));
+        await userEvent.click(within(page).getByRole('tab', { name: /Manifest/ }));
+        const panel = await within(page).findByTestId('release-manifest');
+        await waitFor(() => expect(panel.textContent).toContain('rendered no objects'));
     });
 
     it('says a release without user-supplied values runs on chart defaults', async () => {

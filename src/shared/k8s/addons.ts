@@ -28,6 +28,11 @@ export const releaseSchema = z.object({
     updated: z.string(),
     /** User-supplied values as YAML, read only on a detail read and absent when all defaults. */
     values: z.string().optional(),
+    /**
+     * The objects this revision rendered, as one multi-document YAML string. Read only on a detail
+     * read: a list carries one row per release, and a rendered manifest is the size of a chart.
+     */
+    manifest: z.string().optional(),
 });
 
 export const releaseRevisionSchema = z.object({

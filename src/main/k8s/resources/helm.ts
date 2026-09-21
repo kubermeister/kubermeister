@@ -96,7 +96,31 @@ export function releaseValues(release: HelmReleaseData): string | undefined {
     }
 }
 
-export function toRelease(release: HelmReleaseData, values?: string, now = Date.now()): Release {
+/**
+ * Longest manifest handed to the renderer. A Secret caps near 1 MiB compressed, so a chart with many
+ * objects can decode to far more YAML than a panel can usefully show; the rest is cut rather than
+ * sent, and the cut is stated in the manifest so nobody reads a partial document as the whole one.
+ */
+const MAX_MANIFEST_CHARS = 256 * 1024;
+
+/** What `helm get manifest` shows; undefined when the revision rendered nothing. */
+export function releaseManifest(release: HelmReleaseData): string | undefined {
+    const manifest = release.manifest;
+    if (!manifest?.trim()) return undefined;
+    if (manifest.length <= MAX_MANIFEST_CHARS) return manifest;
+    // Cut on a line boundary, so the last thing shown is a whole line rather than half a key.
+    const cut = manifest.lastIndexOf('\n', MAX_MANIFEST_CHARS);
+    const kept = manifest.slice(0, cut > 0 ? cut : MAX_MANIFEST_CHARS);
+    return `${kept}\n# Manifest truncated: too large to show in full. Read an object's own Manifest tab for the rest.\n`;
+}
+
+/** What a detail read adds to a row, both of them the size of a chart rather than of a field. */
+interface ReleaseDetail {
+    values?: string;
+    manifest?: string;
+}
+
+export function toRelease(release: HelmReleaseData, detail: ReleaseDetail = {}, now = Date.now()): Release {
     return {
         name: release.name ?? '',
         namespace: release.namespace ?? '',
@@ -104,7 +128,8 @@ export function toRelease(release: HelmReleaseData, values?: string, now = Date.
         revision: release.version ?? 0,
         status: helmStatus(release.info?.status),
         updated: ago(release.info?.last_deployed, now),
-        values,
+        values: detail.values,
+        manifest: detail.manifest,
     };
 }
 
@@ -161,7 +186,7 @@ export function getRelease(name: string, namespace: string): Promise<Release | n
         const matches = matching(await decodedReleases(namespace), name, namespace);
         if (matches.length === 0) return null;
         const latest = matches.reduce((a, b) => ((b.version ?? 0) > (a.version ?? 0) ? b : a));
-        return toRelease(latest, releaseValues(latest));
+        return toRelease(latest, { values: releaseValues(latest), manifest: releaseManifest(latest) });
     });
 }
 
