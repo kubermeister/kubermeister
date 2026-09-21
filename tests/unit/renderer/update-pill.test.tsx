@@ -124,8 +124,19 @@ describe('UpdatePill', () => {
         expect(pill).toHaveTextContent('Downloading 10%');
         await userEvent.click(pill);
         expect(await screen.findByRole('progressbar')).toHaveAttribute('aria-valuenow', '10');
-        act(() => push?.({ status: 'downloading', version: '0.3.1', percent: 65 }));
+        act(() =>
+            push?.({
+                status: 'downloading',
+                version: '0.3.1',
+                percent: 65,
+                transferred: 8 * 1024 * 1024,
+                total: 12 * 1024 * 1024,
+            }),
+        );
         expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '65');
+        // The size says what a percentage cannot: a differential download counts only its own
+        // ranges, so 12 MB here is the change rather than the 126 MB installer.
+        expect(screen.getByTestId('update-popover')).toHaveTextContent('8.0 MB of 12.0 MB');
         expect(screen.getByRole('link', { name: /What's new/ })).toHaveAttribute(
             'href',
             'https://github.com/kubermeister/kubermeister/releases/tag/v0.3.1',

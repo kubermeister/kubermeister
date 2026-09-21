@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/ipc', () => ({ invoke: vi.fn(), subscribe: vi.fn() }));
-const { describeUpdate, formatRelative, pillLabel } = await import('@/lib/updates');
+const { describeUpdate, formatBytes, formatRelative, pillLabel } = await import('@/lib/updates');
 
 const NOW = Date.parse('2026-09-16T07:00:00.000Z');
 
@@ -40,6 +40,21 @@ describe('pillLabel', () => {
     });
 });
 
+describe('formatBytes', () => {
+    it('steps up a unit at a time and keeps one decimal past a kilobyte', () => {
+        expect(formatBytes(0)).toBe('0 B');
+        expect(formatBytes(512)).toBe('512 B');
+        expect(formatBytes(1024)).toBe('1.0 KB');
+        expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
+        expect(formatBytes(8.25 * 1024 * 1024)).toBe('8.3 MB');
+        expect(formatBytes(1024 * 1024 * 1024)).toBe('1.0 GB');
+    });
+
+    it('stops at gigabytes rather than naming a unit nobody downloads', () => {
+        expect(formatBytes(2048 * 1024 * 1024)).toBe('2.0 GB');
+    });
+});
+
 describe('formatRelative', () => {
     it('rounds down to the coarsest unit that fits and falls back to the date', () => {
         expect(formatRelative('2026-09-16T06:59:40.000Z', NOW)).toBe('just now');
@@ -74,6 +89,21 @@ describe('describeUpdate', () => {
         expect(describeUpdate({ status: 'downloading', version: '0.3.0', percent: 7 })).toEqual({
             title: 'Downloading version 0.3.0… 7%',
         });
+        // A differential download's total is the size of the change, which is the point of showing it.
+        expect(
+            describeUpdate({
+                status: 'downloading',
+                version: '0.3.0',
+                percent: 66,
+                transferred: 8 * 1024 * 1024,
+                total: 12 * 1024 * 1024,
+            }),
+        ).toEqual({ title: 'Downloading version 0.3.0… 66%', detail: '8.0 MB of 12.0 MB' });
+        // A transferred count past the total would read as more than all of it.
+        expect(
+            describeUpdate({ status: 'downloading', version: '0.3.0', percent: 100, transferred: 99, total: 50 })
+                .detail,
+        ).toBe('50 B of 50 B');
         expect(describeUpdate({ status: 'downloaded', version: '0.3.0' }).title).toBe(
             'Version 0.3.0 is ready to install.',
         );

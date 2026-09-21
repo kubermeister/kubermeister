@@ -119,6 +119,13 @@ export const updateStateSchema = z.object({
     version: z.string().optional(),
     /** Download progress, 0 to 100. */
     percent: z.number().min(0).max(100).optional(),
+    /**
+     * Bytes fetched so far and bytes this download will fetch in total. A differential download
+     * counts only the ranges it actually asks for, so the total is the size of the change rather
+     * than the size of the installer, which is the only place that saving is visible.
+     */
+    transferred: z.number().min(0).optional(),
+    total: z.number().min(0).optional(),
     message: z.string().optional(),
     /** When the found version was published, ISO 8601. */
     releaseDate: z.string().optional(),
