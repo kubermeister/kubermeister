@@ -430,7 +430,8 @@ describe('create screen', () => {
         renderRoutes(routeTree, '/create');
         const page = await screen.findByTestId('create-page');
         await userEvent.click(within(page).getByRole('combobox', { name: 'Insert template' }));
-        await userEvent.click(await screen.findByRole('option', { name: /Service/ }));
+        // Anchored: an option is named for its kind and api version, so /Service/ also finds ServiceAccount.
+        await userEvent.click(await screen.findByRole('option', { name: /^Service / }));
         await waitFor(() => expect(page.textContent).toContain('kind: Service'));
 
         // An untouched template is replaced without a warning.
