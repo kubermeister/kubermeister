@@ -12,6 +12,12 @@ extraResources:
     to: LICENSE.electron.txt
   - from: node_modules/electron/dist/LICENSES.chromium.html
     to: LICENSES.chromium.html
+  # A Linux window carries its own icon (`windowIcon` in src/main/window.ts) and `files` packages
+  # nothing but out/, so the master PNG ships as a resource. It is listed here rather than under
+  # `linux:` because a platform block replaces this list instead of adding to it, which would drop
+  # the notices above from the Linux builds.
+  - from: resources/icon.png
+    to: icon.png
 # Deterministic asset names; the release workflows and any package manager templates depend on
 # this exact pattern.
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
