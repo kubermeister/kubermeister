@@ -18,6 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The rows checked on a list save to one YAML file, either as the cluster holds them or stripped of
   the fields the server owns so they can be applied to another cluster.
 
+- The Create screen opens a manifest from a file, either through Import or by dropping the file
+  anywhere on the window. The file is read by Kubermeister itself and lands in the editor, where it
+  is applied the same way as one typed in.
+
 - The Create screen starts a Job, a PersistentVolumeClaim, a ServiceAccount, a Role, a RoleBinding,
   a NetworkPolicy or a HorizontalPodAutoscaler, alongside the kinds it already offered.
 - A Helm release's detail screen shows the objects a revision rendered, beside the values it was

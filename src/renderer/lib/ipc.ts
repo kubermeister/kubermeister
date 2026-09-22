@@ -1,4 +1,5 @@
 import type { IpcChannel, IpcInput, IpcOutput, IpcResult } from '../../shared/ipc';
+import type { ManifestFile } from '../../shared/manifest-file';
 import type { IpcError as IpcErrorShape, K8sErrorKind } from '../../shared/k8s/errors';
 import type { SubChannel, SubPayload } from '../../shared/ipc-subscriptions';
 import type { StreamChannel, StreamData, StreamInput, StreamMessage } from '../../shared/streams';
@@ -25,6 +26,17 @@ export class IpcError extends Error {
  */
 export async function invoke<C extends IpcChannel>(channel: C, input: IpcInput<C>): Promise<IpcOutput<C>> {
     const result = (await window.km.invoke(channel, input)) as IpcResult<IpcOutput<C>>;
+    if (!result.ok) throw new IpcError(result.error);
+    return result.data;
+}
+
+/**
+ * Read a manifest the user dropped on the window. The renderer hands over the dropped `File` and
+ * gets back text: only the preload can turn that file into a path, and only main reads it, so there
+ * is no channel here through which a path could be named.
+ */
+export async function importDroppedFile(file: File): Promise<ManifestFile> {
+    const result = (await window.km.importFile(file)) as IpcResult<ManifestFile>;
     if (!result.ok) throw new IpcError(result.error);
     return result.data;
 }
