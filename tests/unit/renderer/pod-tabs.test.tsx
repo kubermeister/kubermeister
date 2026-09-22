@@ -122,8 +122,7 @@ const pod: PodDetailModel = {
     labels: [['app', 'web']],
     annotations: [],
 };
-const line = (message: string, level: 'INFO' | 'ERROR' = 'INFO') => ({
-    level,
+const line = (message: string) => ({
     timestamp: '2026-09-15T12:00:00Z',
     message,
 });
@@ -183,14 +182,15 @@ describe('LogViewer', () => {
         timestamps: true,
         onDownload: noop,
     };
-    it('renders numbered lines with level colors and a snapshot footer', () => {
-        renderWithQuery(<LogViewer {...props} lines={[line('boom', 'ERROR'), line('fine')]} filtered />);
+    it('renders numbered lines as the container wrote them and a snapshot footer', () => {
+        renderWithQuery(<LogViewer {...props} lines={[line('ERROR boom'), line('fine')]} filtered />);
         const list = screen.getByRole('list', { name: 'Log lines' });
         const rows = within(list).getAllByRole('listitem');
         expect(rows).toHaveLength(2);
-        expect(rows[0]).toHaveTextContent('1');
-        expect(within(rows[0]!).getByText('ERROR')).toHaveClass('text-danger');
-        expect(within(rows[1]!).getByText('INFO')).toHaveClass('text-ok');
+        // The whole row: its number, its timestamp and the line. A level the container printed is
+        // part of the line and is rendered once, never repeated as a column of the app's own.
+        expect(rows[0]!.textContent).toBe('12026-09-15T12:00:00ZERROR boom');
+        expect(rows[1]!.textContent).toBe('22026-09-15T12:00:00Zfine');
         expect(screen.getByTestId('log-status')).toHaveTextContent('snapshot · 2 lines (filtered)');
         expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'false');
     });
@@ -314,7 +314,7 @@ describe('LogsTab', () => {
         invoke.mockImplementation(
             answering([], { 'pods.logDownload': { text: 'every line ever\n', truncated: false } }),
         );
-        streams.usePodLogStream.mockReturnValue(following(line('boom', 'ERROR')));
+        streams.usePodLogStream.mockReturnValue(following(line('boom')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('boom');
         await userEvent.click(screen.getByRole('button', { name: 'Download logs' }));
@@ -348,7 +348,7 @@ describe('LogsTab', () => {
 
     it('marks the matches and keeps the rest of the lines when asked to', async () => {
         invoke.mockImplementation(answering([]));
-        streams.usePodLogStream.mockReturnValue(following(line('all good'), line('boom', 'ERROR')));
+        streams.usePodLogStream.mockReturnValue(following(line('all good'), line('boom')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('all good');
 
@@ -364,7 +364,7 @@ describe('LogsTab', () => {
 
     it('keeps the lines the search matched and brings the rest back when it is cleared', async () => {
         invoke.mockImplementation(answering([]));
-        streams.usePodLogStream.mockReturnValue(following(line('all good'), line('boom', 'ERROR')));
+        streams.usePodLogStream.mockReturnValue(following(line('all good'), line('boom')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('all good');
 
@@ -395,7 +395,7 @@ describe('LogsTab', () => {
 
     it('says a pattern is not valid yet rather than emptying the console', async () => {
         invoke.mockImplementation(answering([]));
-        streams.usePodLogStream.mockReturnValue(following(line('connection refused', 'ERROR')));
+        streams.usePodLogStream.mockReturnValue(following(line('connection refused')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('connection refused');
         await userEvent.click(screen.getByRole('button', { name: '.*' }));

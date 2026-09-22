@@ -117,7 +117,7 @@ describe('useFollowBottom', () => {
 });
 
 describe('LogViewer follow', () => {
-    const line = (message: string): LogLine => ({ level: 'INFO', timestamp: '2026-09-20T10:00:00Z', message });
+    const line = (message: string): LogLine => ({ timestamp: '2026-09-20T10:00:00Z', message });
     const props = {
         lines: [line('one'), line('two')],
         containers: ['web'],

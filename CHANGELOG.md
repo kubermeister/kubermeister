@@ -49,6 +49,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- A container's log reads as the container wrote it. Every line used to be prefixed with a level
+  the app worked out from the text, which repeated the level most services already print, and
+  invented one for the lines that print none.
+
 - The Linux AppImage starts on Ubuntu 23.10 and newer. It was built on a runtime that loads
   libfuse2, which those releases no longer ship, so it failed at launch until that library was
   installed by hand.
