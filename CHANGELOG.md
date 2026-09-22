@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-22
+
 ### Added
 
 - Quitting asks first, naming what it ends: every port forward, shell session, log follow and
