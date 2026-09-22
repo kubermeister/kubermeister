@@ -42,9 +42,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- Saving an edited manifest shows what the save will change first — the lines it removes and the
-  lines it adds, against the object as it stands — with Save on that view. A save replaces the
-  whole object, so what a replace carries is now read before it is written rather than after.
+- The manifest editor has Review changes beside Save: it shows what the save will change — the
+  lines it removes and the lines it adds, against the object as it stands — with Save on that view,
+  so a replace that carries the whole object can be read before it is written rather than after.
+  Save itself still writes in one press.
 
 - A new version is now downloaded in the background and installed the next time the app quits,
   rather than waiting behind a button nobody had a reason to press. Settings › Updates still offers

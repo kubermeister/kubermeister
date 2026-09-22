@@ -32,7 +32,14 @@ interface ManifestReviewProps {
 export function ManifestReview({ open, onOpenChange, live, next, kind, name, saving, onSave }: ManifestReviewProps) {
     return (
         <AlertDialog open={open} onOpenChange={(opening) => !opening && !saving && onOpenChange(false)}>
-            <AlertDialogContent className="sm:max-w-3xl" data-testid="manifest-review">
+            <AlertDialogContent
+                // A diff is read, not glanced at, so the dialog takes most of the window rather
+                // than the width a question fits in. The width override repeats the base's own
+                // `data-[size=default]:sm:` modifiers, which is what replaces it instead of losing
+                // to it on specificity.
+                className="flex max-h-[88vh] flex-col data-[size=default]:sm:max-w-[min(80rem,92vw)]"
+                data-testid="manifest-review"
+            >
                 <AlertDialogHeader>
                     <AlertDialogTitle>
                         Save changes to {kind} “{name}”?
@@ -43,7 +50,7 @@ export function ManifestReview({ open, onOpenChange, live, next, kind, name, sav
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 {/* A manifest is longer than a dialog: the diff scrolls, the buttons stay in view. */}
-                <div className="max-h-[55vh] overflow-auto">
+                <div className="min-h-0 flex-1 overflow-auto" data-testid="manifest-diff-scroll">
                     <DiffView
                         left={live}
                         right={next}
