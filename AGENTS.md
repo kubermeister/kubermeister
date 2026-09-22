@@ -803,7 +803,17 @@ through the next release.
 
 - `tests/unit/renderer`, jsdom project, Testing Library. Mock `@/lib/ipc` at the module boundary
   and render through `renderWithQuery`, or `renderRoutes` for anything that needs the router or the
-  shell (both wrap the theme, query and tooltip providers).
+  shell (both wrap the theme, query and tooltip providers). `renderRoutes` mounts the whole app, so
+  a component that merely sits on a screen is tested on its own and the screen asserts once that it
+  is there.
+- A mocked `settings.get` answers `settingsFixture` (`tests/unit/renderer/settings-fixture.ts`), a
+  whole `Settings` built from the defaults through `mergeSettings`. Main validates the channel's
+  output, so a screen reads its sections without guarding, and a hand-written partial fails it for
+  a reason no running app could produce.
+- The waits are deliberately wide: `testTimeout` for the renderer project and `asyncUtilTimeout` in
+  `tests/setup-renderer.ts`. A screen mounts an order of magnitude slower under coverage on a shared
+  runner than on a laptop, so a budget tuned to a laptop measures the runner rather than the
+  behaviour and turns a correct test red on CI alone. Neither is a number a test asserts.
 - Radix menus and popovers open under jsdom thanks to the ResizeObserver, pointer-capture and
   `Range.getClientRects` stubs in `tests/setup-renderer.ts`.
 - Hooks use block bodies: a mock returned from `beforeEach(() => fn.mockReset())` is treated as a

@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PodDetail as PodDetailModel } from '../../../src/shared/k8s/pods';
+import { settingsFixture } from './settings-fixture';
 import { NO_SEARCH } from '@/lib/log-filter';
 import { renderInRouter, renderWithQuery } from './helpers';
 
@@ -135,14 +136,7 @@ const following = (...messages: ReturnType<typeof line>[]) => ({
     ended: false,
 });
 /** The tab reads settings for its buffer size, so every mock answers that channel too. */
-const SETTINGS = {
-    version: 1,
-    session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
-    connection: { kubeconfigPath: null },
-    data: { refreshIntervalSec: 12, logBufferLines: 2000 },
-    updates: { mode: 'check' },
-    window: { bounds: null },
-};
+const SETTINGS = settingsFixture({ updates: { mode: 'check' } });
 /** Answer the log channels with `lines`, and every other channel with what it expects. */
 const answering =
     (lines: unknown, extra: Record<string, unknown> = {}) =>
