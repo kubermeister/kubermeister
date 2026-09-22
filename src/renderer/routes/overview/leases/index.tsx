@@ -29,7 +29,7 @@ function LeasesPage() {
             query={leases}
             detailPath={detailPath}
             rowProps={(lease) => ({ 'data-lease': lease.name })}
-            bulkDelete={{ kind: 'Lease' }}
+            selection={{ kind: 'Lease' }}
             testId="leases-table"
             footerNote={leases.live ? 'live' : undefined}
         />

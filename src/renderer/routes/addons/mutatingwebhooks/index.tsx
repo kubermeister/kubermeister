@@ -32,7 +32,7 @@ function MutatingWebhooksPage() {
             query={configurations}
             detailPath={detailPath}
             rowProps={(configuration) => ({ 'data-mutatingwebhook': configuration.name })}
-            bulkDelete={{ kind: 'MutatingWebhookConfiguration' }}
+            selection={{ kind: 'MutatingWebhookConfiguration' }}
             testId="mutatingwebhooks-table"
             footerNote={configurations.live ? 'live' : undefined}
         />

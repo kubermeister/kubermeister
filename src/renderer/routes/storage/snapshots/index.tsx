@@ -38,7 +38,7 @@ function SnapshotsPage() {
             query={snapshots}
             detailPath={detailPath}
             rowProps={(snapshot) => ({ 'data-snapshot': snapshot.name })}
-            bulkDelete={{ kind: 'VolumeSnapshot' }}
+            selection={{ kind: 'VolumeSnapshot' }}
             testId="snapshots-table"
             emptyMessage="No snapshots found. This cluster may not have the VolumeSnapshot CRD installed."
         />

@@ -44,7 +44,7 @@ function IngressClassesPage() {
             query={classes}
             detailPath={detailPath}
             rowProps={(ingressClass) => ({ 'data-ingressclass': ingressClass.name })}
-            bulkDelete={{ kind: 'IngressClass' }}
+            selection={{ kind: 'IngressClass' }}
             testId="ingressclasses-table"
             footerNote={classes.live ? 'live' : undefined}
         />

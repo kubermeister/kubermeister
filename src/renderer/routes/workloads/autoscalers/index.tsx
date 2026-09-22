@@ -31,7 +31,7 @@ function AutoscalersPage() {
             query={autoscalers}
             detailPath={detailPath}
             rowProps={(autoscaler) => ({ 'data-autoscaler': autoscaler.name })}
-            bulkDelete={{ kind: 'HorizontalPodAutoscaler' }}
+            selection={{ kind: 'HorizontalPodAutoscaler' }}
             testId="autoscalers-table"
             footerNote={autoscalers.live ? 'live' : undefined}
         />

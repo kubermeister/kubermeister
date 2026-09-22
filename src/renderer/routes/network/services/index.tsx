@@ -47,7 +47,7 @@ function ServicesPage() {
             query={services}
             detailPath={detailPath}
             rowProps={(service) => ({ 'data-service': service.name })}
-            bulkDelete={{ kind: 'Service' }}
+            selection={{ kind: 'Service' }}
             testId="services-table"
             footerNote={services.live ? 'live' : undefined}
         />

@@ -30,7 +30,7 @@ function IngressesPage() {
             query={ingresses}
             detailPath={detailPath}
             rowProps={(ingress) => ({ 'data-ingress': ingress.name })}
-            bulkDelete={{ kind: 'Ingress' }}
+            selection={{ kind: 'Ingress' }}
             testId="ingresses-table"
             footerNote={ingresses.live ? 'live' : undefined}
         />

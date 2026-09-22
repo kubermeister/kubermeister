@@ -28,7 +28,7 @@ function CsiNodesPage() {
             query={nodes}
             detailPath={detailPath}
             rowProps={(node) => ({ 'data-csinode': node.name })}
-            bulkDelete={{ kind: 'CSINode' }}
+            selection={{ kind: 'CSINode' }}
             testId="csinodes-table"
             footerNote={nodes.live ? 'live' : undefined}
         />

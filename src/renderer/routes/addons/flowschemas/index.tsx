@@ -29,7 +29,7 @@ function FlowSchemasPage() {
             query={schemas}
             detailPath={detailPath}
             rowProps={(schema) => ({ 'data-flowschema': schema.name })}
-            bulkDelete={{ kind: 'FlowSchema' }}
+            selection={{ kind: 'FlowSchema' }}
             testId="flowschemas-table"
             footerNote={schemas.live ? 'live' : undefined}
         />

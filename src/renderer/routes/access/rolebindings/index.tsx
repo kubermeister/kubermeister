@@ -29,7 +29,7 @@ function RoleBindingsPage() {
             query={bindings}
             detailPath={detailPath}
             rowProps={(binding) => ({ 'data-rolebinding': binding.name })}
-            bulkDelete={{ kind: 'RoleBinding' }}
+            selection={{ kind: 'RoleBinding' }}
             testId="rolebindings-table"
             footerNote={bindings.live ? 'live' : undefined}
         />

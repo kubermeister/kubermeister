@@ -31,7 +31,7 @@ function ReplicaSetsPage() {
             query={sets}
             detailPath={detailPath}
             rowProps={(rs) => ({ 'data-replicaset': rs.name })}
-            bulkDelete={{ kind: 'ReplicaSet' }}
+            selection={{ kind: 'ReplicaSet' }}
             testId="replicasets-table"
             footerNote={sets.live ? 'live' : undefined}
         />

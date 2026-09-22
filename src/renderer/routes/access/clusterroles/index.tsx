@@ -41,7 +41,7 @@ function ClusterRolesPage() {
             query={roles}
             detailPath={detailPath}
             rowProps={(role) => ({ 'data-clusterrole': role.name })}
-            bulkDelete={{ kind: 'ClusterRole' }}
+            selection={{ kind: 'ClusterRole' }}
             testId="clusterroles-table"
             footerNote={roles.live ? 'live' : undefined}
         />

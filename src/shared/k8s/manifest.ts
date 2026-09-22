@@ -68,3 +68,45 @@ export const manifestSchema = z.object({
 
 export type ManifestInput = z.infer<typeof manifestInputSchema>;
 export type Manifest = z.infer<typeof manifestSchema>;
+
+/** One object a list selection names; the namespace follows the kind's scope, as every target does. */
+const exportTargetSchema = z.object({
+    name: z.string().min(1),
+    namespace: namespaceNameSchema.optional(),
+});
+
+/**
+ * A list selection saved to one YAML file. `clean` asks for the objects as somebody would write
+ * them rather than as the API server hands them back, which is what makes the file applicable to
+ * another cluster.
+ */
+export const manifestExportInputSchema = z
+    .object({
+        kind: manifestKindSchema,
+        targets: z.array(exportTargetSchema).min(1),
+        clean: z.boolean(),
+    })
+    .superRefine((input, ctx) => {
+        const clusterScoped = isClusterScopedManifestKind(input.kind);
+        input.targets.forEach((target, index) => {
+            const named = target.namespace !== undefined;
+            if (clusterScoped === named) {
+                ctx.addIssue({
+                    code: 'custom',
+                    path: ['targets', index, 'namespace'],
+                    message: named ? `${input.kind} is cluster-scoped` : `${input.kind} requires a namespace`,
+                });
+            }
+        });
+    });
+
+export const manifestExportSchema = z.object({
+    /** Where the file was written, or null when the save dialog was dismissed. */
+    path: z.string().nullable(),
+    /** How many objects the file holds: fewer than were selected when one has since been deleted. */
+    count: z.number().int().min(0),
+});
+
+export type ManifestExportTarget = z.infer<typeof exportTargetSchema>;
+export type ManifestExportInput = z.infer<typeof manifestExportInputSchema>;
+export type ManifestExport = z.infer<typeof manifestExportSchema>;

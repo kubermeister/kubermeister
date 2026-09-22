@@ -31,7 +31,7 @@ function CsiDriversPage() {
             query={drivers}
             detailPath={detailPath}
             rowProps={(driver) => ({ 'data-csidriver': driver.name })}
-            bulkDelete={{ kind: 'CSIDriver' }}
+            selection={{ kind: 'CSIDriver' }}
             testId="csidrivers-table"
             footerNote={drivers.live ? 'live' : undefined}
         />

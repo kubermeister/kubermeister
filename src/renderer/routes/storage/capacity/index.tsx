@@ -31,7 +31,7 @@ function StorageCapacityPage() {
             query={capacities}
             detailPath={detailPath}
             rowProps={(capacity) => ({ 'data-capacity': capacity.name })}
-            bulkDelete={{ kind: 'CSIStorageCapacity' }}
+            selection={{ kind: 'CSIStorageCapacity' }}
             testId="capacity-table"
             footerNote={capacities.live ? 'live' : undefined}
         />

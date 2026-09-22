@@ -360,6 +360,13 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - A revealed value is held by `useSecretReveal` (`src/renderer/lib/secret-reveal.ts`) alone, never in
   the query cache: it masks itself again after `REVEAL_TIMEOUT_MS` and goes when the page does, and a
   copy puts it on the clipboard without ever rendering it.
+- **A list's selection saves as one YAML file** (`resources.exportYaml`,
+  `src/main/k8s/resources/export.ts`): one document per object, through the same plain dump the
+  Manifest tab uses, read with one list per namespace rather than one per row. `clean` is
+  `cleanForExport`, a pure transform dropping what the server owns — `status`, the identity and
+  bookkeeping parts of `metadata`, the owner reference naming a uid only the cluster it came from
+  issued — so the file applies elsewhere. Where it lands is a native save dialog's answer, as it is
+  for `kubeconfig.pick`; the renderer names no path.
 
 ### Writes
 
