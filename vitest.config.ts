@@ -22,6 +22,13 @@ export default defineConfig({
                     environment: 'jsdom',
                     include: ['tests/unit/renderer/**/*.test.{ts,tsx}'],
                     setupFiles: ['tests/setup.ts', 'tests/setup-renderer.ts'],
+                    // Mounting a screen costs an order of magnitude more under coverage on a
+                    // shared runner than on a laptop, so the default budget measures the machine
+                    // rather than the behaviour and fails a correct test on a busy CI runner. The
+                    // ceiling is here to catch a test that hangs; how long a render takes is not
+                    // what any of these assert. `asyncUtilTimeout` in `tests/setup-renderer.ts`
+                    // says the same for the waits inside one.
+                    testTimeout: 30_000,
                 },
                 resolve: { alias },
             },

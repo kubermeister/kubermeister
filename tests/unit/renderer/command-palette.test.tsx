@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoutes } from './helpers';
+import { settingsFixture } from './settings-fixture';
 
 const invoke = vi.fn();
 const subscribe = vi.fn(() => () => {});
@@ -17,13 +18,8 @@ const { routeTree } = await import('@/routeTree.gen');
 
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date' },
-    'settings.get': {
-        version: 1,
-        session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
-        connection: { kubeconfigPath: null },
-        data: { refreshIntervalSec: 12 },
-        updates: { mode: 'check' },
-    },
+    'settings.get': settingsFixture({ updates: { mode: 'check' } }),
+    'chartRepositories.list': [],
     'update.check': { status: 'checking' },
     'contexts.list': [
         { name: 'alpha', cluster: 'a', user: 'u', current: true },
