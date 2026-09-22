@@ -173,11 +173,16 @@ jobs:
           git commit -m "kubermeister $VERSION"
           git push
 
-      # kubermeister.dev reads this repository's latest release and CHANGELOG.md at build time, so
-      # without this the download page keeps offering the previous version until somebody pushes to
-      # the website repository for an unrelated reason. It runs last, after the release is public,
-      # because the site's build asks the API for the *latest* release. Skipped when the token is
-      # not configured, so a release never blocks on it.
+      # kubermeister.dev reads this repository's releases and CHANGELOG.md at build time, so without
+      # this the download page keeps offering the previous version until somebody pushes to the
+      # website repository for an unrelated reason.
+      #
+      # The payload is load-bearing: the site pins its build to the version named here rather than
+      # asking the API what "latest" is a moment later, which is a second source on the same
+      # question and can answer with the release before this one. It still runs last, after the
+      # release is public, because a draft is not readable by tag.
+      #
+      # Skipped when the token is not configured, so a release never blocks on it.
       - name: Ask the website to rebuild
         if: env.HAS_SITE_TOKEN == 'true'
         env:
