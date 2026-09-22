@@ -95,8 +95,8 @@ describe('manifest editing', () => {
         renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
         await screen.findByTestId('manifest-panel');
         await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
-        const save = await screen.findByRole('button', { name: 'Save' });
-        await userEvent.click(save);
+        await userEvent.click(await screen.findByRole('button', { name: 'Review changes' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
         // The write names the context the screen is on and the object the editor was opened for.
         await waitFor(() =>
             expect(invoke).toHaveBeenCalledWith('resources.replace', {
@@ -125,6 +125,22 @@ describe('manifest editing', () => {
         expect(toasts.success).toHaveBeenCalledWith('Dry run passed', expect.anything());
     });
 
+    it('shows what a save would change before it writes anything', async () => {
+        renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
+        await screen.findByTestId('manifest-panel');
+        await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Review changes' }));
+        const review = await screen.findByTestId('manifest-review');
+        expect(review).toHaveTextContent('Save changes to ConfigMap “app-config”?');
+        expect(invoke).not.toHaveBeenCalledWith('resources.replace', expect.anything());
+
+        // Keeping the edits open writes nothing at all.
+        await userEvent.click(within(review).getByRole('button', { name: 'Keep editing' }));
+        await waitFor(() => expect(screen.queryByTestId('manifest-review')).not.toBeInTheDocument());
+        expect(invoke).not.toHaveBeenCalledWith('resources.replace', expect.anything());
+        expect(await screen.findByRole('button', { name: 'Review changes' })).toBeInTheDocument();
+    });
+
     it('offers to reload when the object changed under the edit', async () => {
         renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
         await screen.findByTestId('manifest-panel');
@@ -135,7 +151,10 @@ describe('manifest editing', () => {
             }
             return data[channel];
         });
+        await userEvent.click(await screen.findByRole('button', { name: 'Review changes' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+        // The review closes on a rejection, so the banner it explains is the one on screen.
+        await waitFor(() => expect(screen.queryByTestId('manifest-review')).not.toBeInTheDocument());
         const banner = await screen.findByTestId('manifest-conflict');
         expect(banner).toHaveTextContent('changed on the server');
 
