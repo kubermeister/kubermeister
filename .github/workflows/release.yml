@@ -113,6 +113,8 @@ jobs:
     env:
       # Presence flag only; the token itself is used solely by the tap checkout below.
       HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+      # Presence flag only; the token itself is used solely by the dispatch below.
+      HAS_SITE_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN != '' }}
     steps:
       # Installers are unsigned on Windows and on Linux, so a checksum is the only way to tell a
       # good download from a truncated or tampered one. The digests come from the release itself
@@ -170,3 +172,17 @@ jobs:
           git diff --cached --quiet && { echo "cask unchanged"; exit 0; }
           git commit -m "kubermeister $VERSION"
           git push
+
+      # kubermeister.com reads this repository's latest release and CHANGELOG.md at build time, so
+      # without this the download page keeps offering the previous version until somebody pushes to
+      # the website repository for an unrelated reason. It runs last, after the release is public,
+      # because the site's build asks the API for the *latest* release. Skipped when the token is
+      # not configured, so a release never blocks on it.
+      - name: Ask the website to rebuild
+        if: env.HAS_SITE_TOKEN == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          printf '{"event_type":"release-published","client_payload":{"version":"%s"}}' \
+            "${GITHUB_REF_NAME#v}" \
+            | gh api repos/kubermeister/website/dispatches --method POST --input -

@@ -745,6 +745,10 @@ through the next release.
 - The cask is rendered from `packaging/homebrew/kubermeister.rb.tmpl` and pushed to
   `kubermeister/homebrew-tap` with `HOMEBREW_TAP_TOKEN`, a fine-grained token whose resource owner
   must be the organization.
+- The website lives in `kubermeister/website` and builds against this repository's latest release
+  and `CHANGELOG.md`, so the last step of `publish` dispatches `release-published` to it with
+  `WEBSITE_DISPATCH_TOKEN`, a fine-grained token of the same shape as the tap's. Both steps are
+  guarded on their secret being present, so a release never blocks on a token nobody configured.
 
 ### Packaging and signing
 
