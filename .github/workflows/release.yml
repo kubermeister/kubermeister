@@ -173,7 +173,7 @@ jobs:
           git commit -m "kubermeister $VERSION"
           git push
 
-      # kubermeister.com reads this repository's latest release and CHANGELOG.md at build time, so
+      # kubermeister.dev reads this repository's latest release and CHANGELOG.md at build time, so
       # without this the download page keeps offering the previous version until somebody pushes to
       # the website repository for an unrelated reason. It runs last, after the release is public,
       # because the site's build asks the API for the *latest* release. Skipped when the token is
