@@ -33,7 +33,7 @@ function DisruptionBudgetsPage() {
             query={budgets}
             detailPath={detailPath}
             rowProps={(pdb) => ({ 'data-disruptionbudget': pdb.name })}
-            bulkDelete={{ kind: 'PodDisruptionBudget' }}
+            selection={{ kind: 'PodDisruptionBudget' }}
             testId="disruptionbudgets-table"
             footerNote={budgets.live ? 'live' : undefined}
         />

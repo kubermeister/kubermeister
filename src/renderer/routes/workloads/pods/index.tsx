@@ -99,7 +99,7 @@ function PodsPage() {
                     </Select>
                 }
                 rowProps={(pod) => ({ 'data-pod': pod.name })}
-                bulkDelete={{ kind: 'Pod' }}
+                selection={{ kind: 'Pod' }}
                 testId="pods-table"
                 footerNote={pods.live ? 'live' : undefined}
             />

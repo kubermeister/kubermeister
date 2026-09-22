@@ -31,7 +31,7 @@ function AdmissionPoliciesPage() {
             query={policies}
             detailPath={detailPath}
             rowProps={(policy) => ({ 'data-admissionpolicy': policy.name })}
-            bulkDelete={{ kind: 'ValidatingAdmissionPolicy' }}
+            selection={{ kind: 'ValidatingAdmissionPolicy' }}
             testId="admissionpolicies-table"
             footerNote={policies.live ? 'live' : undefined}
         />

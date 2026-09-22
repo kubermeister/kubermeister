@@ -28,7 +28,7 @@ function ConfigMapsPage() {
             query={configMaps}
             detailPath={detailPath}
             rowProps={(configMap) => ({ 'data-configmap': configMap.name })}
-            bulkDelete={{ kind: 'ConfigMap' }}
+            selection={{ kind: 'ConfigMap' }}
             testId="configmaps-table"
             footerNote={configMaps.live ? 'live' : undefined}
         />

@@ -28,7 +28,7 @@ function ServiceAccountsPage() {
             query={accounts}
             detailPath={detailPath}
             rowProps={(account) => ({ 'data-serviceaccount': account.name })}
-            bulkDelete={{ kind: 'ServiceAccount' }}
+            selection={{ kind: 'ServiceAccount' }}
             testId="serviceaccounts-table"
             footerNote={accounts.live ? 'live' : undefined}
         />

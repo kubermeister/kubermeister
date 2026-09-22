@@ -31,7 +31,7 @@ function DaemonSetsPage() {
             query={sets}
             detailPath={detailPath}
             rowProps={(d) => ({ 'data-daemonset': d.name })}
-            bulkDelete={{ kind: 'DaemonSet' }}
+            selection={{ kind: 'DaemonSet' }}
             testId="daemonsets-table"
             footerNote={sets.live ? 'live' : undefined}
         />

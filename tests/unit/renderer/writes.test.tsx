@@ -461,12 +461,12 @@ describe('create screen', () => {
     });
 });
 
-describe('bulk delete', () => {
+describe('the selection bar', () => {
     it('deletes the checked rows and reports how many went', async () => {
         renderRoutes(routeTree, '/workloads/configmaps');
         const table = await screen.findByTestId('configmaps-table');
         await userEvent.click(within(table).getByRole('checkbox', { name: 'Select all rows on this page' }));
-        const bar = await screen.findByTestId('bulk-delete-bar');
+        const bar = await screen.findByTestId('selection-bar');
         expect(bar).toHaveTextContent('2 selected');
 
         await userEvent.click(within(bar).getByRole('button', { name: 'Delete 2' }));
@@ -494,7 +494,7 @@ describe('bulk delete', () => {
         renderRoutes(routeTree, '/workloads/configmaps');
         const table = await screen.findByTestId('configmaps-table');
         await userEvent.click(within(table).getByRole('checkbox', { name: 'Select all rows on this page' }));
-        const bar = await screen.findByTestId('bulk-delete-bar');
+        const bar = await screen.findByTestId('selection-bar');
         await userEvent.click(within(bar).getByRole('button', { name: 'Delete 2' }));
         await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete 2' }));
         await waitFor(() =>
@@ -503,7 +503,73 @@ describe('bulk delete', () => {
             }),
         );
         // Only the row that failed stays checked, ready for a retry.
-        expect(await screen.findByTestId('bulk-delete-bar')).toHaveTextContent('1 selected');
+        expect(await screen.findByTestId('selection-bar')).toHaveTextContent('1 selected');
+    });
+
+    it('saves the checked rows as YAML, as the cluster holds them or cleaned', async () => {
+        invoke.mockImplementation(async (channel: string, input: { kind?: string }) => {
+            if (channel === 'resources.list') return { kind: input.kind, items: [configMap, otherMap] };
+            if (channel === 'resources.exportYaml') return { path: '/home/u/configmaps.yaml', count: 2 };
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/workloads/configmaps');
+        const table = await screen.findByTestId('configmaps-table');
+        await userEvent.click(within(table).getByRole('checkbox', { name: 'Select all rows on this page' }));
+        const bar = await screen.findByTestId('selection-bar');
+
+        await userEvent.click(within(bar).getByRole('button', { name: 'Export 2' }));
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'Cleaned for another cluster' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('resources.exportYaml', {
+                kind: 'ConfigMap',
+                clean: true,
+                targets: [
+                    { name: 'app-config', namespace: 'team-a' },
+                    { name: 'other-config', namespace: 'team-a' },
+                ],
+            }),
+        );
+        expect(toasts.success).toHaveBeenCalledWith('2 Config Maps saved', {
+            description: '/home/u/configmaps.yaml',
+        });
+
+        // The other item is the same export without the clean-up, and the selection outlives both.
+        await userEvent.click(within(bar).getByRole('button', { name: 'Export 2' }));
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'As the cluster holds them' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('resources.exportYaml', expect.objectContaining({ clean: false })),
+        );
+        expect(await screen.findByTestId('selection-bar')).toHaveTextContent('2 selected');
+    });
+
+    it('says which rows were left out, and nothing at all when the save dialog is dismissed', async () => {
+        invoke.mockImplementation(async (channel: string, input: { kind?: string; clean?: boolean }) => {
+            if (channel === 'resources.list') return { kind: input.kind, items: [configMap, otherMap] };
+            if (channel === 'resources.exportYaml') {
+                return input.clean ? { path: null, count: 0 } : { path: '/home/u/one.yaml', count: 1 };
+            }
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/workloads/configmaps');
+        const table = await screen.findByTestId('configmaps-table');
+        await userEvent.click(within(table).getByRole('checkbox', { name: 'Select all rows on this page' }));
+        const bar = await screen.findByTestId('selection-bar');
+
+        await userEvent.click(within(bar).getByRole('button', { name: 'Export 2' }));
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'As the cluster holds them' }));
+        await waitFor(() =>
+            expect(toasts.success).toHaveBeenCalledWith('1 ConfigMap saved', {
+                description: '/home/u/one.yaml — 1 could not be read and were left out.',
+            }),
+        );
+
+        toasts.success.mockReset();
+        await userEvent.click(within(bar).getByRole('button', { name: 'Export 2' }));
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'Cleaned for another cluster' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('resources.exportYaml', expect.objectContaining({ clean: true })),
+        );
+        expect(toasts.success).not.toHaveBeenCalled();
     });
 
     it('clears a selection without deleting anything', async () => {
@@ -511,9 +577,9 @@ describe('bulk delete', () => {
         const table = await screen.findByTestId('configmaps-table');
         await userEvent.click(within(table).getByRole('checkbox', { name: 'Select all rows on this page' }));
         await userEvent.click(
-            within(await screen.findByTestId('bulk-delete-bar')).getByRole('button', { name: 'Clear' }),
+            within(await screen.findByTestId('selection-bar')).getByRole('button', { name: 'Clear' }),
         );
-        await waitFor(() => expect(screen.queryByTestId('bulk-delete-bar')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument());
         expect(invoke).not.toHaveBeenCalledWith('resources.delete', expect.anything());
     });
 });

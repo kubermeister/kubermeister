@@ -1,7 +1,7 @@
 import type { ManifestKind } from '../../../shared/k8s/manifest';
-import { BulkDeleteBar } from '@/components/templates/bulk-delete-bar';
+import { SelectionBar } from '@/components/templates/selection-bar';
 import { ReadErrorHints } from '@/components/templates/read-error-hints';
-import { bulkRowId } from '@/lib/bulk-delete';
+import { selectionRowId } from '@/lib/selection';
 import { useScope } from '@/lib/scope';
 import { useDeferredValue, useMemo, useState } from 'react';
 import {
@@ -82,10 +82,10 @@ interface ResourceListPageProps<T> {
     /** Group rows under headings by this key; the screen owns the control that picks it. */
     groupBy?: (row: T) => string;
     /**
-     * Turn on row selection and the bulk delete bar for this kind. The plural noun for the copy is
-     * the page's own `nounPlural` or title.
+     * Turn on row selection and the bar that acts on it — export and bulk delete — for this kind.
+     * The plural noun for the copy is the page's own `nounPlural` or title.
      */
-    bulkDelete?: { kind: ManifestKind };
+    selection?: { kind: ManifestKind };
     /**
      * The kind ignores the active namespace (nodes, storage classes, cluster roles, ...). The page
      * uses it to hold back advice that only applies to a namespaced list, such as narrowing the
@@ -180,7 +180,7 @@ export function ResourceListPage<T>({
     query,
     detailPath,
     nounPlural,
-    bulkDelete,
+    selection,
     searchPlaceholder,
     emptyMessage,
     footerNote,
@@ -258,10 +258,10 @@ export function ResourceListPage<T>({
     );
     // The checkbox column leads the row, added after the namespace injection so that memo's
     // name-index maths is untouched.
-    const bulkEnabled = !!bulkDelete;
+    const selectable = !!selection;
     const displayColumns = useMemo(
-        () => (bulkEnabled ? [selectColumn<T>(), ...effectiveColumns] : effectiveColumns),
-        [bulkEnabled, effectiveColumns],
+        () => (selectable ? [selectColumn<T>(), ...effectiveColumns] : effectiveColumns),
+        [selectable, effectiveColumns],
     );
 
     // The sortable-field signature of the sampled rows is stable across polls (only the *shape*
@@ -286,8 +286,8 @@ export function ResourceListPage<T>({
         onColumnVisibilityChange: setColumnVisibility,
         // A namespace-qualified row id keeps a selection stable across polls and unambiguous when
         // rows from several namespaces share a name.
-        getRowId: bulkEnabled ? (row) => bulkRowId(row as T & { name: string; namespace?: string }) : undefined,
-        enableRowSelection: bulkEnabled,
+        getRowId: selectable ? (row) => selectionRowId(row as T & { name: string; namespace?: string }) : undefined,
+        enableRowSelection: selectable,
         onRowSelectionChange,
         initialState: { pagination: { pageSize: PAGE_SIZE } },
         state: { sorting, columnVisibility, rowSelection },
@@ -317,7 +317,7 @@ export function ResourceListPage<T>({
                     </Badge>
                 )}
                 <div className="flex-1" />
-                {bulkDelete && <BulkDeleteBar table={table} kind={bulkDelete.kind} noun={noun} />}
+                {selection && <SelectionBar table={table} kind={selection.kind} noun={noun} />}
                 <div className="relative w-60">
                     <SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-text-dim" />
                     <Input

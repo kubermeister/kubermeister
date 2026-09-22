@@ -31,7 +31,7 @@ function ReplicationControllersPage() {
             query={controllers}
             detailPath={detailPath}
             rowProps={(rs) => ({ 'data-replicationcontroller': rs.name })}
-            bulkDelete={{ kind: 'ReplicationController' }}
+            selection={{ kind: 'ReplicationController' }}
             testId="replicationcontrollers-table"
             footerNote={controllers.live ? 'live' : undefined}
         />

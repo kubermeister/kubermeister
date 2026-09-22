@@ -28,7 +28,7 @@ function SecretsPage() {
             query={secrets}
             detailPath={detailPath}
             rowProps={(secret) => ({ 'data-secret': secret.name })}
-            bulkDelete={{ kind: 'Secret' }}
+            selection={{ kind: 'Secret' }}
             testId="secrets-table"
             footerNote={secrets.live ? 'live' : undefined}
         />

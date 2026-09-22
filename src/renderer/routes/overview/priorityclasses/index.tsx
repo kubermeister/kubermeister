@@ -45,7 +45,7 @@ function PriorityClassesPage() {
             query={classes}
             detailPath={detailPath}
             rowProps={(priorityClass) => ({ 'data-priorityclass': priorityClass.name })}
-            bulkDelete={{ kind: 'PriorityClass' }}
+            selection={{ kind: 'PriorityClass' }}
             testId="priorityclasses-table"
             footerNote={classes.live ? 'live' : undefined}
         />
