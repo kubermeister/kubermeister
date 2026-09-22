@@ -636,6 +636,13 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   startup and on every settings write rather than read per call, so the k8s modules never import
   the settings store; a timed-out list or summary points at Settings, since how long a cluster may
   take is the user's to say.
+- **The ceiling also stops the call.** `withK8s` hands it an `AbortSignal` (`src/main/k8s/abort.ts`,
+  an async store rather than an argument threaded through three hundred call sites) which fires when
+  the timer does: `abortMiddleware` puts it on every request the client library builds, and the
+  spawn guard in `exec-auth.ts` kills the credential plugin the call started, so a screen that polls
+  cannot pile up requests and plugin processes on a cluster that never answers. A nested call
+  carries the outer ceiling too. A call made outside `withK8s` finds no signal and runs on, which is
+  what leaves the drain's eviction loop, the informers and the streams alone.
 - The kubeconfig loads with `onInvalidEntry: 'filter'`: an entry with no name, an empty `cluster:`
   or a cluster without a server is dropped, as kubectl tolerates it, instead of failing the whole
   file and every other context with it.

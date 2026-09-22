@@ -8,6 +8,7 @@ import {
     toK8sError,
     withK8s,
 } from '../../../src/main/k8s/errors';
+import { currentAbortSignal } from '../../../src/main/k8s/abort';
 import { ExecPluginError } from '../../../src/main/k8s/exec-auth';
 
 async function failWith(error: unknown): Promise<K8sError> {
@@ -161,5 +162,69 @@ describe('withK8s timeout', () => {
     it('does not fire the timeout after a fast call', async () => {
         await expect(withK8s('fast', () => Promise.resolve('ok'), 1_000)).resolves.toBe('ok');
         expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+describe('the signal a call runs under', () => {
+    it('is in scope for the call and gone once it has answered', async () => {
+        let inside: AbortSignal | undefined;
+        await withK8s('op', async () => {
+            inside = currentAbortSignal();
+        });
+        expect(inside).toBeInstanceOf(AbortSignal);
+        expect(inside?.aborted, 'a call that answered in time is not aborted').toBe(false);
+        expect(currentAbortSignal()).toBeUndefined();
+    });
+
+    it('is aborted when the ceiling fires, which is what stops the call itself', async () => {
+        vi.useFakeTimers();
+        try {
+            let inside: AbortSignal | undefined;
+            const pending = withK8s(
+                'slow',
+                () =>
+                    new Promise<never>(() => {
+                        inside = currentAbortSignal();
+                    }),
+                1_000,
+            );
+            const assertion = expect(pending).rejects.toMatchObject({ kind: 'timeout' });
+            expect(inside?.aborted).toBe(false);
+            await vi.advanceTimersByTimeAsync(1_000);
+            await assertion;
+            expect(inside?.aborted).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('carries the ceiling of the call it is nested in, so an outer timeout ends the inner one', async () => {
+        vi.useFakeTimers();
+        try {
+            let inner: AbortSignal | undefined;
+            const pending = withK8s(
+                'outer',
+                () =>
+                    withK8s(
+                        'inner',
+                        () =>
+                            new Promise<never>(() => {
+                                inner = currentAbortSignal();
+                            }),
+                        10_000,
+                    ),
+                1_000,
+            );
+            const assertion = expect(pending).rejects.toMatchObject({ kind: 'timeout', op: 'outer' });
+            await vi.advanceTimersByTimeAsync(1_000);
+            await assertion;
+            expect(inner?.aborted).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('is absent from a call made outside any ceiling, which is what leaves the drain loop alone', () => {
+        expect(currentAbortSignal()).toBeUndefined();
     });
 });
