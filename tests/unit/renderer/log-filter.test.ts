@@ -8,18 +8,12 @@ import {
     visibleLines,
 } from '../../../src/renderer/lib/log-filter';
 
-const line = (message: string, level: LogLine['level'] = 'INFO'): LogLine => ({
-    level,
+const line = (message: string): LogLine => ({
     timestamp: '2026-09-16T12:00:00Z',
     message,
 });
 
-const lines = [
-    line('starting up'),
-    line('connection refused', 'ERROR'),
-    line('retrying in 5s', 'WARN'),
-    line('cache warm', 'DEBUG'),
-];
+const lines = [line('starting up'), line('connection refused'), line('retrying in 5s'), line('cache warm')];
 
 describe('searching logs', () => {
     it('finds text case-insensitively by default, and exactly when asked', () => {

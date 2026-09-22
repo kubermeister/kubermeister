@@ -61,7 +61,7 @@ const pods = [
         memLimit: 0,
     },
 ];
-const line = (message: string): LogLine => ({ level: 'INFO', timestamp: '2026-09-16T12:00:00Z', message });
+const line = (message: string): LogLine => ({ timestamp: '2026-09-16T12:00:00Z', message });
 
 beforeEach(() => {
     // Real frames run after the push that scheduled them; a synchronous stub would defeat the
@@ -219,7 +219,7 @@ describe('the workload logs tab', () => {
         act(() => opened[0]!.onMessage({ type: 'data', data: line('saved') }));
         await waitFor(() => expect(screen.getByTestId('log-status')).toHaveTextContent('1 lines'));
         await userEvent.click(screen.getByRole('button', { name: 'Download logs' }));
-        expect(download).toHaveBeenCalledWith('web-pods.log', 'web-1 2026-09-16T12:00:00Z INFO saved');
+        expect(download).toHaveBeenCalledWith('web-pods.log', 'web-1 2026-09-16T12:00:00Z saved');
     });
 
     it('surfaces a failing pod through the viewer', async () => {

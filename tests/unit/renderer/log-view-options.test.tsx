@@ -85,7 +85,7 @@ describe('log view options', () => {
 });
 
 describe('the console’s View menu', () => {
-    const line = (message: string): LogLine => ({ level: 'INFO', timestamp: '2026-09-21T10:00:00Z', message });
+    const line = (message: string): LogLine => ({ timestamp: '2026-09-21T10:00:00Z', message });
     const props = {
         lines: [line('a very long line that would otherwise run off the side of the console')],
         containers: ['web'],

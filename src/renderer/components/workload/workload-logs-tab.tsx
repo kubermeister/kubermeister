@@ -50,7 +50,7 @@ export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
     const download = () =>
         downloadTextFile(
             `${name}-pods.log`,
-            lines.map((line) => `${line.pod} ${line.timestamp} ${line.level} ${line.message}`).join('\n'),
+            lines.map((line) => `${line.pod} ${line.timestamp} ${line.message}`).join('\n'),
         );
 
     return (

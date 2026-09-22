@@ -1,35 +1,22 @@
 import { Writable, type Readable } from 'node:stream';
 import { Log } from '@kubernetes/client-node';
-import type {
-    LogLevel,
-    LogLine,
-    PodLogDownload,
-    PodLogDownloadInput,
-    PodLogSnapshotInput,
-} from '../../shared/k8s/logs.js';
+import type { LogLine, PodLogDownload, PodLogDownloadInput, PodLogSnapshotInput } from '../../shared/k8s/logs.js';
 import { streamSchemas, type StreamController, type StreamSend } from '../../shared/streams.js';
 import { apis, kubeConfig } from './client.js';
 import { withK8s } from './errors.js';
 import { reportMissingPod, resolvePodTarget } from './pod-target.js';
 
 const DEFAULT_TAIL_LINES = 500;
-const LEVEL_PATTERN = /\b(ERROR|FATAL|WARN(?:ING)?|DEBUG|TRACE|INFO)\b/i;
 
-/** Best-effort level from the message text; INFO when nothing recognisable appears. */
-export function guessLevel(message: string): LogLevel {
-    const token = message.match(LEVEL_PATTERN)?.[1]?.toUpperCase();
-    if (token === 'ERROR' || token === 'FATAL') return 'ERROR';
-    if (token === 'WARN' || token === 'WARNING') return 'WARN';
-    if (token === 'DEBUG' || token === 'TRACE') return 'DEBUG';
-    return 'INFO';
-}
-
-/** With `timestamps: true` each line is `<RFC3339> <message>`; a line without a space is all message. */
+/**
+ * With `timestamps: true` each line is `<RFC3339> <message>`; a line without a space is all
+ * message. The message travels untouched: what the container printed is what the console shows.
+ */
 export function parseLogLine(line: string): LogLine {
     const space = line.indexOf(' ');
     const timestamp = space > 0 ? line.slice(0, space) : '';
     const message = space > 0 ? line.slice(space + 1) : line;
-    return { level: guessLevel(message), timestamp, message };
+    return { timestamp, message };
 }
 
 /**

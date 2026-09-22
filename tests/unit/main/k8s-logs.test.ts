@@ -23,33 +23,23 @@ vi.mock('../../../src/main/k8s/client.js', () => ({ kubeConfig: () => ({}), apis
 const logs = await import('../../../src/main/k8s/logs.js');
 
 describe('log line parsing', () => {
-    it('guesses the level from recognisable tokens, defaulting to INFO', () => {
-        expect(logs.guessLevel('level=error msg=boom')).toBe('ERROR');
-        expect(logs.guessLevel('FATAL: out of memory')).toBe('ERROR');
-        expect(logs.guessLevel('[warn] disk nearly full')).toBe('WARN');
-        expect(logs.guessLevel('WARNING something')).toBe('WARN');
-        expect(logs.guessLevel('debug: cache hit')).toBe('DEBUG');
-        expect(logs.guessLevel('TRACE enter')).toBe('DEBUG');
-        expect(logs.guessLevel('INFO started')).toBe('INFO');
-        expect(logs.guessLevel('km-e2e-marker')).toBe('INFO');
-        expect(logs.guessLevel('errorsfound and errorprone are not tokens')).toBe('INFO');
-    });
-
-    it('splits the API timestamp from the message', () => {
+    it('splits the API timestamp from the message and leaves the message alone', () => {
         expect(logs.parseLogLine('2026-09-15T12:00:00.123Z GET /healthz 200')).toEqual({
-            level: 'INFO',
             timestamp: '2026-09-15T12:00:00.123Z',
             message: 'GET /healthz 200',
         });
         expect(logs.parseLogLine('no-timestamp-here')).toEqual({
-            level: 'INFO',
             timestamp: '',
             message: 'no-timestamp-here',
         });
         expect(logs.parseLogLine(' leading space')).toEqual({
-            level: 'INFO',
             timestamp: '',
             message: ' leading space',
+        });
+        // A level the container printed is part of what it said, not a field of our own.
+        expect(logs.parseLogLine('2026-09-15T12:00:00.123Z ERROR checkout gateway timeout')).toEqual({
+            timestamp: '2026-09-15T12:00:00.123Z',
+            message: 'ERROR checkout gateway timeout',
         });
     });
 
@@ -102,8 +92,8 @@ describe('startPodLogStream', () => {
         sink!.write(Buffer.from('2026-09-15T12:00:00Z hello\n2026-09-15T12:00:01Z ERR'));
         sink!.write(Buffer.from('OR boom\n'));
         expect(send.mock.calls.map((c) => c[0])).toEqual([
-            { type: 'data', data: { level: 'INFO', timestamp: '2026-09-15T12:00:00Z', message: 'hello' } },
-            { type: 'data', data: { level: 'ERROR', timestamp: '2026-09-15T12:00:01Z', message: 'ERROR boom' } },
+            { type: 'data', data: { timestamp: '2026-09-15T12:00:00Z', message: 'hello' } },
+            { type: 'data', data: { timestamp: '2026-09-15T12:00:01Z', message: 'ERROR boom' } },
         ]);
         ctl.stop();
         expect(controller.abort).toHaveBeenCalledOnce();
@@ -118,7 +108,7 @@ describe('startPodLogStream', () => {
         await new Promise((resolve) => setImmediate(resolve));
         expect(send).toHaveBeenCalledWith({
             type: 'data',
-            data: { level: 'INFO', timestamp: '2026-09-15T12:00:02Z', message: 'tail' },
+            data: { timestamp: '2026-09-15T12:00:02Z', message: 'tail' },
         });
         expect(send).toHaveBeenLastCalledWith({ type: 'end' });
     });
@@ -223,8 +213,8 @@ describe('readPodLogSnapshot', () => {
             timestamps: true,
         });
         expect(lines).toEqual([
-            { level: 'INFO', timestamp: '2026-09-15T12:00:00Z', message: 'started' },
-            { level: 'ERROR', timestamp: '2026-09-15T12:00:01Z', message: 'ERROR boom' },
+            { timestamp: '2026-09-15T12:00:00Z', message: 'started' },
+            { timestamp: '2026-09-15T12:00:01Z', message: 'ERROR boom' },
         ]);
     });
 

@@ -1,17 +1,17 @@
 import { z } from 'zod';
 import { namespaceNameSchema } from './names.js';
 
-export const logLevelSchema = z.enum(['INFO', 'DEBUG', 'WARN', 'ERROR']);
-
-/** One log line as streamed from a container, with the level guessed from its text. */
+/**
+ * One log line as streamed from a container: the timestamp the API server prefixed and the line
+ * itself, carried as the container wrote it. Nothing is read out of the text or taken off it — a
+ * level a container prints is part of what it said, and one it does not print is not ours to guess.
+ */
 export const logLineSchema = z.object({
-    level: logLevelSchema,
     /** RFC 3339 timestamp the API server prefixed, or empty when absent. */
     timestamp: z.string(),
     message: z.string(),
 });
 
-export type LogLevel = z.infer<typeof logLevelSchema>;
 export type LogLine = z.infer<typeof logLineSchema>;
 
 /** Input of the one-shot log read: the same target as the follow stream, plus its window. */

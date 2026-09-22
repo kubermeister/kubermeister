@@ -473,7 +473,7 @@ describe('registerHandlers', () => {
     });
 
     it('forwards the log snapshot and object events channels with their inputs', async () => {
-        const line = { level: 'INFO', timestamp: 't', message: 'm' };
+        const line = { timestamp: 't', message: 'm' };
         logsMod.readPodLogSnapshot.mockResolvedValue([line]);
         await expect(
             invoke('pods.logSnapshot', { name: 'web-1', namespace: 'team-a', container: 'app', sinceSeconds: 300 }),

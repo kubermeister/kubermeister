@@ -29,13 +29,6 @@ export const SINCE_OPTIONS: SinceOption[] = [
     { label: 'All logs', seconds: undefined },
 ];
 
-export const LOG_LEVEL_COLOR: Record<LogLine['level'], string> = {
-    ERROR: 'text-danger',
-    WARN: 'text-warn',
-    DEBUG: 'text-text-dim',
-    INFO: 'text-ok',
-};
-
 /** Height of one unwrapped row, which is what the virtualiser starts from before measuring. */
 const ROW_HEIGHT = 18;
 
@@ -90,7 +83,7 @@ function highlight(message: string, search: LogSearch) {
 }
 
 interface LogViewerProps {
-    /** Already filtered by the caller: the lines the search and the level floor left. */
+    /** Already filtered by the caller: the lines the search left. */
     lines: (LogLine & { pod?: string })[];
     /** Colour per pod, for a view following several at once; absent for a single container. */
     podColors?: Map<string, string>;
@@ -110,7 +103,7 @@ interface LogViewerProps {
     defaultTail: number;
     /** Rendered above the rows when the live stream errors. */
     error?: string | null;
-    /** True when `lines` has been narrowed by the search or the level floor. */
+    /** True when `lines` has been narrowed by the search. */
     filtered?: boolean;
     /** True when the search is meant as a pattern and is not a valid one yet. */
     brokenPattern?: boolean;
@@ -313,9 +306,6 @@ export function LogViewer({
                                         </span>
                                     )}
                                     {showTimestamps && <span className="shrink-0 text-text-dim">{log.timestamp}</span>}
-                                    <span className={cn('w-12 shrink-0 font-medium', LOG_LEVEL_COLOR[log.level])}>
-                                        {log.level}
-                                    </span>
                                     <span
                                         className={cn('flex-1', view.wrap && 'min-w-0 break-words whitespace-pre-wrap')}
                                     >
