@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { clusterKubectl, NAMESPACE } from '../harness/cluster';
 import { launchApp, type LaunchedApp, type Theme } from '../harness/launch';
@@ -24,8 +25,8 @@ const SOAK_MS = Number(process.env.KM_DEMO_SOAK_SEC ?? 150) * 1_000;
 
 // Deliberately not `mode: 'serial'`, although the shots do share one app and run in order under a
 // single worker: serial mode skips the rest of the file after the first failure, which is the
-// opposite of the point. A shot that cannot be composed should name itself and let the other
-// nineteen be taken.
+// opposite of the point. A shot that cannot be composed should name itself and let the rest
+// of the set be taken.
 
 test.beforeAll(async () => {
     // One project per theme, so the project's name is which theme this run is shooting.
@@ -333,6 +334,110 @@ test('port-forwards', async () => {
         .getByRole('button', { name: /^Stop forward/ })
         .click();
     await window.keyboard.press('Escape');
+});
+
+test('deployments-scale', async () => {
+    const { window } = launched;
+    await goto('/workloads/deployments');
+    // The Scale column's steppers are the only place a replica count is changed, so the list is the
+    // picture rather than a detail page.
+    await expect(window.getByTestId('deployments-table')).toContainText('checkout', { timeout: 30_000 });
+    await shoot('deployments-scale');
+});
+
+test('selection-export', async () => {
+    const { window } = launched;
+    await goto('/workloads/deployments');
+    const table = window.getByTestId('deployments-table');
+    await expect(table).toContainText('checkout', { timeout: 30_000 });
+    const rows = table.getByRole('checkbox', { name: 'Select row' });
+    await rows.nth(0).check();
+    await rows.nth(1).check();
+    const bar = window.getByTestId('selection-bar');
+    await bar.getByRole('button', { name: /^Export/ }).click();
+    // The menu open is the shot: the choice between the two exports is made here, not afterwards.
+    await expect(window.getByRole('menuitem', { name: 'Cleaned for another cluster' })).toBeVisible();
+    await shoot('selection-export');
+    await window.keyboard.press('Escape');
+    await bar.getByRole('button', { name: 'Clear' }).click();
+});
+
+test('autoscaler-bounds', async () => {
+    const { window } = launched;
+    await goto(`/workloads/autoscalers/${NAMESPACE}/payments-api`);
+    await expect(window.getByTestId('autoscaler-page')).toBeVisible({ timeout: 30_000 });
+    await window.getByRole('button', { name: 'Edit bounds' }).click();
+    await expect(window.getByLabel('Maximum replicas')).toBeVisible();
+    // Opened and photographed, never saved.
+    await shoot('autoscaler-bounds');
+    await window.keyboard.press('Escape');
+});
+
+test('cronjob-detail', async () => {
+    const { window } = launched;
+    await goto(`/workloads/cronjobs/${NAMESPACE}/usage-rollup`);
+    await expect(window.getByTestId('cronjob-page')).toBeVisible({ timeout: 30_000 });
+    // Run now and Suspend in the header are what the jobs page is about; nothing here presses them.
+    await expect(window.getByRole('button', { name: 'Run now' })).toBeVisible({ timeout: 30_000 });
+    await shoot('cronjob-detail');
+});
+
+test('create-resource', async () => {
+    const { window } = launched;
+    await goto('/create');
+    await expect(window.getByTestId('create-page')).toBeVisible({ timeout: 30_000 });
+    await window.getByRole('combobox', { name: 'Insert template' }).click();
+    await window.getByRole('option', { name: /^Deployment / }).click();
+    await expect(window.getByTestId('create-page').locator('.cm-content')).toContainText('kind: Deployment');
+    await shoot('create-resource');
+});
+
+test('manifest-review', async () => {
+    const { window } = launched;
+    await goto(`/workloads/deployments/${NAMESPACE}/checkout`);
+    await openTab(window, /Manifest/);
+    const panel = window.getByTestId('manifest-panel');
+    await expect(panel).toBeVisible({ timeout: 30_000 });
+    await panel.getByRole('button', { name: 'Edit', exact: true }).click();
+    // Edit re-reads the object before the editor opens for writing, and keys typed before then are
+    // lost, which leaves a review with nothing in it.
+    await expect(panel.locator('.cm-content')).toHaveAttribute('contenteditable', 'true', { timeout: 30_000 });
+
+    // One changed line, the replica count, is the smallest edit a reader recognises in a diff. The
+    // first match is the spec's: the status block repeats the word further down.
+    const line = panel.locator('.cm-line', { hasText: /^\s{2}replicas: \d+$/ }).first();
+    await line.click();
+    await window.keyboard.press('End');
+    await window.keyboard.press('Backspace');
+    await window.keyboard.type('5');
+    await panel.getByRole('button', { name: 'Review changes' }).click();
+    const diff = window.getByTestId('manifest-diff');
+    await expect(diff).toBeVisible({ timeout: 30_000 });
+    await expect(diff).toContainText('replicas: 5');
+    await shoot('manifest-review');
+
+    // Backed all the way out, never saved: the edit is discarded so the next shot's navigation does
+    // not stop on the unsaved-changes guard.
+    await window.getByRole('button', { name: 'Keep editing' }).click();
+    await panel.getByRole('button', { name: 'Cancel' }).click();
+    await window.getByRole('button', { name: 'Discard' }).click();
+});
+
+test('settings-connection', async () => {
+    const { window } = launched;
+    await goto('/settings');
+    await expect(window.getByTestId('settings-page')).toBeVisible({ timeout: 30_000 });
+    // The page is one scroll; the Connection section is brought to the top so the kubeconfig, proxy
+    // and certificate authority cards are the picture.
+    await window
+        .getByRole('heading', { name: 'Connection', exact: true })
+        .evaluate((heading) => heading.scrollIntoView({ block: 'start' }));
+    // The demo kubeconfig lives in this checkout, so its path names whoever ran the harness. The
+    // shots are published, so the home directory is written the way a shell abbreviates it.
+    await window.getByTestId('kubeconfig-path').evaluate((path, home) => {
+        path.textContent = (path.textContent ?? '').replace(home, '~');
+    }, homedir());
+    await shoot('settings-connection');
 });
 
 // Last of the set: it writes to the cluster, which rolls the pods every earlier shot was taken
