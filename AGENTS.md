@@ -128,6 +128,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - Every invoke resolves to the result envelope `{ ok: true, data } | { ok: false, error }`: a
   classified `K8sError` becomes `ok: false` with `kind`, `detail` and `op`, and the renderer's
   `invoke` rethrows it as a typed `IpcError`. Unexpected exceptions still reject; those are bugs.
+- **A path the renderer named would be a file it chose to have read**, so a file enters the app only
+  through the OS: `manifest.pick` opens the native dialog, and a file dropped on the window becomes
+  a path in the preload through `webUtils.getPathForFile`, which answers only for a file somebody
+  really dragged in. That read is listed in `PRELOAD_CHANNELS` instead of `IPC_CHANNELS`, so
+  `km.invoke` refuses to forward it and the preload's `importFile` is the only way to reach it;
+  `src/main/manifest-file.ts` does the reading, capped and refusing anything that is not a text file.
 - Main-to-renderer pushes go through `subscribe` on the bridge, allowlisted in
   `src/shared/ipc-channels.ts` with payload schemas in `ipc-subscriptions.ts`. A hook mirroring a
   push keeps a push that arrives before its initial read answers, since the read is the older of
@@ -395,6 +401,10 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   mutation-error toast.
 - Deleting a kind in `DANGEROUS_KINDS` (nodes, CRDs, cluster-wide plumbing) asks the user to type
   the name, and those kinds have no bulk delete.
+- A manifest opened from a file is text like any other: the shell takes the drop wherever it lands,
+  stages it (`src/renderer/lib/manifest-import.ts`) and opens the Create screen on it, which applies
+  it through the same create path and the same namespace checks as one typed in. Both a file and a
+  template ask before they replace an edited editor.
 
 ### Kinds and the registry
 

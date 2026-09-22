@@ -4,6 +4,7 @@ interface Window {
     km: {
         invoke: (channel: string, input: unknown) => Promise<unknown>;
         subscribe: (channel: string, handler: (payload: unknown) => void) => () => void;
+        importFile: (file: File) => Promise<unknown>;
         stream: (
             channel: string,
             input: unknown,

@@ -91,6 +91,11 @@ export function YamlEditor({
                 editorTheme,
                 syntaxHighlighting(editorHighlight),
                 cmPlaceholder(initial.placeholder ?? ''),
+                // A dropped file belongs to the app, not to this editor: CodeMirror's own handler
+                // would read it in the renderer and paste it at the drop position, while the window
+                // handler has main read it and replace the document. Text dropped in is still the
+                // editor's own business.
+                EditorView.domEventHandlers({ drop: (event) => !!event.dataTransfer?.files.length }),
                 readOnlyCompartment.current.of(readOnlyExtensions(initial.readOnly)),
                 EditorView.contentAttributes.of({ 'aria-label': initial.ariaLabel ?? 'Code editor' }),
                 EditorView.updateListener.of((update) => {

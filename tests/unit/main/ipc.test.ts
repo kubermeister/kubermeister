@@ -80,6 +80,7 @@ const ownersMod = { getPodOwners: vi.fn(), listOwnedPods: vi.fn() };
 const describeMod = { describeObject: vi.fn() };
 const schemasMod = { getKindSchema: vi.fn(), resetSchemaCache: vi.fn() };
 const alertsMod = { listAlerts: vi.fn() };
+const manifestFileMod = { pickManifestFile: vi.fn(), readManifestFile: vi.fn() };
 const samplerMod = { resetHistory: vi.fn() };
 const streamsMod = { endAllStreams: vi.fn() };
 vi.mock('../../../src/main/k8s/sampler.js', () => samplerMod);
@@ -108,6 +109,7 @@ vi.mock('../../../src/main/k8s/resources/lifecycle.js', () => lifecycleMod);
 vi.mock('../../../src/main/k8s/resources/owners.js', () => ownersMod);
 vi.mock('../../../src/main/k8s/resources/describe.js', () => describeMod);
 vi.mock('../../../src/main/k8s/openapi/index.js', () => schemasMod);
+vi.mock('../../../src/main/manifest-file.js', () => manifestFileMod);
 
 const { registerHandlers } = await import('../../../src/main/ipc/index.js');
 const { ipcSchemas } = await import('../../../src/shared/ipc.js');
@@ -384,6 +386,27 @@ describe('registerHandlers', () => {
         expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: null } });
         expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+    });
+
+    it('opens a manifest through the picker and reads a dropped one by its path', async () => {
+        const file = { path: '/home/u/app.yaml', name: 'app.yaml', text: 'kind: Pod\n' };
+        manifestFileMod.pickManifestFile.mockResolvedValue(file);
+        manifestFileMod.readManifestFile.mockResolvedValue(file);
+        await expect(invoke('manifest.pick', {})).resolves.toEqual(file);
+        await expect(invoke('manifest.read', { path: '/home/u/app.yaml' })).resolves.toEqual(file);
+        expect(manifestFileMod.readManifestFile).toHaveBeenCalledWith('/home/u/app.yaml');
+        // Opening a manifest touches neither the settings file nor the connection.
+        expect(store.updateSettings).not.toHaveBeenCalled();
+        expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+    });
+
+    it('answers nothing when the manifest picker is cancelled', async () => {
+        manifestFileMod.pickManifestFile.mockResolvedValue(null);
+        await expect(invoke('manifest.pick', {})).resolves.toBeNull();
+    });
+
+    it('refuses a read that names no path', async () => {
+        await expect(invokeRaw('manifest.read', { path: '' })).rejects.toThrow();
     });
 
     it('leaves settings alone when the picker is cancelled', async () => {

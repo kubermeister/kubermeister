@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AllowedChannel } from './ipc-channels.js';
+import type { AllowedChannel, PreloadChannel } from './ipc-channels.js';
 import {
     helmChartSchema,
     releaseRevisionSchema,
@@ -12,6 +12,7 @@ import {
 import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
 import { kubeContextSchema } from './k8s/contexts.js';
 import { manifestInputSchema, manifestSchema } from './k8s/manifest.js';
+import { manifestFileSchema, manifestReadInputSchema } from './manifest-file.js';
 import { namespaceDetailInputSchema, namespaceDetailSchema } from './k8s/namespaces.js';
 import { objectMetaInputSchema, objectMetaSchema } from './k8s/meta.js';
 import { relatedGroupSchema, relatedInputSchema } from './k8s/related.js';
@@ -182,6 +183,11 @@ export const ipcSchemas = {
     // The CA bundle is a path too, so it is chosen the same way and only ever cleared from here.
     'caBundle.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
     'caBundle.clear': { input: noInput, output: settingsSchema },
+    // A manifest is opened the same dialog-gated way, and null is a cancelled picker.
+    'manifest.pick': { input: noInput, output: manifestFileSchema.nullable() },
+    // The drop's other half: the preload alone reaches this one, with the path of a file the user
+    // really dragged in, so no path the renderer made up is ever read.
+    'manifest.read': { input: manifestReadInputSchema, output: manifestFileSchema },
     'namespaces.list': { input: noInput, output: z.array(namespaceSchema) },
     'namespace.active': { input: noInput, output: activeNamespaceSchema },
     'cluster.active': { input: noInput, output: clusterSchema.nullable() },
@@ -273,7 +279,9 @@ export type UpdateState = z.infer<typeof updateStateSchema>;
 export type StartupCheck = z.infer<typeof startupCheckSchema>;
 export type StartupReport = z.infer<typeof startupReportSchema>;
 
-// A channel added to one list but not the other is a type error, not a silent runtime gap.
+// A channel added to one list but not the other is a type error, not a silent runtime gap. Every
+// channel is declared in one of the two lists: the renderer's own, or the preload's.
+type DeclaredChannel = AllowedChannel | PreloadChannel;
 type Assert<T extends true> = T;
-type _AllChannelsAllowed = Assert<IpcChannel extends AllowedChannel ? true : false>;
-type _NoStrayChannels = Assert<Exclude<AllowedChannel, IpcChannel> extends never ? true : false>;
+type _AllChannelsAllowed = Assert<IpcChannel extends DeclaredChannel ? true : false>;
+type _NoStrayChannels = Assert<Exclude<DeclaredChannel, IpcChannel> extends never ? true : false>;

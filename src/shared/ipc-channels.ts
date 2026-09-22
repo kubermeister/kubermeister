@@ -21,6 +21,7 @@ export const IPC_CHANNELS = [
     'kubeconfig.useDefault',
     'caBundle.pick',
     'caBundle.clear',
+    'manifest.pick',
     'namespaces.list',
     'namespace.active',
     'cluster.active',
@@ -89,6 +90,14 @@ export const IPC_CHANNELS = [
     'autoscalers.update',
 ] as const;
 
+/**
+ * Channels the preload invokes on the renderer's behalf, which `km.invoke` does not forward. A
+ * dropped file's path is resolved in the preload by `webUtils.getPathForFile`, which answers only
+ * for a file somebody really dragged onto the window; keeping the read off the list `invoke`
+ * checks against is what stops the renderer naming a path of its own and having any file read.
+ */
+export const PRELOAD_CHANNELS = ['manifest.read'] as const;
+
 export const SUBSCRIPTION_CHANNELS = ['update.state', 'open-settings'] as const;
 
 /** Stream channels the preload's `stream()` accepts. Schemas live in `streams.ts`; this file stays import-free. */
@@ -101,5 +110,6 @@ export const STREAM_CHANNELS = [
 ] as const;
 
 export type AllowedChannel = (typeof IPC_CHANNELS)[number];
+export type PreloadChannel = (typeof PRELOAD_CHANNELS)[number];
 export type AllowedSubscription = (typeof SUBSCRIPTION_CHANNELS)[number];
 export type AllowedStream = (typeof STREAM_CHANNELS)[number];

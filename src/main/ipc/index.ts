@@ -72,6 +72,7 @@ import {
 import { getResource, listResources } from '../k8s/resources/index.js';
 import { getDrainPlan } from '../k8s/drain.js';
 import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
+import { pickManifestFile, readManifestFile } from '../manifest-file.js';
 import type { Settings } from '../../shared/settings.js';
 import { getSettings, updateSettings } from '../settings/store.js';
 import { runStartupChecks } from '../startup/checks.js';
@@ -184,6 +185,8 @@ const handlers: Handlers = {
     },
     'kubeconfig.pick': async () => ({ path: await pickKubeconfig() }),
     'caBundle.pick': async () => ({ path: await pickCaBundle() }),
+    'manifest.pick': () => pickManifestFile(),
+    'manifest.read': ({ path }) => readManifestFile(path),
     'namespaces.list': () => listNamespaces(),
     'namespace.active': () => getActiveNamespaceInfo(),
     'cluster.active': () => getActiveCluster(),

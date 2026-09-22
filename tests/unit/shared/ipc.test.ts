@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { IPC_CHANNELS } from '../../../src/shared/ipc-channels';
+import { IPC_CHANNELS, PRELOAD_CHANNELS } from '../../../src/shared/ipc-channels';
 import { ipcResultSchema, ipcSchemas } from '../../../src/shared/ipc';
 
 describe('IPC contract', () => {
     it('allowlists exactly the channels that have schemas', () => {
-        expect([...IPC_CHANNELS].sort()).toEqual(Object.keys(ipcSchemas).sort());
+        expect([...IPC_CHANNELS, ...PRELOAD_CHANNELS].sort()).toEqual(Object.keys(ipcSchemas).sort());
+    });
+
+    it('keeps the preload’s own channels out of the list the renderer may invoke', () => {
+        for (const channel of PRELOAD_CHANNELS) {
+            expect(IPC_CHANNELS).not.toContain(channel);
+        }
+        // A file read named by the renderer would be any file it chose to have read.
+        expect(PRELOAD_CHANNELS).toContain('manifest.read');
     });
 
     it('every channel declares an input and an output schema', () => {

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { dump as dumpYaml, load as loadYaml } from 'js-yaml';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
 import { launchApp, type LaunchedApp } from '../harness/launch';
 
@@ -455,6 +455,43 @@ test('creates a config map from the editor, scales the deployment, then deletes 
     await expect(dialog).toContainText('Delete ConfigMap?');
     await dialog.getByRole('button', { name: 'Delete' }).click();
     await expect(window.getByTestId('configmaps-table').locator('[data-configmap="my-config"]')).toHaveCount(0);
+});
+
+test('opens a manifest from a file through the picker and applies it', async () => {
+    const { app, window } = launched;
+    const path = join(tmpdir(), `km-e2e-import-${Date.now()}.yaml`);
+    writeFileSync(
+        path,
+        dumpYaml({
+            apiVersion: 'v1',
+            kind: 'ConfigMap',
+            metadata: { name: 'imported-config', namespace: NAMESPACE },
+            data: { from: 'a file on disk' },
+        }),
+    );
+    // The picker is a native dialog nothing can click, so the choice is made in main — which is
+    // where the app reads the file either way, and the point of the test is that it does.
+    await app.evaluate(({ dialog }, chosen) => {
+        dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [chosen] });
+    }, path);
+
+    await window.getByRole('link', { name: 'Create resource' }).click();
+    const create = window.getByTestId('create-page');
+    await create.getByRole('button', { name: 'Import' }).click();
+    await expect(create).toContainText('name: imported-config');
+    await expect(create).toContainText(basename(path));
+
+    await create.getByRole('button', { name: 'Create' }).click();
+    await expect(window.getByTestId('configmaps-table').locator('[data-configmap="imported-config"]')).toBeVisible();
+
+    await window
+        .getByTestId('configmaps-table')
+        .locator('[data-configmap="imported-config"]')
+        .getByRole('link')
+        .click();
+    await window.getByTestId('configmap-page').getByRole('button', { name: 'Delete' }).click();
+    await window.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
+    await expect(window.getByTestId('configmaps-table').locator('[data-configmap="imported-config"]')).toHaveCount(0);
 });
 
 test('restarts the seeded deployment, which rolls its pods onto a new replica set', async () => {

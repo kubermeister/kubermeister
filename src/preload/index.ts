@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { IPC_CHANNELS, STREAM_CHANNELS, SUBSCRIPTION_CHANNELS } from '../shared/ipc-channels.js';
 
 /** Channels the renderer may reach. Anything else is rejected here, before it leaves the sandbox. */
@@ -23,6 +23,24 @@ contextBridge.exposeInMainWorld('km', {
         return () => {
             ipcRenderer.removeListener(eventName, listener);
         };
+    },
+
+    /**
+     * Read a manifest the user dropped on the window. `webUtils.getPathForFile` is the only way a
+     * sandboxed renderer learns where a dropped file lives — `File.path` is gone — and it answers
+     * for files the browser process made from a real drag, never for one the page constructed. The
+     * read itself is not in the channel list `invoke` checks, so this is the only way to reach it
+     * and the renderer can never name a path of its own.
+     */
+    importFile: (file: File): Promise<unknown> => {
+        const path = webUtils.getPathForFile(file);
+        if (!path) {
+            return Promise.resolve({
+                ok: false,
+                error: { kind: 'invalid', detail: 'That is not a file on disk.', op: 'manifest.read' },
+            });
+        }
+        return ipcRenderer.invoke('manifest.read', { path });
     },
 
     /**
