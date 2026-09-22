@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mergeSettings, type SettingsPatch } from '../../../src/shared/settings';
 import { renderRoutes } from './helpers';
+import { settingsFixture } from './settings-fixture';
 
 const invoke = vi.fn();
 const subscribe = vi.fn(() => () => {});
@@ -17,14 +19,12 @@ vi.mock('@/lib/ipc', async () => ({
 const { routeTree } = await import('@/routeTree.gen');
 const { useRefreshIntervalMs } = await import('@/lib/settings');
 
-const settings = {
-    version: 1,
-    session: { lastContext: 'alpha', lastNamespace: 'team-a', restoreOnLaunch: true },
-    connection: { kubeconfigPath: null },
-    data: { refreshIntervalSec: 12, readTimeoutSec: 45 },
-    updates: { mode: null as string | null, checkIntervalHours: 4 },
-    network: { proxyMode: 'env', proxyUrl: null as string | null, noProxy: null as string | null, caBundlePath: null },
-};
+// Only what these tests are about: a session to restore, and a read timeout that is none of the
+// presets, so the screen has to fold the persisted value into the choices it offers.
+const settings = settingsFixture({
+    session: { lastContext: 'alpha', lastNamespace: 'team-a' },
+    data: { readTimeoutSec: 45 },
+});
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date', checkedAt: new Date(Date.now() - 5 * 60_000).toISOString() },
     'app.info': {
@@ -37,6 +37,7 @@ const data: Record<string, unknown> = {
         arch: 'arm64',
     },
     'settings.get': settings,
+    'chartRepositories.list': [],
     'contexts.list': [{ name: 'alpha', cluster: 'a', user: 'u', current: true }],
     'namespaces.list': [],
     'namespace.active': null,
@@ -49,27 +50,22 @@ describe('settings screen', () => {
         document.documentElement.classList.remove('light', 'dark');
         invoke.mockReset();
         invoke.mockImplementation(async (channel: string, input: unknown) => {
-            if (channel === 'settings.set') {
-                const patch = input as { session?: object; data?: object; updates?: object; network?: object };
-                return {
-                    ...settings,
-                    session: { ...settings.session, ...patch.session },
-                    data: { ...settings.data, ...patch.data },
-                    updates: { ...settings.updates, ...patch.updates },
-                    network: { ...settings.network, ...patch.network },
-                };
-            }
+            // Main answers a write with the whole merged object, through this very function.
+            if (channel === 'settings.set') return mergeSettings(settings, input as SettingsPatch);
             return data[channel];
         });
     });
 
-    it('is reachable from the sidebar footer and shows the three sections', async () => {
+    it('is reachable from the sidebar footer and shows every section', async () => {
         renderRoutes(routeTree, '/overview/summary');
         const sidebar = await screen.findByTestId('sidebar');
         await userEvent.click(within(sidebar).getByRole('link', { name: /Settings/ }));
         const page = await screen.findByTestId('settings-page');
         expect(page).toHaveTextContent('Preferences for this Kubermeister install.');
-        for (const title of ['General', 'Appearance', 'Updates', 'Connection']) expect(page).toHaveTextContent(title);
+        for (const title of ['General', 'Appearance', 'Updates', 'Charts', 'Connection'])
+            expect(page).toHaveTextContent(title);
+        // The card itself is tested on its own; that the Charts section carries it is asserted here.
+        expect(within(page).getByTestId('chart-repositories')).toBeInTheDocument();
         expect(within(sidebar).getByRole('link', { name: /Settings/ })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Settings');
     });
@@ -191,7 +187,7 @@ describe('settings screen', () => {
         expect(invoke).toHaveBeenCalledWith('update.download', {});
     });
 
-    it('disables the check where in-app updates cannot run and offers the restart once downloaded', async () => {
+    it('disables the check where in-app updates cannot run', async () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.state' ? { status: 'unsupported', message: 'Development build' } : data[channel],
         );
@@ -200,13 +196,14 @@ describe('settings screen', () => {
         await waitFor(() => expect(status).toHaveTextContent('In-app updates are unavailable here.'));
         expect(status).toHaveTextContent('Development build');
         expect(screen.getByRole('button', { name: 'Check for updates' })).toBeDisabled();
+    });
 
+    it('offers the restart once an update is downloaded', async () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.state' ? { status: 'downloaded', version: '0.3.0' } : data[channel],
         );
         renderRoutes(routeTree, '/settings');
-        const restart = await screen.findByRole('button', { name: 'Restart now' });
-        await userEvent.click(restart);
+        await userEvent.click(await screen.findByRole('button', { name: 'Restart now' }));
         expect(invoke).toHaveBeenCalledWith('update.install', {});
     });
 
