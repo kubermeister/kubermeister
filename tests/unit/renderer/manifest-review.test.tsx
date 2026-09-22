@@ -51,6 +51,17 @@ describe('manifest review', () => {
         expect(screen.getByRole('button', { name: 'Keep editing' })).toBeDisabled();
     });
 
+    it('scrolls the diff on its own so the buttons stay in view', () => {
+        renderWithQuery(<ManifestReview {...props} />);
+        const review = screen.getByTestId('manifest-review');
+        const scroller = within(review).getByTestId('manifest-diff-scroll');
+        expect(within(scroller).getByTestId('manifest-diff')).toBeInTheDocument();
+        // The footer is the scrolling region's sibling, so a long manifest never carries Save off
+        // the bottom of the dialog.
+        expect(within(scroller).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+        expect(within(review).getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    });
+
     it('returns to the editor without writing', async () => {
         const onSave = vi.fn();
         const onOpenChange = vi.fn();
