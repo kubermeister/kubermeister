@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useBlocker } from '@tanstack/react-router';
-import { CheckIcon, CodeIcon, DownloadIcon, EyeIcon, PencilIcon, XIcon } from 'lucide-react';
+import { CodeIcon, DiffIcon, DownloadIcon, EyeIcon, PencilIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ManifestKind } from '../../../shared/k8s/manifest';
 import { YamlEditor } from '@/components/data-display/yaml-editor';
@@ -22,6 +22,7 @@ import { useIpcQuery } from '@/lib/query';
 import { useReplaceResource } from '@/lib/writes';
 import { cn } from '@/lib/utils';
 import { useRegisterManifestEdit } from './manifest-edit';
+import { ManifestReview } from './manifest-review';
 import type { DetailTab } from './resource-detail';
 
 interface ManifestPanelProps {
@@ -94,6 +95,9 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
     // The user's buffer; null means untouched, so the live read shows as it is.
     const [edits, setEdits] = useState<string | null>(null);
     const [confirmCancel, setConfirmCancel] = useState(false);
+    // Open from Review changes until the write settles: a replace carries the whole object, so what
+    // it changes is shown before it is done rather than reported afterwards.
+    const [reviewing, setReviewing] = useState(false);
     // Armed when a save was rejected as a conflict: retrying the same stale version would only
     // repeat it, so the banner offers a reload that keeps the edits.
     const [conflict, setConflict] = useState(false);
@@ -107,6 +111,7 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
         setEditing(false);
         setEdits(null);
         setConflict(false);
+        setReviewing(false);
     };
 
     const enterEdit = async () => {
@@ -135,6 +140,8 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
             if (describeError(error).kind === 'conflict') setConflict(true);
             return null;
         });
+        // A rejected save goes back to the editor, where the banner and the buffer are.
+        setReviewing(false);
         if (!updated) return;
         toast.success(`${updated.kind} “${updated.name}” updated`);
         exitEdit();
@@ -239,11 +246,11 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
                             {...inertWhen(empty || replace.isPending)}
                             onClick={() => {
                                 if (empty || replace.isPending) return;
-                                void handleSave();
+                                setReviewing(true);
                             }}
                         >
-                            <CheckIcon />
-                            {replace.isPending ? 'Saving…' : 'Save'}
+                            <DiffIcon />
+                            Review changes
                         </Button>
                     </>
                 ) : (
@@ -283,6 +290,16 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
                 readOnly={!editing}
                 aria-label={`${liveKind} manifest`}
                 className="min-h-0 flex-1"
+            />
+            <ManifestReview
+                open={reviewing}
+                onOpenChange={setReviewing}
+                live={query.data?.yaml ?? ''}
+                next={text}
+                kind={liveKind ?? ''}
+                name={name}
+                saving={replace.isPending}
+                onSave={() => void handleSave()}
             />
             <AlertDialog open={discardOpen} onOpenChange={(open) => !open && closeDiscard()}>
                 <AlertDialogContent>

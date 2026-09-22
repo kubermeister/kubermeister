@@ -6,12 +6,23 @@ import { cn } from '@/lib/utils';
  * the right does not, an added line the other way round. One column rather than two panes because
  * the question is what changed, not what each revision says in full.
  */
-export function DiffView({ left, right, testId }: { left: string; right: string; testId?: string }) {
+export function DiffView({
+    left,
+    right,
+    empty = 'No differences.',
+    testId,
+}: {
+    left: string;
+    right: string;
+    /** What to say when the two sides are the same; the caller knows what it is comparing. */
+    empty?: string;
+    testId?: string;
+}) {
     const lines = diffLines(left, right);
     if (!hasChanges(lines)) {
         return (
             <p className="text-body text-text-muted" data-testid={testId}>
-                No differences: these revisions describe the same pod template.
+                {empty}
             </p>
         );
     }

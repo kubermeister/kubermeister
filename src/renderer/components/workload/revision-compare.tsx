@@ -51,7 +51,12 @@ export function RevisionCompare({
             {query.isPending && enabled ? (
                 <Skeleton className="h-24 w-full" />
             ) : query.data ? (
-                <DiffView left={query.data.from.yaml} right={query.data.to.yaml} testId="revision-diff" />
+                <DiffView
+                    left={query.data.from.yaml}
+                    right={query.data.to.yaml}
+                    empty="No differences: these revisions describe the same pod template."
+                    testId="revision-diff"
+                />
             ) : null}
         </DetailCard>
     );
