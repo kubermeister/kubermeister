@@ -91,13 +91,32 @@ describe('spliceResourceVersion', () => {
 });
 
 describe('manifest editing', () => {
-    it('saves the edited manifest and returns to reading', async () => {
+    it('saves the edited manifest in one press and returns to reading', async () => {
+        renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
+        await screen.findByTestId('manifest-panel');
+        await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+        // Nothing stands between the button and the write: the review is the other button's.
+        expect(screen.queryByTestId('manifest-review')).not.toBeInTheDocument();
+        // The write names the context the screen is on and the object the editor was opened for.
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('resources.replace', {
+                context: 'alpha',
+                manifest: YAML,
+                expect: { kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
+            }),
+        );
+        expect(toasts.success).toHaveBeenCalledWith('ConfigMap “app-config” updated');
+        expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    });
+
+    it('saves from the review with the same pin the editor would have used', async () => {
         renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
         await screen.findByTestId('manifest-panel');
         await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
         await userEvent.click(await screen.findByRole('button', { name: 'Review changes' }));
-        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
-        // The write names the context the screen is on and the object the editor was opened for.
+        const review = await screen.findByTestId('manifest-review');
+        await userEvent.click(within(review).getByRole('button', { name: 'Save' }));
         await waitFor(() =>
             expect(invoke).toHaveBeenCalledWith('resources.replace', {
                 context: 'alpha',
@@ -152,7 +171,8 @@ describe('manifest editing', () => {
             return data[channel];
         });
         await userEvent.click(await screen.findByRole('button', { name: 'Review changes' }));
-        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+        const review = await screen.findByTestId('manifest-review');
+        await userEvent.click(within(review).getByRole('button', { name: 'Save' }));
         // The review closes on a rejection, so the banner it explains is the one on screen.
         await waitFor(() => expect(screen.queryByTestId('manifest-review')).not.toBeInTheDocument());
         const banner = await screen.findByTestId('manifest-conflict');
@@ -165,6 +185,22 @@ describe('manifest editing', () => {
         );
         await userEvent.click(within(banner).getByRole('button', { name: 'Reload latest' }));
         await waitFor(() => expect(screen.queryByTestId('manifest-conflict')).not.toBeInTheDocument());
+    });
+
+    it('arms the same banner when a save made without a review is rejected', async () => {
+        renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
+        await screen.findByTestId('manifest-panel');
+        await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'resources.replace') {
+                throw new IpcError({ kind: 'conflict', detail: 'changed', op: 'resources.replace' });
+            }
+            return data[channel];
+        });
+        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+        expect(await screen.findByTestId('manifest-conflict')).toHaveTextContent('changed on the server');
+        // A rejected save leaves the editor open with the buffer in it.
+        expect(screen.getByRole('button', { name: 'Review changes' })).toBeInTheDocument();
     });
 });
 
