@@ -73,8 +73,11 @@ function respond(url: string): Answer {
     return answer;
 }
 
-const fetchMock = vi.fn(async (url: string, init: { headers: Record<string, string> }) => {
+let sentSignals: Array<AbortSignal | undefined>;
+
+const fetchMock = vi.fn(async (url: string, init: { headers: Record<string, string>; signal?: AbortSignal }) => {
     fetched.push(url);
+    sentSignals.push(init.signal);
     const { status, body } = respond(url);
     expect(init.headers.Authorization).toBe('Bearer secret');
     return { status, ok: status >= 200 && status < 300, json: async () => body };
@@ -89,6 +92,7 @@ describe('getKindSchema', () => {
         vi.clearAllMocks();
         resetSchemaCache();
         fetched = [];
+        sentSignals = [];
         answers = new Map([
             ['https://cluster.test/openapi/v3', { status: 200, body: discovery() }],
             ['https://cluster.test/openapi/v3/apis/apps/v1?hash=APPS1', { status: 200, body: APPS }],
@@ -99,6 +103,15 @@ describe('getKindSchema', () => {
     afterEach(() => {
         rmSync(userData, { recursive: true, force: true });
         vi.unstubAllGlobals();
+    });
+
+    it('carries the read ceiling on the request it builds by hand', async () => {
+        await getKindSchema(DEPLOYMENT);
+        expect(sentSignals.length).toBeGreaterThan(0);
+        for (const signal of sentSignals) {
+            expect(signal).toBeInstanceOf(AbortSignal);
+            expect(signal?.aborted).toBe(false);
+        }
     });
 
     it('answers a kind with its own definition and everything it reaches, and nothing it does not', async () => {

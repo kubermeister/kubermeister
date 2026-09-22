@@ -1,4 +1,6 @@
 import type { KubeConfig, User } from '@kubernetes/client-node';
+import type { ChildProcess, SpawnOptions } from 'node:child_process';
+import { currentAbortSignal } from './abort.js';
 
 /**
  * A credential plugin (`aws eks get-token`, `gke-gcloud-auth-plugin`, `kubelogin`, ...) that could
@@ -46,6 +48,30 @@ interface Authenticator {
     applyAuthentication(user: User, opts: unknown): Promise<void>;
 }
 
+/** The library's own spawn seam: `ExecAuth.execFn` holds `child_process.spawn` and nothing else. */
+type SpawnPlugin = (command: string, args?: readonly string[], options?: SpawnOptions) => ChildProcess;
+
+interface Spawner {
+    execFn?: SpawnPlugin;
+}
+
+/**
+ * End a plugin process when the call that needed it gives up. The library waits for the process to
+ * close and has nothing to tell it to stop, so a plugin blocked on a login in a browser outlives the
+ * read that spawned it and every retry the screen makes adds another. The listener goes with the
+ * process, so a plugin that answered in time leaves nothing attached to the signal.
+ */
+function killOnAbort(child: ChildProcess, signal: AbortSignal | undefined): void {
+    if (!signal) return;
+    if (signal.aborted) {
+        child.kill();
+        return;
+    }
+    const kill = () => child.kill();
+    signal.addEventListener('abort', kill, { once: true });
+    child.once('close', () => signal.removeEventListener('abort', kill));
+}
+
 /** The plugin command a user entry runs, in either of the two shapes the kubeconfig allows. */
 export function execCommandOf(user: User | null | undefined): string | null {
     const exec = (user?.exec ?? user?.authProvider?.config?.exec) as { command?: unknown } | undefined;
@@ -55,8 +81,9 @@ export function execCommandOf(user: User | null | undefined): string | null {
 const guarded = new WeakSet<KubeConfig>();
 
 /**
- * Wrap the library's authenticators so a plugin failure surfaces as an {@link ExecPluginError}.
- * The authenticator list is per KubeConfig, so every freshly loaded config is guarded once.
+ * Wrap the library's authenticators so a plugin failure surfaces as an {@link ExecPluginError} and
+ * so the process a plugin runs in ends with the call that needed it. The authenticator list is per
+ * KubeConfig, so every freshly loaded config is guarded once.
  */
 export function guardCredentialPlugins(kc: KubeConfig): void {
     if (guarded.has(kc)) return;
@@ -73,6 +100,14 @@ export function guardCredentialPlugins(kc: KubeConfig): void {
                 if (!command) throw error;
                 throw new ExecPluginError(command, describeExecFailure(command, error), error);
             }
+        };
+        const spawner = auth as Spawner;
+        const spawnPlugin = spawner.execFn?.bind(auth);
+        if (!spawnPlugin) continue;
+        spawner.execFn = (command, args, options) => {
+            const child = spawnPlugin(command, args, options);
+            killOnAbort(child, currentAbortSignal());
+            return child;
         };
     }
 }
