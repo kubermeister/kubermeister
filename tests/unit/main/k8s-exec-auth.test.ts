@@ -1,6 +1,9 @@
 import { KubeConfig } from '@kubernetes/client-node';
+import type { ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { withAbortScope } from '../../../src/main/k8s/abort';
 import {
     ExecPluginError,
     describeExecFailure,
@@ -13,6 +16,7 @@ const FIXTURE = resolve('tests/unit/fixtures/kubeconfig.yaml');
 interface Authenticator {
     isAuthProvider(user: unknown): boolean;
     applyAuthentication(user: unknown, opts: unknown): Promise<void>;
+    execFn?: (command: string, args?: readonly string[], options?: unknown) => ChildProcess;
 }
 
 function authenticatorsOf(kc: KubeConfig): Authenticator[] {
@@ -108,5 +112,85 @@ describe('guardCredentialPlugins', () => {
 
     it('tolerates a config without an authenticator list', () => {
         expect(() => guardCredentialPlugins({} as KubeConfig)).not.toThrow();
+    });
+});
+
+describe('a credential plugin under a ceiling', () => {
+    /** The library's own spawn seam, scripted: an emitter with the one method the guard calls. */
+    function fakeChild() {
+        const child = new EventEmitter() as EventEmitter & ChildProcess;
+        child.kill = vi.fn(() => true) as ChildProcess['kill'];
+        return child;
+    }
+
+    function guardedSpawner(child: ChildProcess) {
+        const spawn = vi.fn(() => child);
+        const auth: Authenticator = {
+            isAuthProvider: () => true,
+            applyAuthentication: () => Promise.resolve(),
+            execFn: spawn,
+        };
+        guardCredentialPlugins({ authenticators: [auth] } as unknown as KubeConfig);
+        return { auth, spawn };
+    }
+
+    it('kills the process when the call that spawned it gives up', async () => {
+        const child = fakeChild();
+        const { auth } = guardedSpawner(child);
+        const controller = new AbortController();
+        await withAbortScope(controller.signal, async () => {
+            expect(auth.execFn?.('aws', ['eks', 'get-token'], { env: {} })).toBe(child);
+        });
+        expect(child.kill).not.toHaveBeenCalled();
+        controller.abort();
+        expect(child.kill).toHaveBeenCalled();
+    });
+
+    it('kills it at once when the ceiling has already fired', () => {
+        const child = fakeChild();
+        const { auth } = guardedSpawner(child);
+        const controller = new AbortController();
+        controller.abort();
+        void withAbortScope(controller.signal, async () => {
+            auth.execFn?.('aws');
+        });
+        expect(child.kill).toHaveBeenCalled();
+    });
+
+    it('leaves a plugin spawned outside any ceiling running', () => {
+        const child = fakeChild();
+        const { auth } = guardedSpawner(child);
+        expect(auth.execFn?.('aws')).toBe(child);
+        expect(child.kill).not.toHaveBeenCalled();
+    });
+
+    it('stops listening once the plugin has answered, so a later ceiling kills nothing', async () => {
+        const child = fakeChild();
+        const { auth } = guardedSpawner(child);
+        const controller = new AbortController();
+        await withAbortScope(controller.signal, async () => {
+            auth.execFn?.('aws');
+        });
+        child.emit('close', 0);
+        controller.abort();
+        expect(child.kill).not.toHaveBeenCalled();
+    });
+
+    it('spawns exactly what the library asked for', () => {
+        const child = fakeChild();
+        const { auth, spawn } = guardedSpawner(child);
+        const options = { env: { AWS_PROFILE: 'prod' } };
+        auth.execFn?.('gke-gcloud-auth-plugin', ['--use_application_default_credentials'], options);
+        expect(spawn).toHaveBeenCalledWith(
+            'gke-gcloud-auth-plugin',
+            ['--use_application_default_credentials'],
+            options,
+        );
+    });
+
+    it('leaves an authenticator that spawns nothing alone', () => {
+        const plain: Authenticator = { isAuthProvider: () => false, applyAuthentication: () => Promise.resolve() };
+        guardCredentialPlugins({ authenticators: [plain] } as unknown as KubeConfig);
+        expect(plain.execFn).toBeUndefined();
     });
 });

@@ -1,5 +1,6 @@
 import { ApiException } from '@kubernetes/client-node';
 import type { IpcError, K8sErrorKind } from '../../shared/k8s/errors.js';
+import { currentAbortSignal, withAbortScope } from './abort.js';
 import { ExecPluginError } from './exec-auth.js';
 
 export type { K8sErrorKind };
@@ -144,13 +145,29 @@ export function timeoutDetail(ms: number): string {
     return `The cluster did not answer within ${ms / 1000} s. It may be busy, or the connection slow.`;
 }
 
+/**
+ * The signal the call runs under: its own ceiling, and the ceiling of any call it is nested in, so
+ * an outer read giving up ends the inner one it is still waiting on.
+ */
+function ceilingSignal(controller: AbortController): AbortSignal {
+    const outer = currentAbortSignal();
+    return outer ? AbortSignal.any([outer, controller.signal]) : controller.signal;
+}
+
 async function withTimeout<T>(op: string, ms: number, fn: () => Promise<T>): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
+    const controller = new AbortController();
     const timeout = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new K8sError('timeout', timeoutDetail(ms), op)), ms);
+        timer = setTimeout(() => {
+            reject(new K8sError('timeout', timeoutDetail(ms), op));
+            // Losing the race only stops the app waiting. Aborting is what stops the call: the
+            // request is cancelled rather than left in flight, and the credential plugin it spawned
+            // is killed rather than left waiting for a login nobody is going to give it.
+            controller.abort();
+        }, ms);
     });
     try {
-        return await Promise.race([fn(), timeout]);
+        return await Promise.race([withAbortScope(ceilingSignal(controller), fn), timeout]);
     } finally {
         if (timer) clearTimeout(timer);
     }

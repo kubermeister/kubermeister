@@ -11,6 +11,7 @@ const client = {
 vi.mock('../../../src/main/k8s/client.js', () => client);
 
 const drain = await import('../../../src/main/k8s/drain.js');
+import { currentAbortSignal } from '../../../src/main/k8s/abort';
 import type { StreamMessage } from '../../../src/shared/streams.js';
 
 const OPTIONS = { force: false, deleteEmptyDirData: false };
@@ -120,6 +121,18 @@ describe('draining a node', () => {
             expect.objectContaining({ name: 'web-1', namespace: 'team-a' }),
         );
         controller.stop();
+    });
+
+    it('evicts outside the read ceiling, so nothing cancels a wait that is meant to last', async () => {
+        const scopes: Array<AbortSignal | undefined> = [];
+        core.createNamespacedPodEviction.mockImplementation(() => {
+            scopes.push(currentAbortSignal());
+            return Promise.resolve({});
+        });
+        const sink = collector();
+        await drain.startNodeDrain(ON_ALPHA, sink.send);
+        await vi.waitFor(() => expect(sink.messages.at(-1)).toEqual({ type: 'end' }));
+        expect(scopes).toEqual([undefined]);
     });
 
     it('passes a grace period on to each eviction when one is asked for', async () => {

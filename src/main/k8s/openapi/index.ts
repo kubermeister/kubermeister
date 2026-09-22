@@ -1,5 +1,6 @@
 import { ApiException, HttpMethod, RequestContext } from '@kubernetes/client-node';
 import type { KindSchema, KindSchemaInput, SchemaNode } from '../../../shared/k8s/openapi.js';
+import { currentAbortSignal } from '../abort.js';
 import { activeContextName, kubeConfig } from '../client.js';
 import { K8sError, withK8s } from '../errors.js';
 import { readCachedDocument, writeCachedDocument } from './cache.js';
@@ -64,6 +65,9 @@ async function clusterGet(relativeUrl: string): Promise<unknown> {
     const response = await fetch(url, {
         method: 'GET',
         headers: request.getHeaders(),
+        // This request is built by hand rather than by a generated client, so the ceiling's signal
+        // has to be put on it here; without it the read would outlive the call that asked for it.
+        signal: currentAbortSignal(),
         // The library bundles its own copy of undici's types, so the dispatcher it hands back is
         // the same object under a second name; the cast is between the two copies, not two things.
         dispatcher: request.getDispatcher() as RequestInit['dispatcher'],

@@ -61,6 +61,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- A cluster call that runs past the read timeout is cancelled instead of left running. A screen
+  waiting on a slow or unresponsive cluster no longer leaves a request open on every refresh, and
+  the credential plugin a call started — an SSO login waiting on a browser, say — is ended with it
+  rather than piling up one process per retry.
+
 - A container's log reads as the container wrote it. Every line used to be prefixed with a level
   the app worked out from the text, which repeated the level most services already print, and
   invented one for the lines that print none.

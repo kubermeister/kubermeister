@@ -21,8 +21,10 @@ import {
     VersionApi,
     type Cluster,
     type ConfigOptions,
+    type Configuration,
 } from '@kubernetes/client-node';
 import { existsSync } from 'node:fs';
+import { abortable, withAbortMiddleware } from './abort.js';
 import { K8sError } from './errors.js';
 import { guardCredentialPlugins } from './exec-auth.js';
 import { applyNetworkSettings } from './proxy.js';
@@ -179,6 +181,23 @@ export function currentContextProblem(): string | null {
     return current ? contextProblem(kc, current) : null;
 }
 
+/**
+ * The generic object client, abortable like the rest. Its own `makeApiClient` names the base class,
+ * so the subclass builds itself and repeats the one thing that static does beyond `new`: seed the
+ * default namespace from the current context.
+ */
+class AbortableObjectApi extends KubernetesObjectApi {
+    constructor(configuration: Configuration) {
+        super(withAbortMiddleware(configuration));
+    }
+
+    static forConfig(kc: KubeConfig): KubernetesObjectApi {
+        const client = kc.makeApiClient(AbortableObjectApi);
+        client.setDefaultNamespace(kc);
+        return client;
+    }
+}
+
 export function apis(): ApiBundle {
     if (!apiCache) {
         const c = kubeConfig();
@@ -187,24 +206,24 @@ export function apis(): ApiBundle {
         const problem = currentContextProblem();
         if (problem) throw new K8sError('kubeconfig', problem, 'kubeconfig');
         apiCache = {
-            core: c.makeApiClient(CoreV1Api),
-            apps: c.makeApiClient(AppsV1Api),
-            batch: c.makeApiClient(BatchV1Api),
-            net: c.makeApiClient(NetworkingV1Api),
-            rbac: c.makeApiClient(RbacAuthorizationV1Api),
-            storage: c.makeApiClient(StorageV1Api),
-            runtime: c.makeApiClient(NodeV1Api),
-            admission: c.makeApiClient(AdmissionregistrationV1Api),
-            apiregistration: c.makeApiClient(ApiregistrationV1Api),
-            flowcontrol: c.makeApiClient(FlowcontrolApiserverV1Api),
-            policy: c.makeApiClient(PolicyV1Api),
-            scheduling: c.makeApiClient(SchedulingV1Api),
-            coordination: c.makeApiClient(CoordinationV1Api),
-            hpa: c.makeApiClient(AutoscalingV2Api),
-            version: c.makeApiClient(VersionApi),
-            apiextensions: c.makeApiClient(ApiextensionsV1Api),
-            customObjects: c.makeApiClient(CustomObjectsApi),
-            objects: KubernetesObjectApi.makeApiClient(c),
+            core: c.makeApiClient(abortable(CoreV1Api)),
+            apps: c.makeApiClient(abortable(AppsV1Api)),
+            batch: c.makeApiClient(abortable(BatchV1Api)),
+            net: c.makeApiClient(abortable(NetworkingV1Api)),
+            rbac: c.makeApiClient(abortable(RbacAuthorizationV1Api)),
+            storage: c.makeApiClient(abortable(StorageV1Api)),
+            runtime: c.makeApiClient(abortable(NodeV1Api)),
+            admission: c.makeApiClient(abortable(AdmissionregistrationV1Api)),
+            apiregistration: c.makeApiClient(abortable(ApiregistrationV1Api)),
+            flowcontrol: c.makeApiClient(abortable(FlowcontrolApiserverV1Api)),
+            policy: c.makeApiClient(abortable(PolicyV1Api)),
+            scheduling: c.makeApiClient(abortable(SchedulingV1Api)),
+            coordination: c.makeApiClient(abortable(CoordinationV1Api)),
+            hpa: c.makeApiClient(abortable(AutoscalingV2Api)),
+            version: c.makeApiClient(abortable(VersionApi)),
+            apiextensions: c.makeApiClient(abortable(ApiextensionsV1Api)),
+            customObjects: c.makeApiClient(abortable(CustomObjectsApi)),
+            objects: AbortableObjectApi.forConfig(c),
         };
     }
     return apiCache;
