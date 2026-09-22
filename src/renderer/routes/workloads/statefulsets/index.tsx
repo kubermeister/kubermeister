@@ -30,7 +30,7 @@ function StatefulSetsPage() {
             query={sets}
             detailPath={detailPath}
             rowProps={(s) => ({ 'data-statefulset': s.name })}
-            bulkDelete={{ kind: 'StatefulSet' }}
+            selection={{ kind: 'StatefulSet' }}
             testId="statefulsets-table"
             footerNote={sets.live ? 'live' : undefined}
         />

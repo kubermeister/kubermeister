@@ -32,7 +32,7 @@ function ValidatingWebhooksPage() {
             query={configurations}
             detailPath={detailPath}
             rowProps={(configuration) => ({ 'data-validatingwebhook': configuration.name })}
-            bulkDelete={{ kind: 'ValidatingWebhookConfiguration' }}
+            selection={{ kind: 'ValidatingWebhookConfiguration' }}
             testId="validatingwebhooks-table"
             footerNote={configurations.live ? 'live' : undefined}
         />

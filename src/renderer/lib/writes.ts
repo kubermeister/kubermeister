@@ -4,7 +4,7 @@ import type { IpcInput } from '../../shared/ipc';
 import type { KubeContext } from '../../shared/k8s/contexts';
 import type { ManifestKind } from '../../shared/k8s/manifest';
 import type { Kind } from '../../shared/k8s/registry';
-import { mapWithConcurrency, type BulkDeleteResult, type BulkDeleteTarget } from './bulk-delete';
+import { mapWithConcurrency, type BulkDeleteResult, type SelectionTarget } from './selection';
 import { invoke, IpcError } from './ipc';
 import { describeError } from './k8s-error';
 import { ipcQueryKey, useIpcMutation } from './query';
@@ -217,7 +217,7 @@ const BULK_DELETE_CONCURRENCY = 4;
  */
 export function useBulkDeleteResources() {
     const client = useQueryClient();
-    return useMutation<BulkDeleteResult, Error, { kind: ManifestKind; targets: BulkDeleteTarget[] }>({
+    return useMutation<BulkDeleteResult, Error, { kind: ManifestKind; targets: SelectionTarget[] }>({
         mutationFn: async ({ kind, targets }) => {
             const context = await activeContextName(client, 'resources.delete');
             const settled = await mapWithConcurrency(targets, BULK_DELETE_CONCURRENCY, async (target) => {
@@ -231,7 +231,7 @@ export function useBulkDeleteResources() {
             return {
                 deleted: settled.filter((one) => one.message === null).map((one) => one.target),
                 failed: settled
-                    .filter((one): one is { target: BulkDeleteTarget; message: string } => one.message !== null)
+                    .filter((one): one is { target: SelectionTarget; message: string } => one.message !== null)
                     .map((one) => ({ ...one.target, message: one.message })),
             };
         },

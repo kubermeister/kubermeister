@@ -30,7 +30,7 @@ function RuntimeClassesPage() {
             query={classes}
             detailPath={detailPath}
             rowProps={(runtimeClass) => ({ 'data-runtimeclass': runtimeClass.name })}
-            bulkDelete={{ kind: 'RuntimeClass' }}
+            selection={{ kind: 'RuntimeClass' }}
             testId="runtimeclasses-table"
             footerNote={classes.live ? 'live' : undefined}
         />

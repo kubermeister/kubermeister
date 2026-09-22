@@ -11,7 +11,12 @@ import {
 } from './k8s/addons.js';
 import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
 import { kubeContextSchema } from './k8s/contexts.js';
-import { manifestInputSchema, manifestSchema } from './k8s/manifest.js';
+import {
+    manifestExportInputSchema,
+    manifestExportSchema,
+    manifestInputSchema,
+    manifestSchema,
+} from './k8s/manifest.js';
 import { manifestFileSchema, manifestReadInputSchema } from './manifest-file.js';
 import { namespaceDetailInputSchema, namespaceDetailSchema } from './k8s/namespaces.js';
 import { objectMetaInputSchema, objectMetaSchema } from './k8s/meta.js';
@@ -242,6 +247,8 @@ export const ipcSchemas = {
     'resources.meta': { input: objectMetaInputSchema, output: objectMetaSchema },
     'resources.related': { input: relatedInputSchema, output: z.array(relatedGroupSchema) },
     'resources.getYaml': { input: manifestInputSchema, output: manifestSchema },
+    // The file the export lands in is chosen in a native dialog, so the renderer names no path.
+    'resources.exportYaml': { input: manifestExportInputSchema, output: manifestExportSchema },
     'resources.describe': { input: describeInputSchema, output: describeDocumentSchema },
     // Null when this cluster describes no such kind; the editor falls back to plain YAML.
     'schemas.forKind': { input: kindSchemaInputSchema, output: kindSchemaSchema.nullable() },

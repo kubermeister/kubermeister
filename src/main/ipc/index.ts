@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import type { IpcChannel, IpcInput, IpcOutput, IpcResult } from '../../shared/ipc.js';
 import { ipcSchemas } from '../../shared/ipc.js';
@@ -20,6 +21,7 @@ import {
     scaleResource,
 } from '../k8s/resources/write.js';
 import { getObjectYaml } from '../k8s/resources/manifest.js';
+import { exportManifests } from '../k8s/resources/export.js';
 import { getObjectMeta } from '../k8s/resources/meta.js';
 import { getRelated } from '../k8s/resources/related.js';
 import { getNamespaceDetail } from '../k8s/resources/namespaces.js';
@@ -73,6 +75,7 @@ import { getResource, listResources } from '../k8s/resources/index.js';
 import { getDrainPlan } from '../k8s/drain.js';
 import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
 import { pickManifestFile, readManifestFile } from '../manifest-file.js';
+import type { ManifestExport, ManifestExportInput } from '../../shared/k8s/manifest.js';
 import type { Settings } from '../../shared/settings.js';
 import { getSettings, updateSettings } from '../settings/store.js';
 import { runStartupChecks } from '../startup/checks.js';
@@ -122,6 +125,31 @@ async function pickCaBundle(): Promise<string | null> {
     updateSettings({ network: { caBundlePath: path } });
     reconnect();
     return path;
+}
+
+/**
+ * Save a list selection as one YAML file. The objects are read before the dialog opens, so a
+ * cluster that will not answer says so rather than after a file has been named, and the path comes
+ * from the OS picker: the renderer chooses what to export, never where it lands.
+ */
+async function saveManifestExport(input: ManifestExportInput): Promise<ManifestExport> {
+    const { text, count, defaultName } = await exportManifests(input);
+    const owner = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options: Electron.SaveDialogOptions = {
+        title: 'Save manifests',
+        defaultPath: defaultName,
+        filters: [{ name: 'YAML', extensions: ['yaml', 'yml'] }],
+    };
+    const result = owner ? await dialog.showSaveDialog(owner, options) : await dialog.showSaveDialog(options);
+    if (result.canceled || !result.filePath) return { path: null, count: 0 };
+    try {
+        await writeFile(result.filePath, text, 'utf8');
+    } catch (error) {
+        // A full disk or a read-only folder is the user's to fix, not a bug for the invoke to reject on.
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new K8sError('unknown', `The file could not be saved: ${reason}`, 'resources.exportYaml');
+    }
+    return { path: result.filePath, count };
 }
 
 /** The route to the cluster changed, so nothing made over the old one may carry on. */
@@ -241,6 +269,7 @@ const handlers: Handlers = {
     'resources.meta': ({ kind, name, namespace }) => getObjectMeta(kind, name, namespace),
     'resources.related': ({ kind, name, namespace }) => getRelated(kind, name, namespace),
     'resources.getYaml': ({ kind, name, namespace }) => getObjectYaml(kind, name, namespace),
+    'resources.exportYaml': (input) => saveManifestExport(input),
     'resources.describe': (input) => describeObject(input),
     'schemas.forKind': (input) => getKindSchema(input),
     'resources.create': (input) => createResource(input),

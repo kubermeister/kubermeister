@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { bulkDeleteSummary, bulkRowId, failedSelection, mapWithConcurrency } from '@/lib/bulk-delete';
+import { bulkDeleteSummary, selectionRowId, failedSelection, mapWithConcurrency } from '@/lib/selection';
 
-describe('bulkRowId', () => {
+describe('selectionRowId', () => {
     it('qualifies a row by its namespace so same-named objects stay distinct', () => {
-        expect(bulkRowId({ name: 'web', namespace: 'team-a' })).toBe('team-a/web');
-        expect(bulkRowId({ name: 'web', namespace: 'team-b' })).not.toBe(
-            bulkRowId({ name: 'web', namespace: 'team-a' }),
+        expect(selectionRowId({ name: 'web', namespace: 'team-a' })).toBe('team-a/web');
+        expect(selectionRowId({ name: 'web', namespace: 'team-b' })).not.toBe(
+            selectionRowId({ name: 'web', namespace: 'team-a' }),
         );
     });
 
     it('gives a cluster-scoped row an id with no namespace part', () => {
-        expect(bulkRowId({ name: 'pv-1' })).toBe('/pv-1');
+        expect(selectionRowId({ name: 'pv-1' })).toBe('/pv-1');
     });
 });
 

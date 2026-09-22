@@ -30,7 +30,7 @@ function ApiServicesPage() {
             query={services}
             detailPath={detailPath}
             rowProps={(service) => ({ 'data-apiservice': service.name })}
-            bulkDelete={{ kind: 'APIService' }}
+            selection={{ kind: 'APIService' }}
             testId="apiservices-table"
             footerNote={services.live ? 'live' : undefined}
         />

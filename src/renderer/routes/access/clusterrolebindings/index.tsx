@@ -29,7 +29,7 @@ function ClusterRoleBindingsPage() {
             query={bindings}
             detailPath={detailPath}
             rowProps={(binding) => ({ 'data-clusterrolebinding': binding.name })}
-            bulkDelete={{ kind: 'ClusterRoleBinding' }}
+            selection={{ kind: 'ClusterRoleBinding' }}
             testId="clusterrolebindings-table"
             footerNote={bindings.live ? 'live' : undefined}
         />

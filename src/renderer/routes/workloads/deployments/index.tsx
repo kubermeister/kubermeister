@@ -41,7 +41,7 @@ function DeploymentsPage() {
             query={deployments}
             detailPath={detailPath}
             rowProps={(d) => ({ 'data-deployment': d.name })}
-            bulkDelete={{ kind: 'Deployment' }}
+            selection={{ kind: 'Deployment' }}
             testId="deployments-table"
             footerNote={deployments.live ? 'live' : undefined}
         />

@@ -15,6 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- The rows checked on a list save to one YAML file, either as the cluster holds them or stripped of
+  the fields the server owns so they can be applied to another cluster.
+
 - The Create screen opens a manifest from a file, either through Import or by dropping the file
   anywhere on the window. The file is read by Kubermeister itself and lands in the editor, where it
   is applied the same way as one typed in.
@@ -46,9 +49,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- Saving an edited manifest shows what the save will change first — the lines it removes and the
-  lines it adds, against the object as it stands — with Save on that view. A save replaces the
-  whole object, so what a replace carries is now read before it is written rather than after.
+- The manifest editor has Review changes beside Save: it shows what the save will change — the
+  lines it removes and the lines it adds, against the object as it stands — with Save on that view,
+  so a replace that carries the whole object can be read before it is written rather than after.
+  Save itself still writes in one press.
 
 - A new version is now downloaded in the background and installed the next time the app quits,
   rather than waiting behind a button nobody had a reason to press. Settings › Updates still offers

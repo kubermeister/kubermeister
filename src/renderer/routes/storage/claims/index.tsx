@@ -32,7 +32,7 @@ function ClaimsPage() {
             query={claims}
             detailPath={detailPath}
             rowProps={(claim) => ({ 'data-claim': claim.name })}
-            bulkDelete={{ kind: 'PersistentVolumeClaim' }}
+            selection={{ kind: 'PersistentVolumeClaim' }}
             testId="claims-table"
             footerNote={claims.live ? 'live' : undefined}
         />

@@ -5,7 +5,7 @@ import { K8sError, readTimeoutMs, setReadTimeoutSec } from '../../../src/main/k8
 type Listener = (event: unknown, input: unknown) => Promise<unknown>;
 const registered = new Map<string, Listener>();
 
-const dialog = { showOpenDialog: vi.fn() };
+const dialog = { showOpenDialog: vi.fn(), showSaveDialog: vi.fn() };
 const focused = { id: 1 };
 vi.mock('electron', () => ({
     app: { getName: () => 'Kubermeister', getVersion: () => '0.1.1' },
@@ -61,6 +61,8 @@ const chartsMod = {
     removeChartRepository: vi.fn(),
 };
 const manifestMod = { getObjectYaml: vi.fn() };
+const exportMod = { exportManifests: vi.fn() };
+const fsMod = { writeFile: vi.fn() };
 const writeMod = {
     createResource: vi.fn(),
     replaceResource: vi.fn(),
@@ -104,6 +106,8 @@ vi.mock('../../../src/main/k8s/resources/network.js', () => networkMod);
 vi.mock('../../../src/main/k8s/resources/helm.js', () => helmMod);
 vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
 vi.mock('../../../src/main/k8s/resources/manifest.js', () => manifestMod);
+vi.mock('../../../src/main/k8s/resources/export.js', () => exportMod);
+vi.mock('node:fs/promises', () => fsMod);
 vi.mock('../../../src/main/k8s/resources/write.js', () => writeMod);
 vi.mock('../../../src/main/k8s/resources/lifecycle.js', () => lifecycleMod);
 vi.mock('../../../src/main/k8s/resources/owners.js', () => ownersMod);
@@ -386,6 +390,89 @@ describe('registerHandlers', () => {
         expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: null } });
         expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+    });
+
+    it('saves a selection to the file the user names, having read the objects first', async () => {
+        const order: string[] = [];
+        exportMod.exportManifests.mockImplementation(async () => {
+            order.push('read');
+            return { text: 'apiVersion: v1\nkind: ConfigMap\n', count: 2, defaultName: 'configmap-export.yaml' };
+        });
+        dialog.showSaveDialog.mockImplementation(async () => {
+            order.push('dialog');
+            return { canceled: false, filePath: '/home/u/manifests.yaml' };
+        });
+        const input = {
+            kind: 'ConfigMap',
+            clean: true,
+            targets: [
+                { name: 'app-config', namespace: 'team-a' },
+                { name: 'other-config', namespace: 'team-a' },
+            ],
+        };
+        await expect(invoke('resources.exportYaml', input)).resolves.toEqual({
+            path: '/home/u/manifests.yaml',
+            count: 2,
+        });
+        expect(exportMod.exportManifests).toHaveBeenCalledWith(input);
+        // A cluster that will not answer says so before the user is asked to name a file.
+        expect(order).toEqual(['read', 'dialog']);
+        expect(dialog.showSaveDialog).toHaveBeenCalledWith(
+            focused,
+            expect.objectContaining({ defaultPath: 'configmap-export.yaml' }),
+        );
+        expect(fsMod.writeFile).toHaveBeenCalledWith(
+            '/home/u/manifests.yaml',
+            'apiVersion: v1\nkind: ConfigMap\n',
+            'utf8',
+        );
+    });
+
+    it('writes nothing when the save dialog is dismissed', async () => {
+        exportMod.exportManifests.mockResolvedValue({ text: 'x', count: 1, defaultName: 'web.yaml' });
+        dialog.showSaveDialog.mockResolvedValue({ canceled: true, filePath: undefined });
+        await expect(
+            invoke('resources.exportYaml', {
+                kind: 'ConfigMap',
+                clean: false,
+                targets: [{ name: 'app-config', namespace: 'team-a' }],
+            }),
+        ).resolves.toEqual({ path: null, count: 0 });
+        expect(fsMod.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('reports a file that could not be written as a failure rather than a bug', async () => {
+        exportMod.exportManifests.mockResolvedValue({ text: 'x', count: 1, defaultName: 'web.yaml' });
+        dialog.showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/read-only/web.yaml' });
+        fsMod.writeFile.mockRejectedValue(new Error('EACCES: permission denied'));
+        await expect(
+            invokeRaw('resources.exportYaml', {
+                kind: 'ConfigMap',
+                clean: false,
+                targets: [{ name: 'app-config', namespace: 'team-a' }],
+            }),
+        ).resolves.toMatchObject({
+            ok: false,
+            error: { kind: 'unknown', detail: 'The file could not be saved: EACCES: permission denied' },
+        });
+    });
+
+    it('refuses a selection whose targets do not match the kind\u2019s scope', async () => {
+        // The namespace of every target is checked at the boundary, as it is for every other target.
+        await expect(
+            invoke('resources.exportYaml', { kind: 'ConfigMap', clean: false, targets: [{ name: 'app-config' }] }),
+        ).rejects.toThrow();
+        await expect(
+            invoke('resources.exportYaml', {
+                kind: 'PersistentVolume',
+                clean: false,
+                targets: [{ name: 'pv-1', namespace: 'team-a' }],
+            }),
+        ).rejects.toThrow();
+        await expect(
+            invoke('resources.exportYaml', { kind: 'ConfigMap', clean: false, targets: [] }),
+        ).rejects.toThrow();
+        expect(exportMod.exportManifests).not.toHaveBeenCalled();
     });
 
     it('opens a manifest through the picker and reads a dropped one by its path', async () => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useBlocker } from '@tanstack/react-router';
-import { CodeIcon, DiffIcon, DownloadIcon, EyeIcon, PencilIcon, XIcon } from 'lucide-react';
+import { CheckIcon, CodeIcon, DiffIcon, DownloadIcon, EyeIcon, PencilIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ManifestKind } from '../../../shared/k8s/manifest';
 import { YamlEditor } from '@/components/data-display/yaml-editor';
@@ -95,8 +95,8 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
     // The user's buffer; null means untouched, so the live read shows as it is.
     const [edits, setEdits] = useState<string | null>(null);
     const [confirmCancel, setConfirmCancel] = useState(false);
-    // Open from Review changes until the write settles: a replace carries the whole object, so what
-    // it changes is shown before it is done rather than reported afterwards.
+    // Open from Review changes until the write settles: Save writes what the buffer says straight
+    // away, and this is the other way in, for an edit whose diff is worth reading first.
     const [reviewing, setReviewing] = useState(false);
     // Armed when a save was rejected as a conflict: retrying the same stale version would only
     // repeat it, so the banner offers a reload that keeps the edits.
@@ -211,7 +211,8 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
     return (
         <div className={FRAME} data-testid="manifest-panel">
             <div className="flex items-center gap-2 border-b border-border py-1.5 pr-2 pl-3.5">
-                <span className="font-mono text-caption text-text-muted">
+                {/* The buttons never shrink, so the label is what gives when the pane is narrow. */}
+                <span className="min-w-0 truncate font-mono text-caption text-text-muted">
                     {editing ? 'Editing — Save replaces the live object' : `${liveKind} “${name}”`}
                 </span>
                 <div className="flex-1" />
@@ -242,6 +243,7 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
                             Dry run
                         </Button>
                         <Button
+                            variant="outline"
                             size="sm"
                             {...inertWhen(empty || replace.isPending)}
                             onClick={() => {
@@ -251,6 +253,17 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
                         >
                             <DiffIcon />
                             Review changes
+                        </Button>
+                        <Button
+                            size="sm"
+                            {...inertWhen(empty || replace.isPending)}
+                            onClick={() => {
+                                if (empty || replace.isPending) return;
+                                void handleSave();
+                            }}
+                        >
+                            <CheckIcon />
+                            {replace.isPending ? 'Saving…' : 'Save'}
                         </Button>
                     </>
                 ) : (

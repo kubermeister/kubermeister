@@ -27,7 +27,7 @@ function EndpointsPage() {
             query={endpoints}
             detailPath={detailPath}
             rowProps={(row) => ({ 'data-endpoints': row.name })}
-            bulkDelete={{ kind: 'Endpoints' }}
+            selection={{ kind: 'Endpoints' }}
             testId="endpoints-table"
             footerNote={endpoints.live ? 'live' : undefined}
         />

@@ -71,7 +71,8 @@ const LIST_FNS: Record<ManifestKind, ListFn> = {
 const NODE_FACTS = { apiVersion: 'v1', kind: 'Node' };
 const NAMESPACE_FACTS = { apiVersion: 'v1', kind: 'Namespace' };
 
-function typeMeta(kind: ManifestKind): { apiVersion: string; kind: string } {
+/** The type meta a listed object omits, which every document the app writes has to carry. */
+export function typeMeta(kind: ManifestKind): { apiVersion: string; kind: string } {
     if (kind === 'Node') return NODE_FACTS;
     if (kind === 'Namespace') return NAMESPACE_FACTS;
     const info = KIND_REGISTRY[kind];
@@ -97,9 +98,17 @@ export async function findRawObject(
     if (!clusterScoped && !ns) {
         throw new K8sError('invalid', `A namespace is required to read ${typeMeta(kind).kind} "${name}".`, op);
     }
+    return (await listRawObjects(kind, ns)).find((item) => item.metadata?.name === name);
+}
+
+/**
+ * Every object of one kind in one namespace, or cluster-wide for a cluster-scoped kind. The caller
+ * has already resolved the namespace; nothing here falls back to the active one.
+ */
+export async function listRawObjects(kind: ManifestKind, namespace: string | undefined): Promise<RawItem[]> {
     // A cluster-scoped list takes no namespace; the empty string only satisfies the shared signature.
-    const { items } = await LIST_FNS[kind](ns ?? '');
-    return items.find((item) => item.metadata?.name === name);
+    const { items } = await LIST_FNS[kind](namespace ?? '');
+    return items;
 }
 
 /**
