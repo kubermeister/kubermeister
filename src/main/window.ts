@@ -1,5 +1,6 @@
 import { app, BrowserWindow, screen, shell } from 'electron';
 import { join } from 'node:path';
+import { attachHoldToQuit } from './quit.js';
 import { isExternalWebUrl, isInternalNavigation } from './security.js';
 import { getSettings, updateSettings } from './settings/store.js';
 import { usableBounds } from './window-bounds.js';
@@ -57,6 +58,10 @@ export function createMainWindow(): BrowserWindow {
     // End-to-end runs on a developer machine show the window without taking focus, so keystrokes
     // meant for the terminal never land in the app under test.
     window.on('ready-to-show', () => (process.env.KUBERMEISTER_SHOW_INACTIVE ? window.showInactive() : window.show()));
+
+    // On macOS ⌘Q has to be held; the guard hears the keys here and leaves them alone when there
+    // is no renderer to show the hint.
+    attachHoldToQuit(window.webContents);
 
     window.webContents.setWindowOpenHandler(({ url }) => {
         openExternally(url);

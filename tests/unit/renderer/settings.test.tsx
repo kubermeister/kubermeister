@@ -86,6 +86,26 @@ describe('settings screen', () => {
         expect(screen.getByRole('combobox', { name: 'Refresh interval' })).toHaveTextContent('30 seconds');
     });
 
+    it('offers the hold-to-quit switch on macOS and writes it through the bridge', async () => {
+        renderRoutes(routeTree, '/settings');
+        const toggle = await screen.findByRole('switch', { name: 'Hold ⌘Q to quit' });
+        await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+        await userEvent.click(toggle);
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { general: { holdToQuit: false } }));
+        await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
+    });
+
+    it('leaves that switch out where the keystroke is not guarded', async () => {
+        invoke.mockImplementation(async (channel: string) =>
+            channel === 'app.info' ? { ...(data['app.info'] as object), platform: 'win32' } : data[channel],
+        );
+        renderRoutes(routeTree, '/settings');
+        // The section is there, so a missing switch is the platform's doing and not a screen that
+        // failed to load.
+        await screen.findByRole('switch', { name: 'Restore last session on launch' });
+        expect(screen.queryByRole('switch', { name: 'Hold ⌘Q to quit' })).not.toBeInTheDocument();
+    });
+
     it('persists a larger log buffer through the bridge', async () => {
         renderRoutes(routeTree, '/settings');
         await screen.findByTestId('settings-page');

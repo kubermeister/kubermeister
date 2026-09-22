@@ -75,6 +75,7 @@ import { getResource, listResources } from '../k8s/resources/index.js';
 import { getDrainPlan } from '../k8s/drain.js';
 import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
 import { pickManifestFile, readManifestFile } from '../manifest-file.js';
+import { setQuitOverlayReady } from '../quit.js';
 import type { ManifestExport, ManifestExportInput } from '../../shared/k8s/manifest.js';
 import type { Settings } from '../../shared/settings.js';
 import { getSettings, updateSettings } from '../settings/store.js';
@@ -210,6 +211,12 @@ const handlers: Handlers = {
         // only reaches the cluster after a reload.
         if (networkChanged(before, settings.network)) reconnect();
         return settings;
+    },
+    // Whether the renderer has the hold-to-quit hint mounted; main guards the keystroke only
+    // while something can draw it.
+    'quit.overlayReady': async ({ ready }) => {
+        setQuitOverlayReady(ready);
+        return { ok: true };
     },
     'kubeconfig.pick': async () => ({ path: await pickKubeconfig() }),
     'caBundle.pick': async () => ({ path: await pickCaBundle() }),

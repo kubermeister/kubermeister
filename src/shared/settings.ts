@@ -15,6 +15,18 @@ const sessionSchema = z.object({
     restoreOnLaunch: z.boolean(),
 });
 
+/**
+ * Preferences about the app itself rather than about a cluster. macOS only so far: elsewhere the
+ * section is written and read like any other, and nothing acts on it.
+ */
+const generalSchema = z.object({
+    /**
+     * Whether `Cmd+Q` has to be held for a moment before the app quits. On, because quitting ends
+     * every port forward, shell, log follow and drain at once, and the key sits beside `Cmd+W`.
+     */
+    holdToQuit: z.boolean(),
+});
+
 const connectionSchema = z.object({
     /** Kubeconfig file to read; null means the default ($KUBECONFIG or ~/.kube/config). */
     kubeconfigPath: z.string().nullable(),
@@ -143,6 +155,7 @@ export const SETTINGS_VERSION = 2;
 
 export const settingsSchema = z.object({
     version: z.literal(SETTINGS_VERSION),
+    general: generalSchema,
     session: sessionSchema,
     connection: connectionSchema,
     data: dataSchema,
@@ -154,6 +167,7 @@ export const settingsSchema = z.object({
 
 /** A partial patch the main process may apply: any subset of sections, each a partial of its shape. */
 export const settingsPatchSchema = z.object({
+    general: generalSchema.partial().optional(),
     session: sessionSchema.partial().optional(),
     connection: connectionSchema.partial().optional(),
     data: dataSchema.partial().optional(),
@@ -177,6 +191,7 @@ export const settingsInputSchema = settingsPatchSchema
     .omit({ connection: true, window: true, network: true, charts: true })
     .extend({ network: networkSchema.omit({ caBundlePath: true }).partial().optional() });
 
+export type GeneralSettings = z.infer<typeof generalSchema>;
 export type RememberedForward = z.infer<typeof rememberedForwardSchema>;
 export type ChartSettings = z.infer<typeof chartsSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
@@ -188,6 +203,7 @@ export type ProxyMode = (typeof PROXY_MODES)[number];
 
 export const DEFAULT_SETTINGS: Settings = {
     version: SETTINGS_VERSION,
+    general: { holdToQuit: true },
     session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },
@@ -237,6 +253,7 @@ export function parseSettings(raw: unknown): Settings {
     const file = readFile(raw);
     return {
         version: SETTINGS_VERSION,
+        general: parseSection(generalSchema, file.general, DEFAULT_SETTINGS.general),
         session: parseSection(sessionSchema, file.session, DEFAULT_SETTINGS.session),
         connection: parseSection(connectionSchema, file.connection, DEFAULT_SETTINGS.connection),
         data: parseSection(dataSchema, file.data, DEFAULT_SETTINGS.data),
@@ -251,6 +268,7 @@ export function parseSettings(raw: unknown): Settings {
 export function mergeSettings(current: Settings, patch: SettingsPatch): Settings {
     return {
         version: current.version,
+        general: { ...current.general, ...patch.general },
         session: { ...current.session, ...patch.session },
         connection: { ...current.connection, ...patch.connection },
         data: { ...current.data, ...patch.data },

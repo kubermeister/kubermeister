@@ -13,6 +13,7 @@ describe('parseSettings', () => {
     it('returns valid settings unchanged', () => {
         const valid = {
             version: SETTINGS_VERSION,
+            general: { holdToQuit: false },
             session: { lastContext: 'prod', lastNamespace: 'default', restoreOnLaunch: true },
             connection: { kubeconfigPath: '/tmp/kubeconfig' },
             data: {
@@ -33,6 +34,11 @@ describe('parseSettings', () => {
             window: { bounds: { x: 0, y: 0, width: 1200, height: 800 } },
         };
         expect(parseSettings(valid)).toEqual(valid);
+    });
+
+    it('leaves the quit guard on in a file written before it existed', () => {
+        const { general: _added, ...before } = structuredClone(DEFAULT_SETTINGS);
+        expect(parseSettings(before).general).toEqual({ holdToQuit: true });
     });
 
     it('falls back to defaults on corrupt or non-object input', () => {
@@ -62,6 +68,7 @@ describe('parseSettings', () => {
         const partial = { version: SETTINGS_VERSION, session: { lastContext: 'staging', bogus: 1 } };
         expect(parseSettings(partial)).toEqual({
             version: SETTINGS_VERSION,
+            general: { holdToQuit: true },
             session: { lastContext: 'staging', lastNamespace: null, restoreOnLaunch: true },
             connection: { kubeconfigPath: null },
             data: {
