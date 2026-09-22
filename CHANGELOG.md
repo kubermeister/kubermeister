@@ -15,6 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- On macOS, `⌘Q` has to be held for a moment before Kubermeister quits, so a keystroke meant for
+  `⌘W` no longer ends every port forward, shell and log follow at once; Settings › General turns
+  the hold off, and choosing Quit from the menu quits straight away either way.
+
 - The rows checked on a list save to one YAML file, either as the cluster holds them or stripped of
   the fields the server owns so they can be applied to another cluster.
 

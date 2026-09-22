@@ -257,6 +257,20 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   switch or kubeconfig change ends them all (`endAllStreams`, called from the IPC handlers before
   the switch) with an error naming the reason and then `end`.
 
+### Quitting
+
+- **On macOS `Cmd+Q` has to be held** (`src/main/quit.ts`), because `will-quit` stops every stream:
+  one keystroke away from `Cmd+W` sits the end of every port forward, shell, log follow and drain,
+  and none of them come back. Only the keystroke is guarded — the menu item, the updater's
+  `quitAndInstall` and a shutdown the OS asks for each quit at once, since each is already a
+  deliberate act — and `general.holdToQuit` turns it off.
+- Main hears the keys through `before-input-event`, which runs before the menu accelerator it then
+  swallows, and pushes `quit.hold` so the renderer can draw the hint beside where a toast goes.
+- **The guard fails open.** The hint is the renderer's and the decision is main's, so the renderer
+  registers through `quit.overlayReady` and main guards nothing until it has: with no window, or
+  with a renderer that never mounted, `Cmd+Q` quits as it did before the guard existed rather than
+  waiting on a hint nobody can see. A reload or a destroyed renderer takes the registration with it.
+
 ### Port forwards
 
 - Port forwards live in `src/renderer/lib/port-forwards.ts`, outside React for the same reason

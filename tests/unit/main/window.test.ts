@@ -40,6 +40,9 @@ const screen = { getDisplayMatching: vi.fn(() => ({ workArea: { x: 0, y: 0, widt
 const app = { isPackaged: false };
 vi.mock('electron', () => ({ app, BrowserWindow: FakeBrowserWindow, screen, shell }));
 
+const attachHoldToQuit = vi.fn();
+vi.mock('../../../src/main/quit.js', () => ({ attachHoldToQuit }));
+
 const settings = { window: { bounds: null as { x: number; y: number; width: number; height: number } | null } };
 const getSettings = vi.fn(() => settings);
 const updateSettings = vi.fn();
@@ -131,6 +134,11 @@ describe('the main window', () => {
             expect(navigate(window, 'will-redirect', 'http://localhost:5173/').prevented).toBe(true);
             expect(shell.openExternal).toHaveBeenCalledTimes(1);
             expect(shell.openExternal).toHaveBeenCalledWith('http://localhost:5173/');
+        });
+
+        it('guards the quit keystroke on the renderer it creates', () => {
+            const window = create();
+            expect(attachHoldToQuit).toHaveBeenCalledWith(window.webContents);
         });
 
         it('treats only the dev server as internal while developing', () => {

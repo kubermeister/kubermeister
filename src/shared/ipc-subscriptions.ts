@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AllowedSubscription } from './ipc-channels.js';
-import { updateStateSchema } from './ipc.js';
+import { quitHoldSchema, updateStateSchema } from './ipc.js';
 
 /**
  * Main-to-renderer push channels. Each id names a `sub.<id>` event the preload lets the renderer
@@ -11,6 +11,8 @@ export const subSchemas = {
     'update.state': updateStateSchema,
     /** The application menu's Settings item; the renderer routes to the settings screen. */
     'open-settings': z.object({}),
+    /** Whether `Cmd+Q` is being held right now, so the renderer shows or fades its hint. */
+    'quit.hold': quitHoldSchema,
 } as const satisfies Record<AllowedSubscription, z.ZodType>;
 
 export type SubChannel = AllowedSubscription;

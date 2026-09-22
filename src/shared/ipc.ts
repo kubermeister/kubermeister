@@ -104,6 +104,12 @@ const appInfoSchema = z.object({
 });
 
 /**
+ * The hold-to-quit hint, pushed while `Cmd+Q` is down and again when the keys go before the app
+ * quits. Main does the timing, since main is what quits; the renderer only draws the hint.
+ */
+export const quitHoldSchema = z.object({ holding: z.boolean() });
+
+/**
  * Where the in-app updater is. `unsupported` covers development builds and Linux packages that
  * cannot self-update (deb); `available` is a newer version the user has not asked to download yet
  * (the `updates.mode` setting decides whether that step is automatic); `message` carries the
@@ -182,6 +188,8 @@ export const ipcSchemas = {
     'namespace.set': { input: namespaceSelectionSchema, output: namespaceSelectionSchema },
     'settings.get': { input: noInput, output: settingsSchema },
     'settings.set': { input: settingsInputSchema, output: settingsSchema },
+    // Whether the renderer has a hint to show; without one main lets the keystroke quit at once.
+    'quit.overlayReady': { input: z.object({ ready: z.boolean() }), output: z.object({ ok: z.boolean() }) },
     // Kubeconfig path changes are dialog-gated: the renderer never supplies a path string.
     'kubeconfig.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
     'kubeconfig.useDefault': { input: noInput, output: settingsSchema },
@@ -283,6 +291,7 @@ export type IpcOutput<C extends IpcChannel> = z.infer<IpcSchemas[C]['output']>;
 
 export type AppInfo = z.infer<typeof appInfoSchema>;
 export type UpdateState = z.infer<typeof updateStateSchema>;
+export type QuitHold = z.infer<typeof quitHoldSchema>;
 export type StartupCheck = z.infer<typeof startupCheckSchema>;
 export type StartupReport = z.infer<typeof startupReportSchema>;
 
