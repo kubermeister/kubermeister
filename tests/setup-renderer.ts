@@ -1,6 +1,15 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
+
+/**
+ * How long a `findBy` waits for something to appear. The default second is enough for a laptop and
+ * not for a CI runner mounting a whole screen under coverage instrumentation, where a correct test
+ * fails on how fast the machine is rather than on what it rendered. Nothing here asserts a
+ * duration, so the wait is only a ceiling on a query that will never be answered; a genuinely
+ * missing element costs this long to report instead of a second, which only a failing run pays.
+ */
+configure({ asyncUtilTimeout: 10_000 });
 
 // jsdom lacks the layout and pointer APIs the Radix and cmdk primitives call when they open.
 /**

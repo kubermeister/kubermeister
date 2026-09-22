@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoutes } from './helpers';
+import { settingsFixture } from './settings-fixture';
 import { readColumnVisibility, writeColumnVisibility } from '@/lib/persisted-columns';
 
 const invoke = vi.fn();
@@ -15,19 +16,7 @@ vi.mock('@/lib/ipc', async () => ({
 
 const { routeTree } = await import('@/routeTree.gen');
 
-const settings = {
-    version: 1,
-    session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
-    connection: { kubeconfigPath: null },
-    data: {
-        refreshIntervalSec: 12,
-        logBufferLines: 2000,
-        terminalFontSize: 12,
-        forwards: [],
-    },
-    updates: { mode: 'check' },
-    window: { bounds: null },
-};
+const settings = settingsFixture({ updates: { mode: 'check' } });
 
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date' },

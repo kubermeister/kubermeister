@@ -28,23 +28,17 @@ const { ForwardManager } = await import('@/components/layout/forward-manager');
 const { forwardSnapshot, forwardUrl, startForward, stopAllForwards, stopForward } = await import('@/lib/port-forwards');
 const { rememberForward } = await import('@/lib/forward-memory');
 const { QueryClient } = await import('@tanstack/react-query');
+const { settingsFixture } = await import('./settings-fixture');
 
-const SETTINGS = {
-    version: 1,
-    session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
-    connection: { kubeconfigPath: null },
+const SETTINGS = settingsFixture({
     data: {
-        refreshIntervalSec: 12,
-        logBufferLines: 2000,
-        terminalFontSize: 12,
         forwards: [
             { context: 'alpha', kind: 'Service', namespace: 'team-a', name: 'api', targetPort: 80, localPort: 8081 },
             { context: 'beta', kind: 'Pod', namespace: 'team-a', name: 'other', targetPort: 80, localPort: 8082 },
         ],
     },
     updates: { mode: 'check' },
-    window: { bounds: null },
-};
+});
 const listening = (localPort: number, pod?: string) => ({
     type: 'data',
     data: { status: 'listening', localPort, targetPort: 8080, pod },

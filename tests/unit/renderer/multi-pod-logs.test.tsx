@@ -2,6 +2,7 @@ import { act, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamMessage } from '../../../src/shared/streams';
+import { settingsFixture } from './settings-fixture';
 import type { LogLine } from '../../../src/shared/k8s/logs';
 import { renderWithQuery } from './helpers';
 
@@ -25,14 +26,7 @@ const { podColors, useMultiPodLogStream } = await import('@/lib/multi-pod-logs')
 const { WorkloadLogs } = await import('@/components/workload/workload-logs-tab');
 const { resetLogViewOptions, setLogViewOptions } = await import('@/lib/log-view-options');
 
-const SETTINGS = {
-    version: 1,
-    session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
-    connection: { kubeconfigPath: null },
-    data: { refreshIntervalSec: 12, logBufferLines: 2000 },
-    updates: { mode: 'check' },
-    window: { bounds: null },
-};
+const SETTINGS = settingsFixture({ updates: { mode: 'check' } });
 const pods = [
     {
         name: 'web-1',

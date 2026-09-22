@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StartupReport } from '../../../src/shared/ipc';
 import { renderWithQuery } from './helpers';
+import { settingsFixture } from './settings-fixture';
 
 const invoke = vi.fn();
 vi.mock('@/lib/ipc', async () => ({ ...(await vi.importActual<typeof import('@/lib/ipc')>('@/lib/ipc')), invoke }));
@@ -73,13 +74,13 @@ describe('ConnectionNotice', () => {
                 case 'startupChecks':
                     return report;
                 case 'settings.get':
-                    return { connection: { kubeconfigPath } };
+                    return settingsFixture({ connection: { kubeconfigPath } });
                 case 'kubeconfig.pick':
                     report = passing;
                     return { path: '/picked' };
                 case 'kubeconfig.useDefault':
                     report = passing;
-                    return { connection: { kubeconfigPath: null } };
+                    return settingsFixture();
                 default:
                     throw new Error(`unexpected ${channel}`);
             }

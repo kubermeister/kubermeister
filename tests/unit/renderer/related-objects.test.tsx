@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoutes } from './helpers';
+import { settingsFixture } from './settings-fixture';
 
 const invoke = vi.fn();
 const subscribe = vi.fn(() => () => {});
@@ -37,14 +38,7 @@ const data: Record<string, unknown> = {
     'namespaces.list': [{ name: 'team-a', tone: 'accent' }],
     'namespace.active': { name: 'team-a' },
     'cluster.active': null,
-    'settings.get': {
-        version: 1,
-        session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
-        connection: { kubeconfigPath: null },
-        data: { refreshIntervalSec: 12, logBufferLines: 2000, terminalFontSize: 12, forwards: [] },
-        updates: { mode: 'check' },
-        window: { bounds: null },
-    },
+    'settings.get': settingsFixture({ updates: { mode: 'check' } }),
     'metrics.podSeries': { cpu: [], mem: [] },
     'pods.owners': [],
     'events.forObject': [],
