@@ -5,6 +5,8 @@ const menu = { buildFromTemplate: vi.fn((template: unknown) => ({ template })), 
 vi.mock('electron', () => ({ app: { name: 'Kubermeister', getVersion: () => '0.4.9' }, Menu: menu }));
 const broadcast = vi.fn();
 vi.mock('../../../src/main/ipc/push.js', () => ({ broadcast }));
+const requestQuit = vi.fn(() => Promise.resolve());
+vi.mock('../../../src/main/quit.js', () => ({ requestQuit }));
 const runInteractiveCheck = vi.fn(() => Promise.resolve());
 vi.mock('../../../src/main/update-dialog.js', () => ({ runInteractiveCheck }));
 const openExternally = vi.fn();
@@ -18,6 +20,8 @@ const settingsItem = (template: MenuItemConstructorOptions[]) =>
     (template[0]?.submenu as MenuItemConstructorOptions[]).find((i) => i.label === 'Settings…')!;
 const updatesItem = (template: MenuItemConstructorOptions[]) =>
     (template[0]?.submenu as MenuItemConstructorOptions[]).find((i) => i.label === 'Check for Updates…')!;
+const quitItem = (template: MenuItemConstructorOptions[]) =>
+    (template[0]?.submenu as MenuItemConstructorOptions[]).at(-1)!;
 
 describe('application menu', () => {
     beforeEach(() => {
@@ -28,6 +32,7 @@ describe('application menu', () => {
         const template = buildMenuTemplate('darwin');
         expect(template[0]?.label).toBe('Kubermeister');
         expect(labels(template[0]?.submenu as MenuItemConstructorOptions[])).toContain('Settings…');
+        expect(labels(template[0]?.submenu as MenuItemConstructorOptions[]).at(-1)).toBe('Quit Kubermeister');
         expect(labels(template[0]?.submenu as MenuItemConstructorOptions[]).slice(0, 2)).toEqual([
             'about',
             'Check for Updates…',
@@ -44,10 +49,23 @@ describe('application menu', () => {
                 'Settings…',
                 'Check for Updates…',
                 'separator',
-                'quit',
+                'Quit',
             ]);
             expect(settingsItem(template).accelerator).toBeUndefined();
         }
+    });
+
+    it('asks before quitting, from the item ⌘Q triggers as well as from a click', () => {
+        // A `role: 'quit'` item would quit by itself; this one is spelled out so the keystroke and
+        // the click meet the same question, with the accelerator still shown beside the label.
+        const mac = quitItem(buildMenuTemplate('darwin'));
+        expect(mac.role).toBeUndefined();
+        expect(mac.accelerator).toBe('Cmd+Q');
+        (mac.click as () => void)();
+        const other = quitItem(buildMenuTemplate('win32'));
+        expect(other.accelerator).toBeUndefined();
+        (other.click as () => void)();
+        expect(requestQuit).toHaveBeenCalledTimes(2);
     });
 
     it('pushes open-settings to the renderer when Settings is activated', () => {

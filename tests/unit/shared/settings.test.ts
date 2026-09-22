@@ -13,7 +13,7 @@ describe('parseSettings', () => {
     it('returns valid settings unchanged', () => {
         const valid = {
             version: SETTINGS_VERSION,
-            general: { holdToQuit: false },
+            general: { confirmQuit: false },
             session: { lastContext: 'prod', lastNamespace: 'default', restoreOnLaunch: true },
             connection: { kubeconfigPath: '/tmp/kubeconfig' },
             data: {
@@ -36,9 +36,9 @@ describe('parseSettings', () => {
         expect(parseSettings(valid)).toEqual(valid);
     });
 
-    it('leaves the quit guard on in a file written before it existed', () => {
+    it('leaves the quit confirmation on in a file written before it existed', () => {
         const { general: _added, ...before } = structuredClone(DEFAULT_SETTINGS);
-        expect(parseSettings(before).general).toEqual({ holdToQuit: true });
+        expect(parseSettings(before).general).toEqual({ confirmQuit: true });
     });
 
     it('falls back to defaults on corrupt or non-object input', () => {
@@ -68,7 +68,7 @@ describe('parseSettings', () => {
         const partial = { version: SETTINGS_VERSION, session: { lastContext: 'staging', bogus: 1 } };
         expect(parseSettings(partial)).toEqual({
             version: SETTINGS_VERSION,
-            general: { holdToQuit: true },
+            general: { confirmQuit: true },
             session: { lastContext: 'staging', lastNamespace: null, restoreOnLaunch: true },
             connection: { kubeconfigPath: null },
             data: {

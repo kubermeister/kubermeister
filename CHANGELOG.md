@@ -15,9 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- On macOS, `⌘Q` has to be held for a moment before Kubermeister quits, so a keystroke meant for
-  `⌘W` no longer ends every port forward, shell and log follow at once; Settings › General turns
-  the hold off, and choosing Quit from the menu quits straight away either way.
+- Quitting asks first, naming what it ends: every port forward, shell session, log follow and
+  drain in progress goes with the app, and none of them come back. The dialog's Don't ask again and
+  Settings › General turn it off.
 
 - The rows checked on a list save to one YAML file, either as the cluster holds them or stripped of
   the fields the server owns so they can be applied to another cluster.
@@ -64,6 +64,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   to one of those keeps it.
 
 ### Fixed
+
+- The window no longer sits on screen empty and white while Kubermeister closes; it goes when
+  quitting is confirmed.
 
 - A cluster call that runs past the read timeout is cancelled instead of left running. A screen
   waiting on a slow or unresponsive cluster no longer leaves a request open on every refresh, and

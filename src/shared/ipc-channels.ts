@@ -17,7 +17,6 @@ export const IPC_CHANNELS = [
     'namespace.set',
     'settings.get',
     'settings.set',
-    'quit.overlayReady',
     'kubeconfig.pick',
     'kubeconfig.useDefault',
     'caBundle.pick',
@@ -100,7 +99,7 @@ export const IPC_CHANNELS = [
  */
 export const PRELOAD_CHANNELS = ['manifest.read'] as const;
 
-export const SUBSCRIPTION_CHANNELS = ['update.state', 'open-settings', 'quit.hold'] as const;
+export const SUBSCRIPTION_CHANNELS = ['update.state', 'open-settings'] as const;
 
 /** Stream channels the preload's `stream()` accepts. Schemas live in `streams.ts`; this file stays import-free. */
 export const STREAM_CHANNELS = [

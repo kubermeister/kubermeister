@@ -259,17 +259,26 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 
 ### Quitting
 
-- **On macOS `Cmd+Q` has to be held** (`src/main/quit.ts`), because `will-quit` stops every stream:
-  one keystroke away from `Cmd+W` sits the end of every port forward, shell, log follow and drain,
-  and none of them come back. Only the keystroke is guarded — the menu item, the updater's
-  `quitAndInstall` and a shutdown the OS asks for each quit at once, since each is already a
-  deliberate act — and `general.holdToQuit` turns it off.
-- Main hears the keys through `before-input-event`, which runs before the menu accelerator it then
-  swallows, and pushes `quit.hold` so the renderer can draw the hint beside where a toast goes.
-- **The guard fails open.** The hint is the renderer's and the decision is main's, so the renderer
-  registers through `quit.overlayReady` and main guards nothing until it has: with no window, or
-  with a renderer that never mounted, `Cmd+Q` quits as it did before the guard existed rather than
-  waiting on a hint nobody can see. A reload or a destroyed renderer takes the registration with it.
+- **Quitting asks first** (`src/main/quit.ts`), because `will-quit` stops every stream: one
+  keystroke ends every port forward, shell, log follow and drain, and none of them come back. The
+  dialog is native and main's own, since the question has to be answerable when a renderer never
+  mounted, and it names what quitting ends rather than asking in the abstract.
+- It asks on the two paths the user takes: the **Quit menu item**, which is also what `Cmd+Q`
+  triggers, and the **window's own close** on Windows and Linux, where closing the last window
+  quits. Quit is therefore spelled out rather than `role: 'quit'`, which would quit by itself.
+- **Nothing here vetoes `before-quit`**, it only listens: the updater's `quitAndInstall` and a
+  shutdown the OS asks for both reach `app.quit()` without the menu, and neither is a moment for a
+  modal. That listener is also what tells the close guard a quit is already under way, so the
+  windows it closes are not a second question.
+- `general.confirmQuit` turns it off, from Settings or from the dialog's own **Don't ask again**,
+  which is acted on only when the answer is Quit: a cancelled action is no moment to write a
+  preference nobody agreed to.
+- **Windows are hidden as the quit starts**, in the same `before-quit` listener, because Electron's
+  teardown outlives the app's own by over a second and a window left up through it is an empty white
+  one. Nothing here vetoes a quit, so a hidden window is never a running app that looks shut.
+- A hold-to-quit gesture was tried first (#320, reverted in #327) and does not work on macOS: main
+  can swallow `Cmd+Q` through `before-input-event`, but neither the `q` nor the `Meta` release ever
+  reaches Electron afterwards, so a hold can be started and never cancelled.
 
 ### Port forwards
 

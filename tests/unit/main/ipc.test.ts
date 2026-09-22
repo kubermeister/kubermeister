@@ -114,8 +114,6 @@ vi.mock('../../../src/main/k8s/resources/owners.js', () => ownersMod);
 vi.mock('../../../src/main/k8s/resources/describe.js', () => describeMod);
 vi.mock('../../../src/main/k8s/openapi/index.js', () => schemasMod);
 vi.mock('../../../src/main/manifest-file.js', () => manifestFileMod);
-const quitMod = { setQuitOverlayReady: vi.fn() };
-vi.mock('../../../src/main/quit.js', () => quitMod);
 
 const { registerHandlers } = await import('../../../src/main/ipc/index.js');
 const { ipcSchemas } = await import('../../../src/shared/ipc.js');
@@ -327,13 +325,6 @@ describe('registerHandlers', () => {
         expect(store.updateSettings).toHaveBeenCalledWith({ session: { lastNamespace: 'ns' } });
         await invoke('settings.set', { connection: { kubeconfigPath: '/etc/passwd' } });
         expect(store.updateSettings).toHaveBeenLastCalledWith({});
-    });
-
-    it('tells the quit guard whether a renderer can show its hint', async () => {
-        await expect(invoke('quit.overlayReady', { ready: true })).resolves.toEqual({ ok: true });
-        expect(quitMod.setQuitOverlayReady).toHaveBeenCalledWith(true);
-        await invoke('quit.overlayReady', { ready: false });
-        expect(quitMod.setQuitOverlayReady).toHaveBeenLastCalledWith(false);
     });
 
     it('hands the update check interval to the updater on every settings write', async () => {
