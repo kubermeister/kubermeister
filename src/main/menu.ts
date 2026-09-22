@@ -2,6 +2,7 @@ import { app, Menu, type MenuItemConstructorOptions } from 'electron';
 import { bugReportUrl } from '../shared/bug-report.js';
 import { REPOSITORY_URL } from '../shared/updates.js';
 import { broadcast } from './ipc/push.js';
+import { requestQuit } from './quit.js';
 import { runInteractiveCheck } from './update-dialog.js';
 import { openExternally } from './window.js';
 
@@ -13,6 +14,10 @@ import { openExternally } from './window.js';
  * the renderer is stuck behind the startup checks and has no Settings to open. The Help menu is
  * there for the same reason: a bug worth reporting is often one that left no renderer to report it
  * from, and both its items are URLs the OS browser opens through the app's own external-link guard.
+ *
+ * Quit is spelled out rather than taken from `role: 'quit'`, because a role quits by itself and
+ * this one has to ask first. The item is what `Cmd+Q` triggers, so the keystroke and the click are
+ * one path and the accelerator still shows beside the label.
  */
 export function buildMenuTemplate(platform: NodeJS.Platform = process.platform): MenuItemConstructorOptions[] {
     const isMac = platform === 'darwin';
@@ -24,6 +29,11 @@ export function buildMenuTemplate(platform: NodeJS.Platform = process.platform):
     const updatesItem: MenuItemConstructorOptions = {
         label: 'Check for Updates…',
         click: () => void runInteractiveCheck(),
+    };
+    const quitItem: MenuItemConstructorOptions = {
+        label: isMac ? `Quit ${app.name}` : 'Quit',
+        ...(isMac ? { accelerator: 'Cmd+Q' } : {}),
+        click: () => void requestQuit(),
     };
     const first: MenuItemConstructorOptions = isMac
         ? {
@@ -40,10 +50,10 @@ export function buildMenuTemplate(platform: NodeJS.Platform = process.platform):
                   { role: 'hideOthers' },
                   { role: 'unhide' },
                   { type: 'separator' },
-                  { role: 'quit' },
+                  quitItem,
               ],
           }
-        : { label: 'File', submenu: [settingsItem, updatesItem, { type: 'separator' }, { role: 'quit' }] };
+        : { label: 'File', submenu: [settingsItem, updatesItem, { type: 'separator' }, quitItem] };
     const help: MenuItemConstructorOptions = {
         role: 'help',
         submenu: [

@@ -15,16 +15,13 @@ const sessionSchema = z.object({
     restoreOnLaunch: z.boolean(),
 });
 
-/**
- * Preferences about the app itself rather than about a cluster. macOS only so far: elsewhere the
- * section is written and read like any other, and nothing acts on it.
- */
+/** Preferences about the app itself rather than about a cluster. */
 const generalSchema = z.object({
     /**
-     * Whether `Cmd+Q` has to be held for a moment before the app quits. On, because quitting ends
-     * every port forward, shell, log follow and drain at once, and the key sits beside `Cmd+W`.
+     * Whether quitting asks first. On, because quitting ends every port forward, shell, log follow
+     * and drain at once, and none of them come back.
      */
-    holdToQuit: z.boolean(),
+    confirmQuit: z.boolean(),
 });
 
 const connectionSchema = z.object({
@@ -203,7 +200,7 @@ export type ProxyMode = (typeof PROXY_MODES)[number];
 
 export const DEFAULT_SETTINGS: Settings = {
     version: SETTINGS_VERSION,
-    general: { holdToQuit: true },
+    general: { confirmQuit: true },
     session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },

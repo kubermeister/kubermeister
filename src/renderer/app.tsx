@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
-import { QuitOverlay } from '@/components/layout/quit-overlay';
 import { StartupGate } from '@/components/startup-gate';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
@@ -21,9 +20,6 @@ export function App() {
                         <RouterProvider router={router} />
                     </StartupGate>
                     <Toaster position="bottom-right" />
-                    {/* Outside the gate: the hold-to-quit hint belongs to the window, and main
-                        guards the keystroke only while something is here to draw it. */}
-                    <QuitOverlay />
                 </TooltipProvider>
             </QueryClientProvider>
         </ThemeProvider>

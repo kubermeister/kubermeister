@@ -4,6 +4,7 @@ import { setReadTimeoutSec } from './k8s/errors.js';
 import { registerStreamHandlers, stopAllStreams } from './ipc/streams.js';
 import { stopSampler } from './k8s/sampler.js';
 import { installApplicationMenu } from './menu.js';
+import { watchAppQuit } from './quit.js';
 import { getSettings } from './settings/store.js';
 import { adoptLoginShellEnv } from './shell-env.js';
 import { startUpdater } from './updater.js';
@@ -28,6 +29,9 @@ void app.whenReady().then(async () => {
     await shellEnvReady;
     // The read ceiling is a setting; apply the saved one before the first cluster call can run.
     setReadTimeoutSec(getSettings().data.readTimeoutSec);
+    // Every quit raises `before-quit`, whoever started it, and that is what tells a window closing
+    // to ask no questions.
+    watchAppQuit();
     installApplicationMenu();
     registerHandlers();
     registerStreamHandlers();

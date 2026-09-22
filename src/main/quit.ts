@@ -1,90 +1,99 @@
-import { app, type WebContents } from 'electron';
-import { broadcast } from './ipc/push.js';
-import { getSettings } from './settings/store.js';
+import { app, BrowserWindow, dialog } from 'electron';
+import { getSettings, updateSettings } from './settings/store.js';
 
 /**
- * Quitting is expensive here: `will-quit` stops every stream, so a mistyped `Cmd+Q` — one key from
- * `Cmd+W` — takes the port forwards, the shell open in a pod, every log follow and a drain running
- * against a node, none of which come back on the next launch. So the keystroke is made a deliberate
- * one the way Chrome makes it: a tap shows a hint, and the app quits only once the keys have been
- * held. Only the keystroke is guarded — the menu item, the updater's restart and a shutdown the OS
- * asks for all still quit at once, since each is already a deliberate act.
+ * Quitting is expensive here: `will-quit` stops every stream, so it takes the port forwards, the
+ * shell open in a pod, every log follow and a drain running against a node, and none of them come
+ * back on the next launch. So quitting asks first, through a native dialog rather than anything in
+ * the renderer: the question has to be answerable when a renderer never mounted, and it is main
+ * that quits.
  *
- * The decision is main's and the hint is the renderer's, so the two are separate: main hears the
- * keys through `before-input-event` (which runs before the menu accelerator it then swallows) and
- * pushes `quit.hold`, while the renderer only draws what it is told. That makes the guard
- * conditional on there being a renderer to draw it, which is the point of {@link setQuitOverlayReady}:
- * with no window, or with a renderer that never mounted, the keystroke is left alone and the menu's
- * own accelerator quits as it always did, rather than waiting on a hint nobody can see.
+ * It asks on the two paths the user takes: the Quit menu item, which is also what the `Cmd+Q`
+ * accelerator triggers, and the window's own close where closing means quitting. Nothing here
+ * touches `before-quit` beyond listening to it: the updater's restart and a shutdown the OS asks
+ * for both reach `app.quit()` without the menu, and neither is a moment to put a modal in front of.
  */
 
-/** How long the keys must stay down. About a second, as Chrome's own hold is. */
-export const HOLD_TO_QUIT_MS = 1_000;
-
-/** Whether a renderer is mounted and listening for the hint. Reset whenever its document goes. */
-let overlayReady = false;
-let holdTimer: NodeJS.Timeout | null = null;
+/** Set once the app is on its way out, so the windows a quit closes are not a second question. */
+let quitting = false;
+/** Set while the dialog is up, so a second `Cmd+Q` behind it does not stack another one. */
+let asking = false;
 
 /**
- * The renderer reports whether its hint is mounted. A document that goes — a reload, a crash, a
- * closed window — takes the hint with it, so the guard is off again until the next one says so.
+ * Listen for the app quitting by any route at all. Registered once at startup, before a window
+ * exists, since a quit can begin before one does.
  */
-export function setQuitOverlayReady(ready: boolean): void {
-    overlayReady = ready;
-    if (!ready) cancelHold();
-}
-
-/** ⌘Q alone: ⌘⇧Q is the system's log-out and ⌃/⌥ make it somebody else's shortcut. */
-function isQuitChord(input: Electron.Input): boolean {
-    return input.meta && !input.control && !input.alt && !input.shift && input.key.toLowerCase() === 'q';
-}
-
-function cancelHold(): void {
-    if (!holdTimer) return;
-    clearTimeout(holdTimer);
-    holdTimer = null;
-    broadcast('quit.hold', { holding: false });
-}
-
-function startHold(): void {
-    broadcast('quit.hold', { holding: true });
-    holdTimer = setTimeout(() => {
-        holdTimer = null;
-        app.quit();
-    }, HOLD_TO_QUIT_MS);
-}
-
-function handleInput(event: Electron.Event, input: Electron.Input): void {
-    if (input.type !== 'keyDown') {
-        // The `q` release never arrives while Command is down, so the Command release is what
-        // ends most holds; either one means the gesture is over.
-        if (input.key === 'Meta' || input.key.toLowerCase() === 'q') cancelHold();
-        return;
-    }
-    if (!isQuitChord(input)) {
-        cancelHold();
-        return;
-    }
-    if (!overlayReady || !getSettings().general.holdToQuit) return;
-    event.preventDefault();
-    // The keys repeat while they are held; the hold is the first press, not the latest one.
-    if (!holdTimer) startHold();
+export function watchAppQuit(): void {
+    app.on('before-quit', () => {
+        quitting = true;
+        // Electron takes a moment to tear down after the app's own shutdown is done, and a window
+        // left on screen through it is an empty white one that reads as a crash rather than as a
+        // close. Hiding them makes the app go when it is asked to, and the rest finishes out of
+        // sight. Nothing here vetoes a quit, so a hidden window can never be a running app that
+        // merely looks shut.
+        for (const window of BrowserWindow.getAllWindows()) {
+            if (!window.isDestroyed()) window.hide();
+        }
+    });
 }
 
 /**
- * Guard the keystroke on one renderer. macOS only: Windows and Linux quit from the close button
- * and `Alt+F4`, neither of which sits beside the shortcut for closing a tab.
+ * Ask, unless the user has said not to. The checkbox is acted on only when the answer is Quit: a
+ * cancelled action is a poor moment to write a preference nobody agreed to.
  */
-export function attachHoldToQuit(contents: WebContents): void {
-    if (process.platform !== 'darwin') return;
-    contents.on('before-input-event', handleInput);
-    // The release lands wherever focus went, so a hold that outlives focus would quit unasked.
-    contents.on('blur', cancelHold);
-    // A hint lives as long as the document holding it, and no longer: a reload, a crashed
-    // renderer or a closed window leaves the keystroke unguarded until the next hint says it is
-    // there. Routing is not that — the app navigates by hash within the one document, and a guard
-    // that disarmed on every screen change would be off almost always.
-    contents.on('did-navigate', () => setQuitOverlayReady(false));
-    contents.on('render-process-gone', () => setQuitOverlayReady(false));
-    contents.on('destroyed', () => setQuitOverlayReady(false));
+async function confirmQuit(parent: BrowserWindow | null): Promise<boolean> {
+    if (!getSettings().general.confirmQuit) return true;
+    if (asking) return false;
+    const options: Electron.MessageBoxOptions = {
+        type: 'question',
+        buttons: ['Quit', 'Cancel'],
+        // Cancel is the default because macOS answers a sheet with its default button when
+        // something else asks for attention — a second `Cmd+Q` behind it does exactly that — and a
+        // keystroke that answers the question it raised would be no question at all. Quitting is
+        // therefore the button that has to be chosen, and Return, Escape and a stray repeat all
+        // leave everything running.
+        defaultId: 1,
+        cancelId: 1,
+        message: `Quit ${app.name}?`,
+        detail: 'Port forwards, shell sessions, log follows and any drain in progress end with the app, and none of them are restored on the next launch.',
+        checkboxLabel: "Don't ask again",
+        checkboxChecked: false,
+    };
+    asking = true;
+    try {
+        const { response, checkboxChecked } = parent
+            ? await dialog.showMessageBox(parent, options)
+            : await dialog.showMessageBox(options);
+        if (response !== 0) return false;
+        if (checkboxChecked) updateSettings({ general: { confirmQuit: false } });
+        return true;
+    } finally {
+        asking = false;
+    }
+}
+
+/** The window the dialog belongs to: the one in use, or the only one there is. */
+function parentWindow(): BrowserWindow | null {
+    return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
+}
+
+/** The Quit menu item, and so the accelerator that triggers that very item. */
+export async function requestQuit(): Promise<void> {
+    if (await confirmQuit(parentWindow())) app.quit();
+}
+
+/**
+ * Guard the window's own close. Windows and Linux quit with the last window, by the close button
+ * or `Alt+F4`, so closing it is a quit and asks like one; on macOS the app outlives its window,
+ * so closing one loses nothing that opening it again does not bring back.
+ */
+export function attachQuitConfirmation(window: BrowserWindow): void {
+    if (process.platform === 'darwin') return;
+    window.on('close', (event) => {
+        if (quitting) return;
+        event.preventDefault();
+        void confirmQuit(window).then((confirmed) => {
+            if (confirmed) app.quit();
+        });
+    });
 }

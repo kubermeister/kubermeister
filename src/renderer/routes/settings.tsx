@@ -87,9 +87,6 @@ function SettingsScreen() {
     const client = useQueryClient();
     const { data: settings } = useSettings();
     const [connectionBusy, setConnectionBusy] = useState(false);
-    // The guard is macOS-only, so the switch for it is offered where it means something. Main is
-    // what runs on the platform, so main is what says which one it is.
-    const onMac = useIpcQuery('app.info', {}).data?.platform === 'darwin';
 
     const kubeconfigPath = settings?.connection.kubeconfigPath ?? null;
     const proxyMode = settings?.network.proxyMode ?? 'env';
@@ -144,25 +141,22 @@ function SettingsScreen() {
                     </p>
                 </FormCard>
 
-                {onMac && (
-                    <FormCard
-                        title="Hold ⌘Q to quit"
-                        desc="Quitting ends every port forward, shell session, log follow and drain at once."
-                        action={
-                            <Toggle
-                                label="Hold ⌘Q to quit"
-                                checked={settings?.general.holdToQuit ?? true}
-                                onCheckedChange={(holdToQuit) =>
-                                    void updateSettings(client, { general: { holdToQuit } })
-                                }
-                            />
-                        }
-                    >
-                        <p className="text-cell text-text-muted">
-                            When off, ⌘Q quits the moment it is pressed. Quit in the menu always does.
-                        </p>
-                    </FormCard>
-                )}
+                <FormCard
+                    title="Confirm before quitting"
+                    desc="Quitting ends every port forward, shell session, log follow and drain at once."
+                    action={
+                        <Toggle
+                            label="Confirm before quitting"
+                            checked={settings?.general.confirmQuit ?? true}
+                            onCheckedChange={(confirmQuit) => void updateSettings(client, { general: { confirmQuit } })}
+                        />
+                    }
+                >
+                    <p className="text-cell text-text-muted">
+                        None of it comes back on the next launch. The dialog&apos;s own Don&apos;t ask again turns this
+                        off too.
+                    </p>
+                </FormCard>
 
                 <FormCard title="Live data refresh" desc="How often lists, metrics and the dashboard poll for updates.">
                     <Field label="Refresh interval">
