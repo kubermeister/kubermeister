@@ -42,13 +42,9 @@ Choosing another container ends the session and opens a new one in that containe
 
 ## The terminal
 
-The terminal fits itself to the panel as the window or the layout changes.
-
-:::caution[Known issue]
-Resizing the terminal never resizes the remote shell, so it keeps the size it started with and
-full-screen programs such as `vim` or `top` can draw at the wrong size.
-([#335](https://github.com/kubermeister/kubermeister/issues/335))
-:::
+The terminal fits itself to the panel as the window or the layout changes, and the shell in the pod
+is told each new size, so `top`, `vi` and `less` redraw for the space they have and a long command
+line wraps where the panel ends. The session opens at the panel's size rather than a default one.
 
 The font size is **Terminal** › **Font size** in [**Settings › General**](/docs/reference/settings/):
 **11 pt**, **12 pt** (the default), **14 pt** or **16 pt**. It is read when a session opens, so a

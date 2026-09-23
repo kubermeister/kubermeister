@@ -327,6 +327,10 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   leaving the pod is how a shell is closed and a terminal is never left attached to a cluster
   nobody is looking at.
 - The tab is deliberately not `keepMounted`: merely opening a pod's page must not exec into it.
+- **The remote tty is sized from xterm.** The session opens after the first fit, carrying that
+  size, and every later `onResize` is sent as a `{ resize }` write; main keeps it on the exec's
+  stdout sink (`columns`, `rows`, a `resize` event), which is what the client reads to send the
+  size down the exec's resize channel. A stdout without them gets no size at all.
 - `src/renderer/lib/terminal-look.ts` holds the font and the two ANSI palettes, because xterm needs
   literal colours and the app's theme can flip under a running session.
 - The app opens no other way in: it attaches no debug container, runs no privileged pod on a node,

@@ -118,10 +118,22 @@ export const podLogsInputSchema = podTargetSchema.extend({
     tailLines: z.number().int().positive().max(10_000).optional(),
 });
 
+/** A terminal's size in character cells, as xterm measures it. */
+export const terminalSizeSchema = z.object({
+    cols: z.number().int().min(1).max(1_000),
+    rows: z.number().int().min(1).max(1_000),
+});
+export type TerminalSize = z.infer<typeof terminalSizeSchema>;
+
 export const podExecInputSchema = podTargetSchema.extend({
     /** Command to run; defaults to a shell. */
     command: z.array(z.string().min(1)).min(1).max(32).optional(),
+    /** The terminal's size when the session opens; later sizes arrive as `{ resize }` writes. */
+    size: terminalSizeSchema.optional(),
 });
+
+/** What an exec session's `send` carries besides keystrokes: the terminal's new size. */
+export const execResizeSchema = z.object({ resize: terminalSizeSchema });
 
 const tcpPort = z.number().int().min(1).max(65535);
 
