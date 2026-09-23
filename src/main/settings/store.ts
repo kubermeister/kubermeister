@@ -92,17 +92,22 @@ function writeFile(path: string, doc: SettingsDocument, indent: string): void {
 
 /**
  * The first launch after the settings file moved: the old whole-object file becomes a settings file
- * holding what somebody changed and a state file holding the rest. The old file is left where it
- * was, so going back to an earlier version finds it.
+ * holding what somebody changed and a state file holding the rest. Each is carried over only while
+ * it does not exist yet, and apart: a settings file written by hand before the first launch wins
+ * over the old preferences, but the last context, the remembered forwards and the window's place
+ * still come across. The old file is left where it was, so going back to an earlier version finds
+ * it.
  */
 function migrateLegacy(configPath: string): void {
     const legacyPath = legacyFilePath();
-    if (resolve(legacyPath) === resolve(configPath) || existsSync(configPath) || !existsSync(legacyPath)) return;
+    const needsConfig = resolve(legacyPath) !== resolve(configPath) && !existsSync(configPath);
+    const needsState = !existsSync(stateFilePath());
+    if ((!needsConfig && !needsState) || !existsSync(legacyPath)) return;
     const legacy = readFile(legacyPath);
     if (!legacy.doc) return;
     const settings = parseSettings(legacy.doc);
-    writeFile(configPath, configFromLegacy(settings), legacy.indent);
-    if (!existsSync(stateFilePath())) writeFile(stateFilePath(), stateFromLegacy(settings), legacy.indent);
+    if (needsConfig) writeFile(configPath, configFromLegacy(settings), legacy.indent);
+    if (needsState) writeFile(stateFilePath(), stateFromLegacy(settings), legacy.indent);
 }
 
 function loadSettings(): Settings {

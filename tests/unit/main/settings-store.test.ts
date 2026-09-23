@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SETTINGS } from '../../../src/shared/settings';
+import { DEFAULT_SETTINGS, mergeSettings } from '../../../src/shared/settings';
 
 let root = '';
 let userData = '';
@@ -209,6 +209,21 @@ describe('settings store', () => {
         writeFileSync(join(userData, 'settings.json'), JSON.stringify({ ...legacy, data: DEFAULT_SETTINGS.data }));
         const again = await loadStore();
         expect(again.getSettings().data.readTimeoutSec).toBe(300);
+    });
+
+    it('carries the old state over even when a settings file was written by hand before the first launch', async () => {
+        const legacy = mergeSettings(DEFAULT_SETTINGS, {
+            session: { lastContext: 'prod' },
+            data: { readTimeoutSec: 300 },
+        });
+        writeFileSync(join(userData, 'settings.json'), JSON.stringify(legacy));
+        mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 5 } }));
+        const { getSettings } = await loadStore();
+        // The hand-written file is the configuration; the old one's preferences do not override it.
+        expect(getSettings().data).toMatchObject({ refreshIntervalSec: 5, readTimeoutSec: 60 });
+        expect(readJson(configFile)).toEqual({ data: { refreshIntervalSec: 5 } });
+        expect(getSettings().session.lastContext).toBe('prod');
     });
 
     it('writes through a symlinked settings file rather than replacing the link', async () => {

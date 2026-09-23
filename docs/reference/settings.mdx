@@ -202,7 +202,9 @@ with the window's own storage.
 
 An install from before the file moved keeps its settings: on the first launch the old
 `settings.json` in the user-data directory is carried over, with the values that were only ever
-defaults left out, and the old file is left where it was.
+defaults left out, and the old file is left where it was. A settings file you wrote before that
+launch is kept exactly as it is; only the last context, the remembered forwards and the window's
+place come across from the old file.
 
 ## Quitting
 
