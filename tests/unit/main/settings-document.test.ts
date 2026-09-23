@@ -7,7 +7,7 @@ import {
     serializeDocument,
     stateFromLegacy,
 } from '../../../src/main/settings/document';
-import { DEFAULT_SETTINGS, mergeSettings } from '../../../src/shared/settings';
+import { DEFAULT_SETTINGS, mergeSettings, SETTINGS_SCHEMA_URL } from '../../../src/shared/settings';
 
 describe('patchDocument', () => {
     it('sets the keys a patch names in the file they belong to, keeping order and appending what is new', () => {
@@ -70,12 +70,13 @@ describe('moving a whole-object file over', () => {
 
     it('keeps in the settings file only what differs from the defaults', () => {
         expect(configFromLegacy(legacy)).toEqual({
+            $schema: SETTINGS_SCHEMA_URL,
             version: 2,
             session: { restoreOnLaunch: false },
             data: { readTimeoutSec: 300 },
             updates: { mode: 'off' },
         });
-        expect(configFromLegacy(DEFAULT_SETTINGS)).toEqual({ version: 2 });
+        expect(configFromLegacy(DEFAULT_SETTINGS)).toEqual({ $schema: SETTINGS_SCHEMA_URL, version: 2 });
     });
 
     it('carries every state key into the state file', () => {

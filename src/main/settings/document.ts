@@ -1,6 +1,12 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { Settings, SettingsPatch } from '../../shared/settings.js';
-import { DEFAULT_SETTINGS, isStateKey, SETTINGS_SECTIONS, SETTINGS_VERSION } from '../../shared/settings.js';
+import {
+    DEFAULT_SETTINGS,
+    isStateKey,
+    SETTINGS_SCHEMA_URL,
+    SETTINGS_SECTIONS,
+    SETTINGS_VERSION,
+} from '../../shared/settings.js';
 
 /**
  * A settings or state file as JSON, kept as the file had it rather than as the app would write it,
@@ -90,7 +96,15 @@ function pick(settings: Settings, file: SettingsFile, onlyChosen: boolean): Sett
  * leaving only what somebody actually changed.
  */
 export function configFromLegacy(settings: Settings): SettingsDocument {
-    return { version: SETTINGS_VERSION, ...pick(settings, 'config', true) };
+    return { ...newConfigDocument(), ...pick(settings, 'config', true) };
+}
+
+/**
+ * A settings file the app is about to create, pointing at the published schema so an editor opening
+ * it completes and checks every key. A file somebody wrote is never given one it did not have.
+ */
+export function newConfigDocument(): SettingsDocument {
+    return { $schema: SETTINGS_SCHEMA_URL, version: SETTINGS_VERSION };
 }
 
 export function stateFromLegacy(settings: Settings): SettingsDocument {

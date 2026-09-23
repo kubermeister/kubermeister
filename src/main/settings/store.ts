@@ -24,6 +24,7 @@ import {
     configForWrite,
     configFromLegacy,
     detectIndent,
+    newConfigDocument,
     patchDocument,
     serializeDocument,
     stateFromLegacy,
@@ -190,7 +191,7 @@ export function getSettings(): Settings {
 /** Apply a patch, writing each file only when a key it holds actually changed. */
 export function updateSettings(patch: SettingsPatch): Settings {
     current = mergeSettings(getSettings(), patch);
-    const nextConfig = blocked ? null : patchDocument(config.doc ?? {}, patch, 'config');
+    const nextConfig = blocked ? null : patchDocument(config.doc ?? newConfigDocument(), patch, 'config');
     if (nextConfig) {
         const written = configForWrite(nextConfig);
         const text = serializeDocument(written, config.indent);

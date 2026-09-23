@@ -196,12 +196,13 @@ and provisioned onto a new machine:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/kubermeister/kubermeister/main/settings.schema.json",
   "data": { "refreshIntervalSec": 5, "readTimeoutSec": 120 },
   "network": { "proxyMode": "manual", "proxyUrl": "http://proxy.corp:3128" }
 }
 ```
 
-Every key, its values and its default are in [the settings reference](docs/reference/settings.mdx#the-settings-file).
+The `$schema` line gives an editor completion and checking for every key. Every key, its values and its default are in [the settings reference](docs/reference/settings.mdx#the-settings-file).
 
 ## Building from source
 

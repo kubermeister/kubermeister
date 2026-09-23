@@ -160,6 +160,7 @@ different:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/kubermeister/kubermeister/main/settings.schema.json",
   "general": { "confirmQuit": false },
   "data": { "refreshIntervalSec": 5, "readTimeoutSec": 120 },
   "updates": { "mode": "check" },
@@ -169,6 +170,10 @@ different:
   }
 }
 ```
+
+The `$schema` line is optional. With it, an editor that reads JSON Schema (VS Code, JetBrains, any
+JSON language server) completes every key, shows what it does and its default, and marks a value the
+app would refuse before the app ever reads it. A file Kubermeister creates starts with it.
 
 | Key                          | Values                                                              | Default |
 | ---------------------------- | ------------------------------------------------------------------- | ------- |
