@@ -150,6 +150,11 @@ repository and provision onto a machine:
 KUBERMEISTER_CONFIG=~/work/kubermeister.json open -a Kubermeister
 ```
 
+On Windows that is `%USERPROFILE%\.config\kubermeister\settings.json`, beside kubectl's own
+`%USERPROFILE%\.kube\config`, so one dotfiles setup serves every operating system. Unlike
+`%APPDATA%`, the user profile does not roam between machines on a domain with roaming profiles; set
+`KUBERMEISTER_CONFIG` to a path under `%APPDATA%` for a file that should.
+
 Every key is optional, and a missing one takes its default, so a file holds only what you want
 different:
 
