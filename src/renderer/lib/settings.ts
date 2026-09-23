@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { Settings, SettingsInput } from '../../shared/settings';
-import { invoke } from './ipc';
+import { invoke, subscribe } from './ipc';
 import { invalidateClusterQueries, ipcQueryKey, useIpcQuery } from './query';
 
 const SETTINGS_KEY = ipcQueryKey('settings.get', {});
@@ -89,4 +89,19 @@ export async function recheckConnection(client: QueryClient): Promise<void> {
     await client.invalidateQueries({ queryKey: STARTUP_KEY });
     await client.invalidateQueries({ queryKey: FILE_KEY });
     await invalidateClusterQueries();
+}
+
+/**
+ * Follow edits made to the settings file outside the app: main has already taken the change in, so
+ * every screen reading a setting refetches it, the file's problems and the startup report follow,
+ * and when the connection was remade with it every cluster read starts over. Answers the function
+ * that stops following.
+ */
+export function followSettingsFile(client: QueryClient): () => void {
+    return subscribe('settings.changed', ({ reconnected }) => {
+        void client.invalidateQueries({ queryKey: SETTINGS_KEY });
+        void client.invalidateQueries({ queryKey: FILE_KEY });
+        void client.invalidateQueries({ queryKey: STARTUP_KEY });
+        if (reconnected) void invalidateClusterQueries();
+    });
 }

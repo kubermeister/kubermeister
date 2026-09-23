@@ -191,6 +191,11 @@ The file may take values Settings does not offer, within the ranges above. A cha
 there is read the first time you refresh it in Settings, and its username and password never go in the file: add them in Settings and they are kept in the system
 keychain. `version` is optional; the app adds it the first time it saves.
 
+An edit to the file takes effect within a second of being saved, while the app runs, exactly as the
+same change made in Settings would: a new kubeconfig path, proxy or CA bundle ends every stream and
+reconnects, and the Settings screen follows the file. Deleting the file puts every setting back to
+its default.
+
 The **Settings file** card at the top of General names the file, with **Show file** to open it in
 the file manager, and lists every value the app did not use and why, by its path
 (`data.readTimeoutSec`). A value that is not valid falls back to its own default and leaves the rest
@@ -198,7 +203,7 @@ of the file alone; a key the app does not know is named as ignored.
 
 A file that is not JSON, or that a newer version of Kubermeister wrote, is never written: the app
 runs on what it could read, changes made in Settings last until you quit, and the top bar says
-**Settings file not saved** until the file is fixed. The same notice appears when the file cannot be
+**Settings file not saved** until the file is fixed, which clears it as soon as it is saved. The same notice appears when the file cannot be
 saved at all, a read-only file for instance.
 When a setting is changed in the app, only that key is written. Keys you never wrote stay absent,
 keys the app does not know are kept, the file keeps its indentation, and a symlinked file is written
