@@ -84,8 +84,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - A new version is now downloaded in the background and installed the next time the app quits,
   rather than waiting behind a button nobody had a reason to press. Settings › Updates still offers
-  being asked before anything is downloaded, or never checking at all, and an install already set
-  to one of those keeps it.
+  being asked before anything is downloaded, or never checking at all. An install set to never
+  check keeps that; one set to be asked moves to the new default, because earlier versions saved
+  being asked whether or not anyone had chosen it.
 
 ### Fixed
 
