@@ -214,15 +214,52 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Every section, by the name it has in the file, with the schema its keys are checked against. */
+const SECTION_SCHEMAS = {
+    general: generalSchema,
+    session: sessionSchema,
+    connection: connectionSchema,
+    data: dataSchema,
+    updates: updatesSchema,
+    network: networkSchema,
+    charts: chartsSchema,
+    window: windowSchema,
+} as const;
+
+export type SettingsSection = keyof typeof SECTION_SCHEMAS;
+
+export const SETTINGS_SECTIONS = Object.keys(SECTION_SCHEMAS) as SettingsSection[];
+
 /**
- * Each section is validated on its own over its defaults, so a missing or unknown key never
- * discards the rest of the file and a section added in a later version starts from defaults for
- * existing users. A section that fails validation falls back to its defaults alone.
+ * What the app records about itself rather than what anybody configures: where it was, what it
+ * last opened, where the window stood. These live in a state file beside the app's caches, so the
+ * settings file holds only what a user would write by hand, copy between machines or provision.
  */
-function parseSection<T extends Record<string, unknown>>(schema: z.ZodType<T>, value: unknown, fallback: T): T {
-    const candidate = { ...fallback, ...(isRecord(value) ? value : {}) };
-    const result = schema.safeParse(candidate);
-    return result.success ? result.data : fallback;
+export const STATE_KEYS: { readonly [S in SettingsSection]?: readonly (keyof Settings[S])[] } = {
+    session: ['lastContext', 'lastNamespace'],
+    data: ['forwards'],
+    window: ['bounds'],
+};
+
+export function isStateKey(section: string, key: string): boolean {
+    const keys: readonly string[] | undefined = STATE_KEYS[section as SettingsSection];
+    return keys?.includes(key) ?? false;
+}
+
+/** Keys a settings file may carry beside its sections. */
+const FILE_KEYS = new Set(['version', '$schema']);
+
+/** One value the file carried that was not used, and why; the path is dotted, `data.readTimeoutSec`. */
+export interface SettingsProblem {
+    path: string;
+    message: string;
+}
+
+export interface SettingsRead {
+    settings: Settings;
+    problems: SettingsProblem[];
+    /** The file names a version newer than this app knows. */
+    newer: boolean;
 }
 
 /**
@@ -237,28 +274,94 @@ function migrateV1(file: Record<string, unknown>): Record<string, unknown> {
     return { ...file, updates };
 }
 
-/** The file's own sections, migrated to the current version; an unreadable file contributes none. */
-function readFile(raw: unknown): Record<string, unknown> {
-    if (!isRecord(raw)) return {};
-    if (raw.version === SETTINGS_VERSION) return raw;
-    if (raw.version === 1) return migrateV1(raw);
-    return {};
+/**
+ * The file migrated to the current version. A file naming no version is taken as the current one,
+ * since that is what somebody writing it by hand means; a version this app does not know is read
+ * as it stands, for whatever of it still validates.
+ */
+export function migrateSettingsDocument(raw: Record<string, unknown>): Record<string, unknown> {
+    const migrated = raw.version === 1 ? migrateV1(raw) : raw;
+    return raw.version === undefined || raw.version === 1 ? { ...migrated, version: SETTINGS_VERSION } : migrated;
+}
+
+function describeIssue(error: z.ZodError): string {
+    return error.issues[0]?.message ?? 'Invalid value.';
+}
+
+/**
+ * One section, key by key over its defaults: a value that fails falls back to its own default and
+ * is named as a problem, so one typo never takes the rest of its section with it. A key the app
+ * records itself is read from the state file first, then from the settings file, where every
+ * install before the state file existed kept it.
+ */
+function readSection<S extends SettingsSection>(
+    name: S,
+    config: unknown,
+    state: unknown,
+    problems: SettingsProblem[],
+): Settings[S] {
+    const schema: z.ZodObject<z.ZodRawShape> = SECTION_SCHEMAS[name];
+    const fallback: Record<string, unknown> = DEFAULT_SETTINGS[name];
+    if (config !== undefined && !isRecord(config)) problems.push({ path: name, message: 'Expected an object.' });
+    const fromConfig = isRecord(config) ? config : {};
+    const fromState = isRecord(state) ? state : {};
+    const candidate: Record<string, unknown> = { ...fallback };
+    for (const [key, keySchema] of Object.entries(schema.shape)) {
+        const value = isStateKey(name, key) && key in fromState ? fromState[key] : fromConfig[key];
+        if (value === undefined) continue;
+        const result = z.safeParse(keySchema, value);
+        if (result.success) candidate[key] = result.data;
+        else problems.push({ path: `${name}.${key}`, message: describeIssue(result.error) });
+    }
+    for (const key of Object.keys(fromConfig)) {
+        if (!(key in schema.shape)) problems.push({ path: `${name}.${key}`, message: 'Unknown setting, ignored.' });
+    }
+    // Every key was checked on its own above, so the section as a whole cannot fail here.
+    return SECTION_SCHEMAS[name].parse(candidate) as Settings[S];
+}
+
+/**
+ * Read the settings file and the state file into valid {@link Settings}; never throws. Either may
+ * be anything at all: a missing or unreadable file contributes nothing, and every value that is
+ * not used is named in `problems`.
+ */
+export function readSettings(config: unknown, state?: unknown): SettingsRead {
+    const problems: SettingsProblem[] = [];
+    const file = isRecord(config) ? migrateSettingsDocument(config) : {};
+    const version = file.version;
+    const newer = typeof version === 'number' && version > SETTINGS_VERSION;
+    if (newer) {
+        problems.push({
+            path: 'version',
+            message: `Written by a newer Kubermeister (settings version ${version}); only what this version understands is used.`,
+        });
+    } else if (isRecord(config) && version !== SETTINGS_VERSION) {
+        problems.push({ path: 'version', message: `Unknown settings version ${JSON.stringify(version)}.` });
+    }
+    for (const key of Object.keys(file)) {
+        if (!FILE_KEYS.has(key) && !(key in SECTION_SCHEMAS)) {
+            problems.push({ path: key, message: 'Unknown section, ignored.' });
+        }
+    }
+    const states = isRecord(state) ? state : {};
+    const section = <S extends SettingsSection>(name: S) => readSection(name, file[name], states[name], problems);
+    const settings: Settings = {
+        version: SETTINGS_VERSION,
+        general: section('general'),
+        session: section('session'),
+        connection: section('connection'),
+        data: section('data'),
+        updates: section('updates'),
+        network: section('network'),
+        charts: section('charts'),
+        window: section('window'),
+    };
+    return { settings, problems, newer };
 }
 
 /** Coerce arbitrary parsed JSON into valid {@link Settings}; never throws. */
 export function parseSettings(raw: unknown): Settings {
-    const file = readFile(raw);
-    return {
-        version: SETTINGS_VERSION,
-        general: parseSection(generalSchema, file.general, DEFAULT_SETTINGS.general),
-        session: parseSection(sessionSchema, file.session, DEFAULT_SETTINGS.session),
-        connection: parseSection(connectionSchema, file.connection, DEFAULT_SETTINGS.connection),
-        data: parseSection(dataSchema, file.data, DEFAULT_SETTINGS.data),
-        updates: parseSection(updatesSchema, file.updates, DEFAULT_SETTINGS.updates),
-        network: parseSection(networkSchema, file.network, DEFAULT_SETTINGS.network),
-        charts: parseSection(chartsSchema, file.charts, DEFAULT_SETTINGS.charts),
-        window: parseSection(windowSchema, file.window, DEFAULT_SETTINGS.window),
-    };
+    return readSettings(raw).settings;
 }
 
 /** Merge a patch over current settings, section by section; a supplied section replaces only its own keys. */

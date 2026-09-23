@@ -187,6 +187,22 @@ new version exists and links to it, and you install it the way you installed thi
 upgrade` for Homebrew). Installing a newer download over the existing app always works, and settings
 are kept either way.
 
+### Configuring
+
+Settings live in `~/.config/kubermeister/settings.json` on every operating system (or under
+`$XDG_CONFIG_HOME`, or wherever `KUBERMEISTER_CONFIG` points). Every key is optional and a change
+made in the app rewrites only that key, so the file can be written by hand, kept with your dotfiles
+and provisioned onto a new machine:
+
+```json
+{
+  "data": { "refreshIntervalSec": 5, "readTimeoutSec": 120 },
+  "network": { "proxyMode": "manual", "proxyUrl": "http://proxy.corp:3128" }
+}
+```
+
+Every key, its values and its default are in [the settings reference](docs/reference/settings.mdx#the-settings-file).
+
 ## Building from source
 
 You need Node.js 24 and npm 11.19 or newer.

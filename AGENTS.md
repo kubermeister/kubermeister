@@ -729,10 +729,21 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 
 ### Settings
 
-- Settings (`src/shared/settings.ts`, `src/main/settings/store.ts`) are a versioned JSON file in
-  Electron's `userData`. `parseSettings` migrates every older `version` forward and falls back to
-  defaults for one it does not know; the whole object is rewritten on every save, so a value equal
-  to the default is no evidence that anybody chose it.
+- **Settings are a file the user owns**: `~/.config/kubermeister/settings.json` on every OS
+  (`src/main/settings/store.ts`), or under `$XDG_CONFIG_HOME`, or wherever `KUBERMEISTER_CONFIG`
+  points, so a machine can be provisioned from a dotfiles repository. `KUBERMEISTER_USER_DATA` keeps
+  it inside that directory, which is what keeps every test off the developer's own file, and
+  `tests/setup.ts` points the unit tests elsewhere as well.
+- What the app records about itself (`STATE_KEYS`: the last context and namespace, remembered
+  forwards, window bounds) lives in `state.json` in `userData` instead. The in-memory `Settings`
+  object is still one shape, so no screen knows which file a key is kept in.
+- `readSettings` reads every key on its own over its default, so one bad value costs only itself
+  and is named as a problem; a file with no `version` is the current version. A save rewrites only
+  the keys it sets (`src/main/settings/document.ts`): keys the user never wrote stay absent, unknown
+  keys and the file's indentation survive, and a symlink is written through.
+- An install from before the move has its whole-object `userData/settings.json` carried over once,
+  dropping every value equal to its default: that file was rewritten whole on every save, so such a
+  value is no evidence that anybody chose it.
 - The settings screen at `/settings` edits them through `settings.set`; the application menu
   (`src/main/menu.ts`) opens it with `Cmd+,` on macOS by pushing `open-settings`.
 - Theme lives in renderer `localStorage`, not here, because it must apply before first paint.
