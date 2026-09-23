@@ -1,5 +1,7 @@
+import { existsSync, mkdirSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { dirname } from 'node:path';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import type { IpcChannel, IpcInput, IpcOutput, IpcResult } from '../../shared/ipc.js';
 import { ipcSchemas } from '../../shared/ipc.js';
 import { reloadKubeConfig } from '../k8s/client.js';
@@ -77,12 +79,27 @@ import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
 import { pickManifestFile, readManifestFile } from '../manifest-file.js';
 import type { ManifestExport, ManifestExportInput } from '../../shared/k8s/manifest.js';
 import type { Settings } from '../../shared/settings.js';
-import { getSettings, updateSettings } from '../settings/store.js';
+import { getSettings, settingsFileStatus, settingsFilePath, updateSettings } from '../settings/store.js';
 import { runStartupChecks } from '../startup/checks.js';
 import { applyCheckInterval, checkForUpdates, downloadUpdate, getUpdateState, installUpdate } from '../updater.js';
 
 type Handler<C extends IpcChannel> = (input: IpcInput<C>) => Promise<IpcOutput<C>>;
 type Handlers = { [C in IpcChannel]: Handler<C> };
+
+/**
+ * Show the settings file in the file manager. The path is main's own, never one the renderer
+ * named; a file that does not exist yet has its folder created and opened instead, since that is
+ * where a hand-written one goes.
+ */
+async function revealSettingsFile(): Promise<void> {
+    const path = settingsFilePath();
+    if (existsSync(path)) {
+        shell.showItemInFolder(path);
+        return;
+    }
+    mkdirSync(dirname(path), { recursive: true });
+    await shell.openPath(dirname(path));
+}
 
 /**
  * Point the app at a different kubeconfig through the native file dialog. The path comes from the
@@ -210,6 +227,11 @@ const handlers: Handlers = {
         // only reaches the cluster after a reload.
         if (networkChanged(before, settings.network)) reconnect();
         return settings;
+    },
+    'settingsFile.status': async () => settingsFileStatus(),
+    'settingsFile.reveal': async () => {
+        await revealSettingsFile();
+        return {};
     },
     'kubeconfig.pick': async () => ({ path: await pickKubeconfig() }),
     'caBundle.pick': async () => ({ path: await pickCaBundle() }),

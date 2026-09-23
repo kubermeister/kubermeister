@@ -60,6 +60,7 @@ const APP_LEVEL_CHANNELS = new Set<string>([
     'startupChecks',
     'contexts.list',
     'settings.get',
+    'settingsFile.status',
     // Chart sources belong to this install, not to the cluster it happens to be pointed at.
     'chartRepositories.list',
 ]);

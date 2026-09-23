@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SETTINGS } from '../../../src/shared/settings';
+import { DEFAULT_SETTINGS, type SettingsFileStatus } from '../../../src/shared/settings';
 
 const client = {
     kubeconfigError: vi.fn<() => string | null>(),
@@ -12,13 +12,24 @@ const proxy = {
     caBundleProblem: vi.fn<() => string | null>(() => null),
     networkSummary: vi.fn(() => 'Connecting directly'),
 };
-const store = { getSettings: vi.fn(() => DEFAULT_SETTINGS) };
+const fileStatus = (overrides: Partial<SettingsFileStatus> = {}): SettingsFileStatus => ({
+    path: '/home/me/.config/kubermeister/settings.json',
+    exists: true,
+    readOnly: null,
+    blocked: false,
+    problems: [],
+    ...overrides,
+});
+const store = {
+    getSettings: vi.fn(() => DEFAULT_SETTINGS),
+    settingsFileStatus: vi.fn<() => SettingsFileStatus>(() => fileStatus()),
+};
 vi.mock('../../../src/main/k8s/client.js', () => client);
 vi.mock('../../../src/main/k8s/context.js', () => context);
 vi.mock('../../../src/main/k8s/proxy.js', () => proxy);
 vi.mock('../../../src/main/settings/store.js', () => store);
 
-const { checkKubeconfig, checkContext, checkCluster, checkNetwork, runStartupChecks } =
+const { checkKubeconfig, checkContext, checkCluster, checkNetwork, checkSettings, runStartupChecks } =
     await import('../../../src/main/startup/checks.js');
 
 function version(getCode: () => Promise<unknown>): void {
@@ -30,6 +41,44 @@ beforeEach(() => {
     proxy.caBundleProblem.mockReturnValue(null);
     proxy.networkSummary.mockReturnValue('Connecting directly');
     client.currentCluster.mockReturnValue(null);
+    store.settingsFileStatus.mockReturnValue(fileStatus());
+});
+
+describe('checkSettings', () => {
+    it('is ok, naming the file, when it was read cleanly', () => {
+        expect(checkSettings()).toEqual({
+            id: 'settings',
+            label: 'Settings file',
+            status: 'ok',
+            detail: 'Read from /home/me/.config/kubermeister/settings.json',
+        });
+    });
+
+    it('is ok on the defaults when there is no file', () => {
+        store.settingsFileStatus.mockReturnValue(fileStatus({ exists: false }));
+        expect(checkSettings()).toMatchObject({ status: 'ok', detail: 'Using the defaults' });
+    });
+
+    it('warns with every refused value when the rest of the file is in effect', () => {
+        store.settingsFileStatus.mockReturnValue(
+            fileStatus({
+                problems: [
+                    { path: 'data.readTimeoutSec', message: 'Too big.' },
+                    { path: 'extra', message: 'Unknown section, ignored.' },
+                ],
+            }),
+        );
+        expect(checkSettings()).toMatchObject({
+            status: 'warning',
+            detail: 'data.readTimeoutSec: Too big. extra: Unknown section, ignored.',
+            hint: expect.stringContaining('/home/me/.config/kubermeister/settings.json'),
+        });
+    });
+
+    it('is an error when the app will not or could not write the file', () => {
+        store.settingsFileStatus.mockReturnValue(fileStatus({ readOnly: 'It is not valid JSON.', blocked: true }));
+        expect(checkSettings()).toMatchObject({ status: 'error', detail: 'It is not valid JSON.' });
+    });
 });
 
 describe('checkKubeconfig', () => {
@@ -178,12 +227,13 @@ describe('runStartupChecks', () => {
         const report = await runStartupChecks();
         expect(report.ok).toBe(true);
         expect(report.checks.map((c) => [c.id, c.status])).toEqual([
+            ['settings', 'ok'],
             ['kubeconfig', 'ok'],
             ['network', 'ok'],
             ['context', 'warning'],
             ['cluster', 'warning'],
         ]);
-        expect(report.checks[3]?.detail).toContain('Skipped');
+        expect(report.checks[4]?.detail).toContain('Skipped');
     });
 
     it('is not ok and skips the probe when the current context cannot be used', async () => {
@@ -194,6 +244,7 @@ describe('runStartupChecks', () => {
         const report = await runStartupChecks();
         expect(report.ok).toBe(false);
         expect(report.checks.map((c) => [c.id, c.status])).toEqual([
+            ['settings', 'ok'],
             ['kubeconfig', 'ok'],
             ['network', 'ok'],
             ['context', 'error'],
@@ -209,7 +260,7 @@ describe('runStartupChecks', () => {
         version(() => Promise.resolve({ gitVersion: 'v1.34.0' }));
         const report = await runStartupChecks();
         expect(report.ok).toBe(true);
-        expect(report.checks.map((c) => c.status)).toEqual(['ok', 'ok', 'ok', 'ok']);
+        expect(report.checks.map((c) => c.status)).toEqual(['ok', 'ok', 'ok', 'ok', 'ok']);
     });
 
     it('is not ok and skips the probe when the kubeconfig is broken', async () => {
@@ -217,12 +268,12 @@ describe('runStartupChecks', () => {
         client.apis.mockClear();
         const report = await runStartupChecks();
         expect(report.ok).toBe(false);
-        expect(report.checks[2]).toMatchObject({
+        expect(report.checks[3]).toMatchObject({
             id: 'context',
             status: 'warning',
             detail: expect.stringContaining('Skipped'),
         });
-        expect(report.checks[3]).toMatchObject({
+        expect(report.checks[4]).toMatchObject({
             id: 'cluster',
             status: 'warning',
             detail: expect.stringContaining('Skipped'),
@@ -239,6 +290,7 @@ describe('runStartupChecks', () => {
         const report = await runStartupChecks();
         expect(report.ok).toBe(false);
         expect(report.checks.map((c) => [c.id, c.status])).toEqual([
+            ['settings', 'ok'],
             ['kubeconfig', 'ok'],
             ['network', 'error'],
             ['context', 'ok'],

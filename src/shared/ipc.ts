@@ -76,7 +76,7 @@ import {
     resourceListInputSchema,
     resourceListOutputSchema,
 } from './k8s/resources.js';
-import { settingsInputSchema, settingsSchema } from './settings.js';
+import { settingsFileStatusSchema, settingsInputSchema, settingsSchema } from './settings.js';
 import {
     configMapEntrySchema,
     namespacedNameSchema,
@@ -145,7 +145,7 @@ export const updateStateSchema = z.object({
 
 /** One startup preflight check. `error` blocks the app, `warning` lets it open. */
 const startupCheckSchema = z.object({
-    id: z.enum(['kubeconfig', 'network', 'context', 'cluster']),
+    id: z.enum(['settings', 'kubeconfig', 'network', 'context', 'cluster']),
     label: z.string(),
     status: z.enum(['ok', 'warning', 'error']),
     /** What was found, shown to the user as the reason. */
@@ -182,6 +182,8 @@ export const ipcSchemas = {
     'namespace.set': { input: namespaceSelectionSchema, output: namespaceSelectionSchema },
     'settings.get': { input: noInput, output: settingsSchema },
     'settings.set': { input: settingsInputSchema, output: settingsSchema },
+    'settingsFile.status': { input: noInput, output: settingsFileStatusSchema },
+    'settingsFile.reveal': { input: noInput, output: z.object({}) },
     // Kubeconfig path changes are dialog-gated: the renderer never supplies a path string.
     'kubeconfig.pick': { input: noInput, output: z.object({ path: z.string().nullable() }) },
     'kubeconfig.useDefault': { input: noInput, output: settingsSchema },

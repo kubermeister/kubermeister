@@ -3,10 +3,28 @@ import { apis, currentCluster, currentContextProblem, kubeconfigError } from '..
 import { getCurrentContext } from '../k8s/context.js';
 import { withK8s } from '../k8s/errors.js';
 import { caBundleProblem, networkSummary } from '../k8s/proxy.js';
-import { getSettings } from '../settings/store.js';
+import { getSettings, settingsFileStatus } from '../settings/store.js';
 
 /** A probe against an unreachable API server must not hang the startup screen. */
 const CLUSTER_PROBE_TIMEOUT_MS = 5_000;
+
+/**
+ * The settings file, when somebody wrote one. A file the app will not write is an error, since every
+ * change made in the app is then lost on quit and the file itself is not what the app is running
+ * on; values it refused are a warning, since each fell back to its own default and the rest of the
+ * file is in effect. Neither keeps the app from opening.
+ */
+export function checkSettings(): StartupCheck {
+    const base = { id: 'settings', label: 'Settings file' } as const;
+    const status = settingsFileStatus();
+    const hint = `Fix ${status.path}; the app reads it again on the next launch.`;
+    if (status.readOnly) return { ...base, status: 'error', detail: status.readOnly, hint };
+    if (status.problems.length > 0) {
+        const detail = status.problems.map((problem) => `${problem.path}: ${problem.message}`).join(' ');
+        return { ...base, status: 'warning', detail, hint };
+    }
+    return { ...base, status: 'ok', detail: status.exists ? `Read from ${status.path}` : 'Using the defaults' };
+}
 
 /**
  * The kubeconfig the app will load must exist and parse. Unlike an offline cluster, nothing works
@@ -119,6 +137,7 @@ function skipped(id: 'context' | 'cluster', reason: string): StartupCheck {
  * precondition failed is reported as skipped rather than run into the same failure again.
  */
 export async function runStartupChecks(): Promise<StartupReport> {
+    const settings = checkSettings();
     const kubeconfig = checkKubeconfig();
     const network = checkNetwork();
     const context =
@@ -129,6 +148,6 @@ export async function runStartupChecks(): Promise<StartupReport> {
             : context.status !== 'ok'
               ? skipped('cluster', 'there is no usable current context.')
               : await checkCluster();
-    const checks = [kubeconfig, network, context, cluster];
+    const checks = [settings, kubeconfig, network, context, cluster];
     return { checks, ok: checks.every((check) => check.status !== 'error') };
 }

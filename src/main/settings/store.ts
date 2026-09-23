@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import type { Settings, SettingsPatch } from '../../shared/settings.js';
+import type { Settings, SettingsFileStatus, SettingsPatch, SettingsProblem } from '../../shared/settings.js';
 import { mergeSettings, migrateSettingsDocument, parseSettings, readSettings } from '../../shared/settings.js';
 import type { SettingsDocument } from './document.js';
 import {
@@ -28,11 +28,25 @@ import {
 interface LoadedFile {
     doc: SettingsDocument | undefined;
     indent: string;
+    exists: boolean;
+    /** Why a file that exists could not be used at all: not readable, not JSON, not an object. */
+    error: string | null;
 }
 
+const NO_FILE: LoadedFile = { doc: undefined, indent: '    ', exists: false, error: null };
+
 let current: Settings | null = null;
-let config: LoadedFile = { doc: undefined, indent: '    ' };
-let state: LoadedFile = { doc: undefined, indent: '    ' };
+let config: LoadedFile = NO_FILE;
+let state: LoadedFile = NO_FILE;
+let problems: SettingsProblem[] = [];
+/**
+ * Why the settings file is never written, or null when it may be. A file that is not JSON, or that
+ * a newer version wrote, is somebody's configuration the app cannot fully read, and writing what it
+ * did read back over it would replace that configuration with one nobody wrote.
+ */
+let blocked: string | null = null;
+/** Why the last write failed, or null; cleared by the next one that succeeds. */
+let writeFailure: string | null = null;
 
 /**
  * Where the settings file lives. `KUBERMEISTER_CONFIG` names it outright. `KUBERMEISTER_USER_DATA`,
@@ -63,14 +77,26 @@ function isDocument(value: unknown): value is SettingsDocument {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
 function readFile(path: string): LoadedFile {
+    let text: string;
     try {
-        const text = readFileSync(path, 'utf8');
+        text = readFileSync(path, 'utf8');
+    } catch (error) {
+        // A missing file is the first run, not a problem.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return NO_FILE;
+        return { ...NO_FILE, exists: true, error: `It could not be read: ${errorMessage(error)}` };
+    }
+    const found = { ...NO_FILE, exists: true, indent: detectIndent(text) };
+    try {
         const parsed: unknown = JSON.parse(text);
-        return { doc: isDocument(parsed) ? parsed : undefined, indent: detectIndent(text) };
-    } catch {
-        // Missing file (first run), unreadable, or not JSON: it contributes nothing.
-        return { doc: undefined, indent: '    ' };
+        if (isDocument(parsed)) return { ...found, doc: parsed };
+        return { ...found, error: 'It holds JSON, but not an object of settings.' };
+    } catch (error) {
+        return { ...found, error: `It is not valid JSON: ${errorMessage(error)}` };
     }
 }
 
@@ -78,15 +104,17 @@ function readFile(path: string): LoadedFile {
  * Write through a symlink rather than over it: a file linked in by stow, chezmoi or home-manager
  * stays linked, and the temporary file sits next to the real one so the rename stays on one volume.
  */
-function writeFile(path: string, doc: SettingsDocument, indent: string): void {
+function writeFile(path: string, doc: SettingsDocument, indent: string): string | null {
     try {
         const target = existsSync(path) ? realpathSync(path) : path;
         mkdirSync(dirname(target), { recursive: true });
         const tmp = `${target}.tmp`;
         writeFileSync(tmp, serializeDocument(doc, indent), 'utf8');
         renameSync(tmp, target);
+        return null;
     } catch (error) {
         console.error(`[settings] failed to write ${path}`, error);
+        return errorMessage(error);
     }
 }
 
@@ -117,7 +145,15 @@ function loadSettings(): Settings {
     // Kept migrated, so the first save also brings an older file up to the current version.
     config = { ...loaded, doc: loaded.doc && migrateSettingsDocument(loaded.doc) };
     state = readFile(stateFilePath());
-    return readSettings(config.doc, state.doc).settings;
+    const read = readSettings(config.doc, state.doc);
+    problems = read.problems;
+    blocked = config.error
+        ? `${config.error} Kubermeister is running on its defaults and will not write the file until it is fixed.`
+        : read.newer
+          ? 'A newer version of Kubermeister wrote this file, so this one will not write it.'
+          : null;
+    writeFailure = null;
+    return read.settings;
 }
 
 export function getSettings(): Settings {
@@ -128,11 +164,12 @@ export function getSettings(): Settings {
 /** Apply a patch, writing each file only when a key it holds actually changed. */
 export function updateSettings(patch: SettingsPatch): Settings {
     current = mergeSettings(getSettings(), patch);
-    const nextConfig = patchDocument(config.doc ?? {}, patch, 'config');
+    const nextConfig = blocked ? null : patchDocument(config.doc ?? {}, patch, 'config');
     if (nextConfig) {
         const written = configForWrite(nextConfig);
-        config = { ...config, doc: written };
-        writeFile(settingsFilePath(), written, config.indent);
+        config = { ...config, doc: written, exists: true };
+        const failure = writeFile(settingsFilePath(), written, config.indent);
+        writeFailure = failure && `The file could not be saved (${failure}). Changes made here last until you quit.`;
     }
     const nextState = patchDocument(state.doc ?? {}, patch, 'state');
     if (nextState) {
@@ -140,4 +177,16 @@ export function updateSettings(patch: SettingsPatch): Settings {
         writeFile(stateFilePath(), nextState, state.indent);
     }
     return current;
+}
+
+/** Where the settings file is and what is wrong with it; reading it loads the settings first. */
+export function settingsFileStatus(): SettingsFileStatus {
+    getSettings();
+    return {
+        path: settingsFilePath(),
+        exists: config.exists,
+        readOnly: blocked ?? writeFailure,
+        blocked: blocked !== null,
+        problems,
+    };
 }

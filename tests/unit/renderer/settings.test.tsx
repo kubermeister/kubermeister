@@ -38,6 +38,13 @@ const data: Record<string, unknown> = {
     },
     'settings.get': settings,
     'chartRepositories.list': [],
+    'settingsFile.status': {
+        path: '/home/me/.config/kubermeister/settings.json',
+        exists: true,
+        readOnly: null,
+        blocked: false,
+        problems: [],
+    },
     'contexts.list': [{ name: 'alpha', cluster: 'a', user: 'u', current: true }],
     'namespaces.list': [],
     'namespace.active': null,
@@ -64,8 +71,9 @@ describe('settings screen', () => {
         expect(page).toHaveTextContent('Preferences for this Kubermeister install.');
         for (const title of ['General', 'Appearance', 'Updates', 'Charts', 'Connection'])
             expect(page).toHaveTextContent(title);
-        // The card itself is tested on its own; that the Charts section carries it is asserted here.
+        // The cards themselves are tested on their own; that the screen carries them is asserted here.
         expect(within(page).getByTestId('chart-repositories')).toBeInTheDocument();
+        expect(within(page).getByTestId('settings-file')).toBeInTheDocument();
         expect(within(sidebar).getByRole('link', { name: /Settings/ })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Settings');
     });

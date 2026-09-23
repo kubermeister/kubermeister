@@ -61,6 +61,20 @@ const unreadableBundle: StartupReport = {
     ],
 };
 
+const blockedSettings: StartupReport = {
+    ok: false,
+    checks: [
+        {
+            id: 'settings',
+            label: 'Settings file',
+            status: 'error',
+            detail: 'It is not valid JSON: Unexpected token.',
+            hint: 'Fix /home/me/.config/kubermeister/settings.json; the app reads it again on the next launch.',
+        },
+        { id: 'kubeconfig', label: 'Kubeconfig file', status: 'ok', detail: 'Kubeconfig loaded' },
+    ],
+};
+
 let report: StartupReport;
 let kubeconfigPath: string | null;
 
@@ -78,6 +92,8 @@ describe('ConnectionNotice', () => {
                 case 'kubeconfig.pick':
                     report = passing;
                     return { path: '/picked' };
+                case 'settingsFile.reveal':
+                    return {};
                 case 'kubeconfig.useDefault':
                     report = passing;
                     return settingsFixture();
@@ -129,6 +145,24 @@ describe('ConnectionNotice', () => {
         // Another kubeconfig would not make this file readable.
         expect(screen.queryByRole('button', { name: 'Choose kubeconfig…' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Use default kubeconfig' })).not.toBeInTheDocument();
+    });
+
+    it('names a settings file the app will not write, and offers to show it', async () => {
+        report = blockedSettings;
+        renderWithQuery(<ConnectionNotice />);
+        const notice = await screen.findByTestId('connection-notice');
+        expect(notice).toHaveTextContent('Settings file not saved');
+        await userEvent.click(notice);
+        expect(await screen.findByText('It is not valid JSON: Unexpected token.')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Choose kubeconfig…' })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Show file' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('settingsFile.reveal', {}));
+    });
+
+    it('names a connection that cannot work before a settings file the app will not write', async () => {
+        report = { ok: false, checks: [...blockedSettings.checks.slice(0, 1), ...failing.checks] };
+        renderWithQuery(<ConnectionNotice />);
+        expect(await screen.findByTestId('connection-notice')).toHaveTextContent('Kubeconfig not loaded');
     });
 
     it('offers no reset to the default when no path override is set', async () => {

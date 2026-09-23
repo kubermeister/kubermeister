@@ -19,6 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   can write by hand, keep with your dotfiles and provision onto a machine: every key is optional, a
   change made in the app rewrites only that key, and the settings you already have are carried over
   on the first launch.
+- A settings file that is not valid JSON, or holds a value Kubermeister refuses, is no longer reset
+  to the defaults and overwritten: Settings names every value it did not use and why, and a file it
+  cannot read is left untouched while the top bar says so.
 
 ## [0.5.1] - 2026-09-23
 
