@@ -24,6 +24,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   in bulk from their lists, where a plain confirmation skipped the typed name their single delete
   asks for. Their rows can still be checked and exported.
 
+- A port forward started from a Service reaches its pods on the Service port's target port, where
+  it went to the Service's own port number and failed whenever the two differed.
+
 ## [0.5.0] - 2026-09-22
 
 ### Added

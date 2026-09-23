@@ -38,20 +38,16 @@ disappears again with no message left on screen.
 ## Forwarding to a Service
 
 A forward to a Service resolves to a **ready endpoint per connection**, and the top bar shows which
-pod the connections currently go to.
+pod the connections currently go to. The port you pick is the Service's own, and each connection
+reaches the pod on that port's `targetPort`: for a Service mapping port 80 to target port 8080, the
+forward listens for port 80 and the pod answers on 8080. A named `targetPort` is followed to whatever
+number the chosen pod gives it.
 
 That is the difference that matters. A forward aimed at one pod stops working when that pod is gone:
 it stays listed, and each new connection fails with `<pod> has no ready pod to forward to`, shown in
 red on its row, until you stop it. (A pod recreated under the same name, as a StatefulSet does, is
 reached again, though the row keeps showing the last error.) A forward aimed at a Service survives the rollout, because each new connection picks a
 pod that is ready right then.
-
-:::caution[Known issue]
-A Service forward sends traffic to the Service's `port` number on the pod, not to its `targetPort`.
-For a Service mapping port 80 to target port 8080, the forward reaches the pod's port 80. Until it is
-fixed, forward to the pod itself when the two numbers differ.
-([#334](https://github.com/kubermeister/kubermeister/issues/334))
-:::
 
 ## The top bar
 
