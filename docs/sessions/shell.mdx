@@ -1,0 +1,91 @@
+---
+title: Shell into a pod
+description: Opening an exec session into a Kubernetes pod from Kubermeister — the Shell tab, /bin/sh, choosing a container, the terminal font size, how a session ends, and what the app deliberately will not do.
+sidebar:
+  order: 2
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+A pod's **Shell** tab, the one entry in its **CONNECT** group, is an exec session into that pod. It
+opens when the tab opens and ends when you leave it.
+
+<Figure
+  name="pod-shell"
+  alt="An exec session inside a pod, in the pod’s own Shell tab."
+  caption="The header names the pod, the container and the command."
+/>
+
+## Why it works that way
+
+A shell belongs to its pod. Leaving the pod is how a shell is closed, which means a terminal is never
+left attached to a cluster nobody is looking at.
+
+The tab is deliberately **not** kept mounted in the background, unlike Logs. Merely opening a pod's
+page must not exec into it, and moving to another of the pod's tabs ends the session.
+
+## The command
+
+The session always runs **`/bin/sh`**, which the header shows beside the container. There is no
+choice of command and no detection of another shell; type `bash` at the prompt if the image has it.
+An image with no `/bin/sh` — a distroless one, for instance — cannot be shelled into, and the exec
+error is printed in red in the terminal.
+
+## Choosing a container
+
+The **Container** picker in the terminal's header lists every container in the pod by name, in the
+order the pod runs them: init containers first, then the app's own containers, then any ephemeral
+ones. It opens on the first entry, and it is disabled when the pod has only one container.
+
+Only the pod's regular containers can be shelled into. Choosing an init or ephemeral container gives
+the error `container "<name>" of pod "<namespace>/<pod>" not found`. The **Logs** tab has the same
+picker and the same limit.
+
+:::caution[Known issue]
+On a pod with an init container, the tab opens on the init container and fails. Pick an app
+container from the list. ([#333](https://github.com/kubermeister/kubermeister/issues/333))
+:::
+
+Choosing another container ends the session and opens a new one in that container.
+
+## The terminal
+
+The terminal fits itself to the panel as the window or the layout changes.
+
+:::caution[Known issue]
+Resizing the terminal never resizes the remote shell, so it keeps the size it started with and
+full-screen programs such as `vim` or `top` can draw at the wrong size.
+([#335](https://github.com/kubermeister/kubermeister/issues/335))
+:::
+
+The font size is **Terminal** › **Font size** in [**Settings › General**](/docs/reference/settings/):
+**11 pt**, **12 pt** (the default), **14 pt** or **16 pt**. It is read when a session opens, so a
+change applies to the next session rather than restarting the one you are in.
+
+The terminal has its own two palettes, one for each theme, because a terminal needs literal colours.
+When the app's theme flips, the terminal changes with it without restarting the session.
+
+## What the app will not do
+
+The app opens no other way in:
+
+- it attaches **no debug container**;
+- it runs **no privileged pod** on a node;
+- it carries **no files** across the exec channel.
+
+`kubectl debug` and `kubectl cp` are where those belong. The app is not quietly a way around your
+RBAC.
+
+## Ending a session
+
+Leaving the tab ends it: another of the pod's tabs, another page, or switching context or namespace,
+which closes the pod's page back to its list. Quitting the app ends it too.
+
+Choosing another kubeconfig, or changing the proxy or the CA bundle, ends every session at once,
+because none of them may carry on over a connection that has changed. If the terminal is still on
+screen when that happens — choosing a kubeconfig from the top bar's connection notice, for instance
+— it prints the reason in red, such as `The kubeconfig changed`.
+
+When a session ends, whether the shell exited or the connection went, the terminal prints
+`[session ended]`. It does not reconnect by itself: leave the tab and come back to open a new
+session.

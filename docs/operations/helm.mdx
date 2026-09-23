@@ -1,0 +1,125 @@
+---
+title: Helm releases
+description: Reading, rolling back and uninstalling Helm releases in Kubermeister, decoded from the release Secrets Helm itself writes so the Helm CLI can still read them afterwards. Kubermeister 0.5.0 does not install or upgrade charts.
+sidebar:
+  order: 1
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Kubermeister 0.5.0 **reads, rolls back and uninstalls** Helm releases. It does **not install or
+upgrade** them, and it cannot browse a chart repository: use the Helm CLI for those, and the release
+shows up here as soon as Helm has written it.
+
+Both screens are under **Add-ons** in the sidebar: **Helm charts** and **Releases**.
+
+## Where releases come from
+
+Helm has no API of its own. A release is a **Secret** of type `helm.sh/release.v1` whose `release`
+field is base64(gzip(json)), base64'd again by the API, with one Secret per revision named
+`sh.helm.release.v1.<name>.v<n>`.
+
+Kubermeister decodes those Secrets. That is the whole mechanism, and it is why the app needs no Helm
+binary and no component in the cluster. A Secret that will not decode, or would decode to more than
+32 MiB, is skipped rather than shown half-read. Reading releases needs permission to list Secrets in
+the namespaces you look at.
+
+## Releases
+
+**Releases** lists one row per release, its highest revision: Name, Namespace, Chart (as
+`name-version`), Revision, Status and Updated. It covers the namespace selected in the top bar, or
+every namespace under **All namespaces**, and is re-read at the **Live data refresh** interval.
+
+Status is Helm's own word, mapped to the app's:
+
+| Helm status                                              | Shown as    |
+| -------------------------------------------------------- | ----------- |
+| `deployed`                                               | Deployed    |
+| `superseded`                                             | Superseded  |
+| `failed`                                                 | Failed      |
+| `pending-install`, `pending-upgrade`, `pending-rollback` | Progressing |
+| `uninstalling`                                           | Terminating |
+| `uninstalled`, or anything else                          | Unknown     |
+
+## A release's detail
+
+Opening a release shows three tabs.
+
+- **Revisions**: the **Revision history** of every revision the cluster still holds, newest first,
+  with Rev, Status, Chart version, Updated and Description (Helm's own note, such as "Install
+  complete" or "Rollback to 2").
+- **Values**: the user-supplied values of the current revision, what `helm get values` prints. A
+  release running on chart defaults alone says so.
+- **Manifest**: the objects the current revision rendered, what `helm get manifest` prints. It is
+  read-only, because it is history rather than a live object. A manifest longer than 256 KB is cut
+  on a line boundary with a comment saying so; each object's own **Manifest** tab has the rest.
+
+Values and manifest are those of the **current** revision only. For an earlier revision the app
+shows only its row in the history.
+
+<Figure
+  name="helm-release"
+  alt="A Helm release's detail page with its chart, status and revision history."
+  caption="All of it is decoded from the release Secrets Helm itself writes."
+/>
+
+A release has no **Events** tab, because it is not an API object of its own.
+
+## Rolling back
+
+Every revision except the current one has **Roll back**. The dialog, "Roll back to revision N?",
+says that the objects that revision rendered are applied again and anything it never had is
+removed.
+
+A rollback then does what Helm does:
+
+1. Applies every object the target revision rendered: created if it is missing, replaced if it is
+   there.
+2. Deletes the objects the current revision has and the target never had, except those the chart
+   marked to be kept.
+3. Writes a **new** revision, numbered one above the current, marked deployed and described
+   "Rollback to N", and marks the old current revision superseded.
+
+Helm numbers forward and never rewinds, so a rollback from revision 5 to revision 3 produces revision 6. The toast says which revision is now current and how many objects the chart kept. The point of
+using Helm's own Secret names, labels and status words is that a release this app rolls back is
+still one the Helm CLI can read and act on.
+
+## Uninstalling
+
+**Uninstall** in the release's header asks "Uninstall _release_?" and deletes every object the
+current revision rendered, except those the chart marked to be kept. What happens to the history
+depends on **Keep the release history**, which is off by default:
+
+- **Off**: every revision Secret is deleted, like `helm uninstall`.
+- **On**: the revisions stay, with the current one marked uninstalled, like `helm uninstall
+--keep-history`.
+
+The toast counts the objects removed and kept, and you land back on **Releases**.
+
+## Objects Helm is told to keep
+
+An object annotated `helm.sh/resource-policy: keep` is never deleted by a rollback or an uninstall,
+and the app counts them back to you so you know what was left behind.
+
+## Helm charts
+
+**Helm charts** lists the charts your installed releases use, derived from the same release Secrets,
+because a cluster holds no chart index of its own. Each chart appears once, with Name, Repository,
+Latest version, App version and Description. It follows the namespace selection like **Releases**
+does.
+
+Read the columns for what they are:
+
+- **Latest version** and **App version** come from the release that uses the chart, not from any
+  repository, so they are the installed version rather than the newest one published.
+- **Repository** always reads `—`: a release does not record where its chart came from.
+- **Description** is that release's own note, not the chart's description.
+
+There is no chart detail page and nothing on this screen installs a chart.
+
+## Chart repositories
+
+Chart repositories can be added, refreshed and removed under **Settings › Charts**, and they live in
+app settings rather than in the cluster, so they survive a context switch. In 0.5.0 no screen
+installs from them yet, and the **Helm charts** page does not use them. See
+[settings](/docs/reference/settings/).

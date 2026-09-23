@@ -1,0 +1,122 @@
+---
+title: Kubermeister documentation
+description: How to install and use Kubermeister, the desktop Kubernetes client for macOS, Windows and Linux — connecting clusters, reading logs, shells, port forwards, Helm and node operations.
+template: splash
+hero:
+  tagline: A desktop client for Kubernetes. Here is how to use it.
+  actions:
+    - text: Install Kubermeister
+      link: /docs/start/install/
+      icon: right-arrow
+    - text: Download
+      link: /download/
+      icon: external
+      variant: minimal
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Start here
+
+<CardGrid>
+  <LinkCard
+    title="Install"
+    href="/docs/start/install/"
+    description="Homebrew, the macOS and Windows installers, AppImage and .deb."
+  />
+  <LinkCard
+    title="Connect your first cluster"
+    href="/docs/clusters/connecting/"
+    description="How Kubermeister reads your kubeconfig, and what to do when it will not load."
+  />
+  <LinkCard
+    title="Find your way around"
+    href="/docs/start/interface/"
+    description="The sidebar, the top bar, the command palette and the detail layout."
+  />
+  <LinkCard
+    title="Your first five minutes"
+    href="/docs/start/first-cluster/"
+    description="Find a workload, follow its logs, open a shell and forward a port."
+  />
+  <LinkCard
+    title="Settings"
+    href="/docs/reference/settings/"
+    description="Timeouts, refresh cadence, log buffer, proxies, certificates and updates."
+  />
+</CardGrid>
+
+## Browsing the cluster
+
+<CardGrid>
+  <LinkCard
+    title="Resource lists"
+    href="/docs/browse/lists/"
+    description="Search, sort, choose columns, and select rows to export or delete."
+  />
+  <LinkCard
+    title="Manifests and YAML"
+    href="/docs/browse/manifests/"
+    description="Edit with a dry run and a review of the changes, or create from a template or a file."
+  />
+  <LinkCard
+    title="Supported resource kinds"
+    href="/docs/reference/kinds/"
+    description="Every kind the app shows, and where it sits in the sidebar."
+  />
+  <LinkCard
+    title="Keyboard shortcuts"
+    href="/docs/reference/shortcuts/"
+    description="The keys the app responds to, from the command palette to the editors."
+  />
+</CardGrid>
+
+## The things people open it for
+
+<CardGrid>
+  <LinkCard
+    title="Logs"
+    href="/docs/sessions/logs/"
+    description="Following a pod or every pod of a workload, searching and highlighting."
+  />
+  <LinkCard
+    title="Shell into a pod"
+    href="/docs/sessions/shell/"
+    description="An exec session that belongs to its pod and ends with the tab."
+  />
+  <LinkCard
+    title="Port forwarding"
+    href="/docs/sessions/port-forwarding/"
+    description="Forwards to a pod or a Service, listed and stopped from the top bar."
+  />
+  <LinkCard
+    title="Helm releases"
+    href="/docs/operations/helm/"
+    description="History, rollback and uninstall, kept readable by the Helm CLI."
+  />
+  <LinkCard
+    title="Rollouts"
+    href="/docs/workloads/rollouts/"
+    description="Compare two revisions and roll back to one that actually undoes the change."
+  />
+  <LinkCard
+    title="Draining a node"
+    href="/docs/operations/nodes/"
+    description="Cordon, see the plan, then watch each pod leave."
+  />
+</CardGrid>
+
+## When something is wrong
+
+<CardGrid>
+  <LinkCard
+    title="Troubleshooting"
+    href="/docs/reference/troubleshooting/"
+    description="Connection failures, credential plugins, timeouts and empty screens."
+  />
+  <LinkCard
+    title="Security"
+    href="/docs/reference/security/"
+    description="What the app can reach, what it never does, and how the build is hardened."
+  />
+</CardGrid>

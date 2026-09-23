@@ -123,6 +123,10 @@ comments only for _why_, and no `any` in TypeScript.
   in one sentence, present tense, no issue or PR number, since the release notes already carry
   those. A refactor, a test, a dependency bump or anything else invisible from outside the
   repository gets no line.
+- **Update the user documentation in `docs/` in the same pull request**, for the same kind of
+  change: every page that describes what changed, named by the labels the app actually shows. If a
+  screen a page shows has changed, re-shoot it and commit that shot only
+  (`npm run screenshots:sync -- <shot>`). The website publishes `docs/` as it stands at each release.
 
 A pull request is reviewed once its checks pass. Reviews are about the change, not the person, and
 questions in a review are questions, not verdicts.

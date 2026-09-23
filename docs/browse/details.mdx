@@ -1,0 +1,116 @@
+---
+title: Detail pages, events and describe
+description: The Kubermeister detail layout — the header and its actions, the tab rail, overview, events and the Events stream, labels and the Object card, describe for pods and nodes, and a pod's related objects.
+sidebar:
+  order: 2
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Every detail page has the same shape: a header naming the object, over a left rail of tabs in
+labelled groups.
+
+## The header
+
+The kind, the name, a status badge and a line of facts such as the namespace and age. On the right
+are the actions:
+
+- **Refresh** re-reads what the page shows.
+- **Edit** opens the Manifest tab in edit mode. See [manifests](/docs/browse/manifests/#editing).
+- **Delete** asks first, naming the object, and takes you back to the list once it is gone. A
+  Node, Namespace, CRD, PersistentVolume, StorageClass, ClusterRole or ClusterRoleBinding asks you
+  to type its name, because deleting one takes far more with it. See
+  [writing to the cluster](/docs/workloads/writing/).
+
+Some kinds add their own, such as **Evict** on a pod, **Restart** on a workload or **View
+instances** on a CRD. A custom-resource instance has no **Delete**, and a Helm release has its own
+actions in place of all three; see [Helm releases](/docs/operations/helm/).
+
+While the object loads, the page shows its outline. If the read fails you get "Failed to load" with
+**Retry** and **Back to list**; if the object is not there, the page says so and names the
+namespace it looked in, for a namespaced kind.
+
+## The tab rail
+
+The groups are **OBSERVE** and **INSPECT** on every kind, **CONNECT** on pods only, and **DATA**,
+**NETWORK**, **ROUTING** or **ROLLOUT** on the kinds that need them —
+[finding your way around](/docs/start/interface/#detail-screens) lists which. The arrow keys move
+between tabs once one has focus.
+
+## Overview
+
+The properties that matter for that kind, as labelled pairs, with any usage figures beside them.
+Pods, nodes and deployments carry usage charts here; see [metrics](/docs/operations/metrics/).
+
+## Events
+
+Events for this object, newest first, re-read at the refresh interval. They come from a
+field-selected query on the object's kind and name rather than a scan of every event.
+Custom-resource instances and Helm releases have no Events tab.
+
+**Overview › Events stream** lists the events of the active namespace, or of every namespace, in
+one table: Time, Type, Reason, Object, Namespace and Message, newest first. It reads at most 500
+events and is polled rather than watched. Its rows do not open a detail page; go to the object for
+that.
+
+<Figure
+  name="events"
+  alt="The events stream, newest first, with each event’s type, reason and object."
+  caption="Warnings carry their own badge, so they stand out in a stream of Normal events."
+/>
+
+## Labels and annotations
+
+The **Labels** tab shows the labels and annotations as two cards, with the label count on the rail.
+
+Every built-in kind adds an **Object** card here with the parts of `metadata` no view model
+carries: the **Owner** reference, the **Created** time, and the **Finalizers**, marked "holding
+deletion" when they are what keeps a deleted object alive. Custom-resource instances and Helm
+releases do not have it.
+
+## Describe
+
+Pods and nodes have a **Describe** tab. Everything else has its manifest, which says the same thing
+in YAML.
+
+<Figure
+  name="describe"
+  alt="The describe tab for a pod, laid out as labelled sections rather than pre-rendered text."
+  caption="Copy and Download render the same sections you are reading to text."
+/>
+
+Describe answers a structured document — sections of labelled rows, with blocks for the parts that
+repeat — rather than pre-rendered text. The screen lays it out, and **Copy** and **Download** (as
+`<name>-describe.txt`) render the very same document to text, so what you paste is what you read.
+
+## Related objects
+
+A pod's **Related** tab answers what else it is tied to, grouped into Traffic, Configuration,
+Storage and Access, and every link says _why_:
+
+- A Service whose selector covers the pod's labels ("selects these pods"), and a NetworkPolicy
+  whose pod selector's `matchLabels` do ("applies to these pods").
+- ConfigMaps and Secrets "mounted as volume", "projected into" a volume, read through "envFrom in"
+  a container or as "env NAME in" one, and Secrets used as an "image pull secret".
+- PersistentVolumeClaims "mounted as volume".
+- The ServiceAccount it "runs as".
+
+<Figure
+  name="pod-related"
+  alt="The related tab for a pod, each link saying why the two objects are tied together."
+  caption="Each link says why the pod and that object belong together."
+/>
+
+A relation that cannot be explained is a guess, so everything comes from the pod's own spec or from
+a selector that actually covers its labels — never from names that merely look alike. A pod nothing
+else names reads "Nothing else names this object." Only pods have this tab.
+
+## Ownership
+
+Ownership is resolved through the API's own owner references, never label selectors. A selector says
+which pods a controller _would_ adopt; the references say which it _has_, and two workloads can share
+labels but never a reference.
+
+A pod walks up through the one intermediary its kind allows — a ReplicaSet to its Deployment, a Job
+to its CronJob — and stops. A link is only a link when there is a screen for that kind; a broken link
+higher up ends the chain rather than failing the whole card.

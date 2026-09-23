@@ -35,7 +35,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "screenshots": "playwright test --config playwright.demo.config.ts"
+    "screenshots": "playwright test --config playwright.demo.config.ts",
+    "screenshots:sync": "node scripts/sync-screenshots.mjs"
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",
@@ -89,6 +90,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "recharts": "^3.10.1",
+    "sharp": "^0.35.4",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.3",

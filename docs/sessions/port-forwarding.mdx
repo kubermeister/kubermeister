@@ -1,0 +1,115 @@
+---
+title: Port forwarding
+description: Forwarding a port from a Kubernetes pod or Service with Kubermeister — where a forward is started, the top-bar list with open-in-browser, forwards remembered per context, and what ends a forward, including quitting.
+sidebar:
+  order: 3
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Start a forward from a pod or a Service. Every forward is then listed in the **top bar** and stopped
+from there, rather than from the page that happened to start it — because that page is often not the
+one you are on when you want it gone.
+
+## Starting a forward
+
+- **From a pod** — its **Network** tab, in the **INSPECT** group, under **Port forward**.
+- **From a Service** — its **Ports** tab, under the table of ports.
+
+**Target** is a list of the ports the object declares: a pod's container ports, or a Service's
+ports. A port that is not declared cannot be chosen, and a pod that declares none says **This pod
+declares no container ports.** instead of offering a forward.
+
+**Local** is the port on your machine. Leave it empty to use the same number as the target. Then
+**Start**. The line under the control says `Listening on 127.0.0.1:<local> → <target>`, and
+**Start** becomes **Stop**; the two ports cannot be changed while the forward runs.
+
+The listener is bound to **127.0.0.1** only, so nothing else on your network can reach it.
+
+- A local port outside 1–65535 gives `error: enter a valid local port (1–65535)`.
+- A local port already in use gives an error such as `error: listen EADDRINUSE …`. The forward stays
+  in the top bar with that error until you stop it.
+- Starting the same forward on the same local port again hands back the one already running rather
+  than binding twice. A different local port is a second forward.
+
+If a forward cannot start at all — the pod has gone, or the Service has no ready endpoint — it
+disappears again with no message left on screen.
+
+## Forwarding to a Service
+
+A forward to a Service resolves to a **ready endpoint per connection**, and the top bar shows which
+pod the connections currently go to.
+
+That is the difference that matters. A forward aimed at one pod stops working when that pod is gone:
+it stays listed, and each new connection fails with `<pod> has no ready pod to forward to`, shown in
+red on its row, until you stop it. (A pod recreated under the same name, as a StatefulSet does, is
+reached again, though the row keeps showing the last error.) A forward aimed at a Service survives the rollout, because each new connection picks a
+pod that is ready right then.
+
+:::caution[Known issue]
+A Service forward sends traffic to the Service's `port` number on the pod, not to its `targetPort`.
+For a Service mapping port 80 to target port 8080, the forward reaches the pod's port 80. Until it is
+fixed, forward to the pod itself when the two numbers differ.
+([#334](https://github.com/kubermeister/kubermeister/issues/334))
+:::
+
+## The top bar
+
+<Figure
+  name="port-forwards"
+  alt="The port forwards list in the top bar, each with its local port and target."
+  caption="Each row has its address, an open-in-browser button and a stop button."
+/>
+
+The **Port forwards** button, with a cable icon, counts the forwards that are listening. It appears
+once there is a forward to list or one to offer. Its popover lists each forward with its kind, name
+and `http://127.0.0.1:<local> → <target>`, and two buttons: one opens that address in your default
+browser, the other stops the forward. A forward whose connections are failing has a red dot and the
+error under its name.
+
+Forwards are held outside the page that started them, so navigating away does not end one, and
+neither does switching namespace.
+
+## Remembered, but never reopened unasked
+
+Every forward you start is remembered against the context it was started on — the most recent 20,
+across all contexts. When you are on that context and no forward to the same object is open, the top
+bar offers it again, greyed, with a play button; pressing it starts the forward and says **Forwarding
+&lt;name&gt; again**.
+
+They are never reopened automatically. Reopening a local port on your machine without asking would be
+the app deciding something about your machine, which is not its call. There is no way to remove a
+remembered forward from the list; it falls off once 20 newer ones have been started.
+
+## What ends a forward
+
+A forward runs until one of these:
+
+- **You stop it** from the top bar, or with **Stop** on the page that started it.
+- **You switch context.** Every forward is stopped and leaves the top bar, since each names a pod of
+  the cluster being left.
+- **You choose another kubeconfig, or change the proxy or the CA bundle.** Every stream shares the one
+  live connection, so every forward ends and leaves the top bar.
+- **The window reloads**, or the app quits.
+
+Losing the network does not end a forward either: the listener stays up, and the connections made
+while the cluster is unreachable fail, with the error on the forward's row.
+
+## When the app quits
+
+Quitting ends every port forward, shell session, log follow and node drain, and none of them are
+restored on the next launch; forwards are only offered again, as above. So quitting asks first:
+
+> **Quit Kubermeister?**
+>
+> Port forwards, shell sessions, log follows and any drain in progress end with the app, and none of
+> them are restored on the next launch.
+
+The dialog's text is the same whether or not anything is running. **Cancel** is the default button,
+so Return or Escape leaves everything running; **Don't ask again** takes effect only when you choose
+**Quit**. It asks on **Quit Kubermeister** (⌘Q) on macOS, on **File › Quit** on Windows and Linux,
+and there on closing the window too, since closing it quits the app. On macOS closing the window does not quit the app, and does not ask, but it
+still ends the forwards and other sessions that window held.
+
+Turn the dialog off or back on with **Confirm before quitting** in
+[**Settings › General**](/docs/reference/settings/).

@@ -98,6 +98,35 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   rather than being reconstructed from their pull request titles, which is the very list the file
   exists not to repeat.
 
+### The documentation
+
+- **`docs/` is the user documentation**, published at `kubermeister.dev/docs/`. The website builds
+  it from this directory **at each release tag**, so a page describes the version people can
+  download, and a page written on `main` ahead of a release is published when that release is.
+- **A change a user would notice updates `docs/` in the same pull request**, as it updates
+  `CHANGELOG.md`: every page that names what changed — a setting or a menu item is often named on
+  several — and a new page when a feature has none. A sentence describes what the code does, and a
+  control is named by its exact label in the code, in bold, with `›` between menu levels.
+- A behaviour a filed bug gets wrong is described as it is, with a `:::caution[Known issue]` aside
+  linking the issue. The pull request that fixes the bug removes the aside.
+- Pages are `docs/<section>/<page>.md`, or `.mdx` when the page shows a figure. The path is the
+  published URL, `/docs/<section>/<page>/`, and a published URL is permanent: a page is never moved
+  or renamed, only rewritten. A new section needs its sidebar group in the website repository.
+- What a page may use, since the website renders it: frontmatter `title`, `description` and
+  `sidebar.order`; Starlight's asides (`:::note`, `:::tip`, `:::caution`, `:::danger`); the
+  `<Figure name alt caption>` component (`import Figure from '@/components/docs/Figure.astro'`);
+  Starlight's own components from `@astrojs/starlight/components` (the landing page uses
+  `CardGrid` and `LinkCard`); and root-relative links with a trailing slash
+  (`/docs/browse/lists/`). Nothing else is provided.
+- **Screenshots are committed** in `docs/screenshots/<theme>/<shot>.webp`, both themes of every
+  shot the harness takes. A pull request that changes a screen a shot shows re-shoots it
+  (`npm run build && npm run screenshots`) and commits **only that shot**:
+  `npm run screenshots:sync -- <shot>`. Every run differs in pixels nobody changed, so re-committing
+  the whole set would add megabytes of history for nothing. A page that needs a screen no shot shows
+  adds the shot to `tests/demo/shots/` in the same pull request.
+- `tests/unit/repo/docs.test.ts` fails on a figure with no image in either theme and on a link to a
+  page or heading that does not exist, since nothing can fix a page once its tag is cut.
+
 ## Architecture rules (load-bearing)
 
 ### Processes and boundaries

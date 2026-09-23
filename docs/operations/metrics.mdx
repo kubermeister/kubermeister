@@ -1,0 +1,74 @@
+---
+title: Usage metrics
+description: CPU and memory usage in Kubermeister — sampled from metrics-server every 12 seconds for the cluster, nodes, pods and Deployments, held in memory for about 20 minutes and reset on a context switch.
+sidebar:
+  order: 3
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Usage comes from **metrics-server**, through a sampler inside the app. The app never writes to the
+cluster to get it, and it needs no Prometheus.
+
+## How it works
+
+Every 12 seconds the sampler reads pod usage, node usage and the node list. This interval is fixed;
+the **Live data refresh** setting decides how often screens re-read what the sampler holds, not how
+often it samples.
+
+It keeps bounded ring buffers of 100 points each, about 20 minutes at that interval:
+
+- one for the whole cluster, as used CPU and memory against the sum of every node's allocatable;
+- one per node, as a percentage of that node's allocatable;
+- one per pod somebody is looking at, in millicores and MiB, for up to 40 pods. Opening a 41st
+  forgets the one looked at least recently.
+
+It starts lazily when a screen first needs usage, resets on a context switch, and stops when the app
+quits.
+
+## Where the numbers show up
+
+| Where                          | What it shows                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| **Overview › Cluster summary** | **CPU usage** and **Memory** cards and the **Workload health** chart ("live · ~12s samples") |
+| Pods list                      | CPU as `Nm` and memory as `NMi`, with a meter against the pod's limit                        |
+| Nodes list                     | CPU and memory as a percentage of allocatable, with a meter                                  |
+| Pod **Overview**               | CPU and memory charts, and each container's usage against its request                        |
+| Node **Overview**              | CPU and memory charts, as a percentage of allocatable                                        |
+| Deployment **Overview**        | A CPU chart, the sum of its pods ("sum of pods")                                             |
+
+Rows take their CPU and memory from the latest sample, so a listed row and a detail screen always
+agree. A pod row measures against the pod's **limit**, the sum of its containers' limits, so a pod
+that sets no limit reads **no limit** in that column instead of a number. Container rows on the pod
+screen read `Xm of Ym` and `XMi of YMi` against the container's **request**, the number that
+decides scheduling.
+
+Only Pods, Nodes and Deployments have usage charts. StatefulSets, DaemonSets and other workloads
+show none, and a Deployment's chart is CPU only. It sums the pods its `matchLabels` selector finds.
+
+<Figure
+  name="summary"
+  alt="Cluster CPU and memory usage cards and the Workload health chart on the Cluster summary."
+  caption="The cluster figures are sampled every 12 seconds while the app is open."
+/>
+
+## The charts are honest about their history
+
+The sampler is in memory on purpose. Its buffers start empty on every launch and reset when you
+switch context, so a chart shows what has happened since the app started watching, and never claims
+history it does not have.
+
+The cluster and node series fill from the moment sampling starts. A pod's series, and so a
+Deployment's, starts when you first open that pod or Deployment: until then the pod reads "no
+metrics yet". Twenty minutes is the most any chart holds.
+
+If you want long-term history, that is what Prometheus is for. This is for the last few minutes,
+right now.
+
+## No metrics-server
+
+A cluster without metrics-server is never an error page. Usage is an enhancement, not a dependency:
+
+- pod rows read `0m` and `0Mi` (or **no limit**), and pod charts stay at zero;
+- node rows read **no data**;
+- the cluster and node figures read zero.

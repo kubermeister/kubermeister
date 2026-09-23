@@ -1,0 +1,93 @@
+---
+title: Scaling and restarting
+description: Scaling Deployments and StatefulSets from their lists in Kubermeister, restarting a workload the way kubectl rollout restart does, adjusting a HorizontalPodAutoscaler, and evicting or deleting pods.
+sidebar:
+  order: 2
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+## Scaling
+
+Deployments and StatefulSets are the two kinds that scale, and they scale from their **lists**, not
+their detail pages. Each row has a **Scale** column: **Scale down** (−), the current count and
+**Scale up** (+). A step sets the count one lower or higher.
+
+<Figure
+  name="deployments-scale"
+  alt="The Deployments list with a Scale column of − and + steppers either side of each replica count."
+  caption="Click the count between the steppers to type an exact number."
+/>
+
+Clicking the count opens **Scale Deployment** (or **Scale StatefulSet**) with a **Replicas** field,
+filled in with the current count, and **Scale** and **Cancel**. Any whole number from 0 to 1000 is
+accepted; **Scale** stays disabled until the number differs from the current one.
+
+Each step writes the absolute target, not a delta, and both steppers go inert while a write is in
+flight, so rapid clicks cannot race each other. The write reads the scale subresource first and puts
+it back with the `resourceVersion` it was read at, so a change somebody else made in between is
+rejected as a conflict rather than overwritten.
+
+## Restarting
+
+**Restart** sits in the header of a Deployment, a StatefulSet and a DaemonSet. It asks "Restart
+Deployment?" (or the kind in question) and says how the pods will go:
+
+| Kind        | What the dialog says                                                          |
+| ----------- | ----------------------------------------------------------------------------- |
+| Deployment  | Pods are replaced gradually, following the deployment’s update strategy.      |
+| StatefulSet | Pods are replaced one at a time, in reverse ordinal order.                    |
+| DaemonSet   | The pod on each node is replaced, following the daemon set’s update strategy. |
+
+A restart is a strategic merge patch stamping the pod template's
+`kubectl.kubernetes.io/restartedAt` annotation — the same key `kubectl rollout restart` writes, so
+both read as one history. Nothing is deleted: the controller rolls the pods itself, at the kind's own
+update strategy.
+
+### Restarting from a pod
+
+A pod's **Overview** has its own **Restart**, which rolls the Deployment, StatefulSet or DaemonSet
+that owns the pod, because a pod deleted on its own simply comes back unchanged. Hovering it names
+the workload it will roll ("Rolls Deployment “web”, replacing this pod").
+
+This one **asks for no confirmation**: a click starts the rollout of the whole workload at once. A
+pod with no such owner — a bare pod, or one owned by a Job — shows the button disabled with "This
+pod has no workload to roll".
+
+## Autoscalers
+
+A HorizontalPodAutoscaler's detail page has **Edit bounds** in its header. It opens **Autoscaler
+bounds** with three fields: **Minimum replicas**, **Maximum replicas** and **Target CPU %**, each
+filled in with the autoscaler's current values, and **Save**.
+
+<Figure
+  name="autoscaler-bounds"
+  alt="The Autoscaler bounds popover with Minimum replicas, Maximum replicas and Target CPU % fields and a Save button."
+  caption="The CPU field starts with the current target, so Save sends it back even when you only change the bounds."
+/>
+
+**Save** stays disabled until both counts are whole numbers, the minimum is at least one and the
+maximum at least the minimum ("The maximum must be at least the minimum, and both at least one.").
+The CPU target, when given, must be a whole number of at least one; an autoscaler with no CPU target
+shows the field empty (`—`), and leaving it empty writes only the bounds.
+
+Anything else about an autoscaler — which metrics it watches, its scaling behaviour — is edited in
+the [manifest editor](/docs/browse/manifests/).
+
+:::caution[Known issue]
+Because **Target CPU %** is filled in with the current target, **Save** on an autoscaler that already
+targets CPU always writes the metrics list back as that one CPU metric. An autoscaler that also
+watches memory or a custom metric can lose them. Change such an autoscaler through the manifest
+editor instead. ([#337](https://github.com/kubermeister/kubermeister/issues/337))
+:::
+
+## Evicting and deleting pods
+
+A pod's header has **Evict** as well as delete. **Evict** asks "Evict _pod_?" and goes through the
+eviction API, the way a node drain does, so a PodDisruptionBudget still has a say and may refuse it.
+A plain delete does not consult budgets.
+
+The pod's delete dialog also offers **Delete without waiting** ("The record goes at once, whatever
+the container is still doing."), which sends a grace period of zero. Only pods get that switch; for
+any other kind the grace period is left to the controller. See
+[writing to the cluster](/docs/workloads/writing/) for what every delete asks.

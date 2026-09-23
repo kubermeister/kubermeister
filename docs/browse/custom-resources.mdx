@@ -1,0 +1,65 @@
+---
+title: Custom resources and CRDs
+description: Browsing CustomResourceDefinitions and their instances in Kubermeister — reaching the instances, the additionalPrinterColumns kubectl get would print, and editing an instance.
+sidebar:
+  order: 4
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+The app cannot know your CRDs in advance, so everything a custom resource row shows comes from the
+definition itself.
+
+## Finding the instances
+
+**Add-ons › CRDs** lists the definitions, with their group, version, scope and kind, and stays live
+through a watch. Open one and choose **View instances** in its header: that is the way to a kind's
+instances, since no sidebar item can name kinds the app has never seen.
+
+The instance list is titled with the definition's kind. A namespaced kind follows the namespace
+selector like any other list; a cluster-scoped one ignores it. The list is polled at the refresh
+interval rather than watched, and it has no row selection.
+
+## What a row shows
+
+For each definition, the app reads:
+
+<Figure
+  name="crd-instances"
+  alt="Instances of a custom resource definition, listed with the columns the definition declares."
+  caption="The columns between Name and Age come from the definition’s own additionalPrinterColumns."
+/>
+
+- its **storage version**, or the first served version if none is marked for storage;
+- its **scope**, namespaced or cluster-wide;
+- its **`additionalPrinterColumns`** — the same columns `kubectl get` would print for that kind.
+
+Those columns are then evaluated against each instance, between the name and the app's own **Age**.
+A declared column on `.metadata.creationTimestamp` is dropped, since Age already says it. A `date`
+column is shown as an age, an object as JSON, and a missing value as "—".
+
+## The JSONPath subset
+
+Printer columns declare a JSONPath. The app evaluates the subset those columns actually use: dotted
+keys, `['quoted']` keys and `[0]` indexes.
+
+Filters and wildcards are **refused rather than half-evaluated**, because a column that quietly
+produces a plausible wrong value is worse than an empty one. A refused path shows "—", the same as a
+field the instance does not have.
+
+## An instance's page
+
+An instance's detail page has an **Overview** with the same printer columns and its age, a
+**Manifest** tab, and **Labels**. It has no Events tab, no Object card and no **Delete**; the header
+carries **Refresh** and **Edit**.
+
+Editing a custom resource rides the same replace call as every other kind, since that call derives
+the API path from the manifest's own `apiVersion` and `kind`. The editor pins the kind the instance
+was read as, along with its name and namespace, and whether the kind is namespaced is asked of the
+API server's discovery. See [manifests](/docs/browse/manifests/#editing).
+
+## The definitions themselves
+
+A definition's own page has the usual Overview, Events, Manifest and Labels. Deleting one asks you
+to type its name first, and warns that every custom resource of that type in the cluster is deleted
+with it.

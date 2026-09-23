@@ -1,0 +1,160 @@
+---
+title: Reading logs
+description: Following Kubernetes pod logs in Kubermeister — the container and Since pickers, following every pod of a workload at once, search that narrows or highlights, the View menu, the log buffer and downloading.
+sidebar:
+  order: 1
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+A **Logs** tab opens already following. A log is opened to see what is happening now, and a console
+you have to switch on first is a step in front of the answer.
+
+## Pod logs
+
+A pod's **Logs** tab is in the **OBSERVE** group. It starts live: it reads the recent tail of the
+container and then follows it. Turning **Live** off stops the follow and shows a one-shot read of
+the same container, window and tail instead, which is what holds the view still while you read.
+Turning it back on starts a new follow.
+
+<Figure
+  name="pod-logs"
+  alt="A pod log console, following, with timestamps on every line."
+  caption="A pod reads 500 lines and stamps each one, until the View menu says otherwise."
+/>
+
+The tab stays mounted when you move to another tab of the same pod, so a follow survives that — and
+it ends when you leave the page.
+
+## The toolbar
+
+The toolbar is one row, and it decides _which_ lines are shown.
+
+- **Container** — which container of the pod to read. See [Choosing a container](#choosing-a-container).
+- **Since** — how far back to read: **5 minutes** (the default), **15 minutes**, **1 hour** or
+  **All logs**. It bounds the follow, the Live-off read and the download alike. On a quiet pod the
+  default window can hold far fewer lines than the tail asks for; choose **All logs** to see further
+  back.
+- **Search**, with its three toggles — see [Searching](#searching).
+- **View** — how the lines read. See [The View menu](#the-view-menu).
+- **Live** — follow, or hold a snapshot.
+- **Download** — the download icon at the end. See [Downloading](#downloading).
+
+Changing the container, the Since window or the tail starts the read again and clears the console,
+since what is on screen belongs to the old choice.
+
+## Choosing a container
+
+The **Container** picker lists every container in the pod by name, in the order the pod runs them:
+init containers first, then the app's own containers, then any ephemeral ones. It opens on the first
+entry.
+
+Only the pod's regular containers can be read. Choosing an init or ephemeral container gives the
+error `container "<name>" of pod "<namespace>/<pod>" not found`. The **Shell** tab has the same
+picker and the same limit.
+
+:::caution[Known issue]
+On a pod with an init container, the tab opens on the init container and fails. Pick an app
+container from the list. ([#333](https://github.com/kubermeister/kubermeister/issues/333))
+:::
+
+There is no option to read the log of a container's previous run.
+
+## Following and scrolling
+
+While Live is on, the console keeps the newest line in view. Scroll up and it stops following, so
+new lines do not pull the view away from what you are reading; a **Jump to latest** button appears
+at the bottom, and it, or scrolling back to the end, resumes the follow.
+
+The status bar under the console says what you are looking at: **streaming** or **snapshot**, the
+number of lines, **(filtered)** when the search is hiding some, and **following** or **not
+following**.
+
+A follow that fails shows its error in red above the lines. When the container exits, the follow
+simply ends, and nothing restarts it: turn **Live** off and on again, or reopen the tab.
+
+## Workload logs
+
+A Deployment, StatefulSet, DaemonSet, Job or CronJob has a **Logs** tab that follows **every pod it
+owns at once**.
+
+<Figure
+  name="workload-logs"
+  alt="A deployment log console merging every pod it owns, each pod’s lines in its own colour."
+  caption="Each line starts with its pod's name, in that pod's colour."
+/>
+
+There is no API call for "the logs of this deployment", so the app opens one follow per pod, merges
+the lines in the order they arrive and gives each pod a colour and its full name at the start of the
+line. It differs from a pod's tab in a few ways:
+
+- **Each pod's first app container is followed.** There is no choice of container: the picker's place
+  shows the number of pods, and the pods it lists are there for reference, not as a filter.
+- **Live off shows nothing.** There is no snapshot for a workload; the console is empty until you turn
+  Live back on.
+- **The set of pods is checked on the refresh interval** — **Live data refresh** in
+  [**Settings › General**](/docs/reference/settings/), 12 seconds by default — rather than watched.
+  When it changes, every follow restarts and the console is cleared, each pod reading its tail again.
+  A pod replaced in a rollout is therefore picked up within one interval, not at once.
+- When a pod's follow fails, the error names the pod: `<pod>: <message>`.
+
+## Searching
+
+Search is in the toolbar. It matches the **message** only — not the timestamp, and not the pod name
+on a workload's lines. It ignores case unless you turn on **Aa**, and reads the text literally unless
+you turn on **.\***, which makes it a regular expression.
+
+- **By default the search narrows the console.** A line the search misses is gone, not merely
+  unhighlighted, and the status bar adds **(filtered)**.
+- **Highlight** is the other mode: every line stays and the matches are marked where they sit, which
+  is often the only way a hit is legible — the stack trace under the line that named the error. Its
+  toggle is the highlighter icon beside **.\*** and **Aa**, not in the View menu, because it changes
+  the search the way they do.
+- **An unfinished regular expression filters nothing** rather than emptying the console
+  mid-keystroke. The toolbar says **Not a valid pattern yet** in red until it parses.
+
+## The View menu
+
+How the lines are _read_ sits behind the **View** button:
+
+- **Wrap long lines** — wrap instead of scrolling sideways. Off by default.
+- **Show timestamps** — a pod stamps every line by default; a workload does not, since each of its
+  lines already spends a column on the pod's name.
+- **Tail** — how many lines each follow reads before it starts following: **100**, **500**, **1,000**
+  or **10,000**. A pod reads 500 by default. A workload reads 100 **per pod**, and the Tail you
+  choose applies per pod there too.
+
+Until you touch them, timestamps and tail are left to the screen. Once you change one, your choice
+applies on every log console from then on. These are preferences about your window rather than the
+cluster, so they are stored locally rather than in the settings file.
+
+## The log buffer
+
+A live follow keeps a bounded buffer and drops the oldest lines once it is full. The size is **Log
+buffer** › **Buffered lines** in [**Settings › General**](/docs/reference/settings/): **2k lines**
+(the default), **10k lines** or **50k lines**. On a workload's tab the limit is on all its pods'
+lines together, not per pod.
+
+The setting is read live: changing it trims differently from the next batch of lines rather than
+restarting the follow and losing what is on screen.
+
+Only the rows in view are rendered, so a buffer of tens of thousands of lines costs a screenful of
+the page.
+
+## Downloading
+
+What **Download** saves depends on the tab.
+
+- **A pod** — the app asks the API server for the container's log within the selected **Since**
+  window, not only the tail on screen, and saves it as `<pod>-<container>.log` with a timestamp on
+  every line. With the default window that is the last 5 minutes; choose **All logs** first for the
+  whole log. A log over 8 MiB keeps its newest part, cut on a line boundary so the file never opens on
+  half a line, and a **Log downloaded** notice says the oldest lines were left behind.
+- **A workload** — the lines in the console as they stand, after the search, saved as
+  `<workload>-pods.log`, one line each as pod, timestamp and message. There is no read from the API
+  server, so it holds what the buffer holds; with Live off it is empty.
+
+## Ending a follow
+
+Leaving the page ends its follows. So does switching context or namespace, which closes the page
+back to its list, and quitting the app. Nothing reconnects a follow by itself.
