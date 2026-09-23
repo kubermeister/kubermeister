@@ -14,6 +14,8 @@ Only the macOS build is signed and notarised. The Windows and Linux installers a
 
 ## macOS
 
+Kubermeister runs on macOS 13 or newer, on Apple silicon and Intel.
+
 ### Homebrew
 
 ```sh

@@ -96,7 +96,7 @@ A few rules hold everywhere:
 
 ## Requirements
 
-- macOS 12 or newer (Apple silicon or Intel), Windows 10 or newer (x64), or a Linux distribution
+- macOS 13 or newer (Apple silicon or Intel), Windows 10 or newer (x64), or a Linux distribution
   that can run an AppImage or install a `.deb` (x64). The AppImage carries its own runtime and needs
   nothing installed first.
 - A kubeconfig with at least one context. Any cluster the current Kubernetes API speaks to should
