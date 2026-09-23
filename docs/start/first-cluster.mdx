@@ -48,12 +48,6 @@ forwards button in the top bar and stopped from there, wherever you started them
 at a Service picks a ready pod behind it for each new connection, so the next rollout does not end
 it.
 
-:::caution[Known issue]
-A Service forward sends traffic to the Service's `port` on the pod, not its `targetPort`, so it only
-works where the two are the same.
-([#334](https://github.com/kubermeister/kubermeister/issues/334))
-:::
-
 ## 6. Look at the cluster
 
 **Overview › Cluster summary** puts node health, usage, recent events and alerts on one screen. The

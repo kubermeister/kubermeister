@@ -9,9 +9,10 @@ vi.mock('@kubernetes/client-node', async () => ({
     },
 }));
 const readOrNull = vi.fn();
+const core = { readNamespacedPod: vi.fn(), readNamespacedService: vi.fn(), readNamespacedEndpoints: vi.fn() };
 vi.mock('../../../src/main/k8s/client.js', () => ({
     kubeConfig: () => ({}),
-    apis: () => ({ core: { readNamespacedPod: vi.fn() } }),
+    apis: () => ({ core }),
     readOrNull,
 }));
 
@@ -33,20 +34,75 @@ function connect(port: number): Promise<net.Socket> {
     });
 }
 
-describe('resolving a service to a pod', () => {
-    it('takes the first ready pod behind it, and nothing when there is none', async () => {
-        const { readyPodOf } = await import('../../../src/main/k8s/port-forward.js');
+describe('resolving a service port to a pod port', () => {
+    const service = {
+        spec: {
+            ports: [
+                { name: 'http', port: 80, targetPort: 'http' },
+                { name: 'metrics', port: 9100, targetPort: 9090 },
+            ],
+        },
+    };
+
+    it('goes to the port the pod serves, which the endpoints carry under the service port name', async () => {
+        const { serviceTargetOf } = await import('../../../src/main/k8s/port-forward.js');
+        const endpoints = {
+            subsets: [
+                {
+                    addresses: [{ ip: '10.0.0.2', targetRef: { kind: 'Pod', name: 'web-2' } }],
+                    ports: [
+                        { name: 'http', port: 8080 },
+                        { name: 'metrics', port: 9090 },
+                    ],
+                },
+            ],
+        };
+        expect(serviceTargetOf(service as never, endpoints as never, 80)).toEqual({ pod: 'web-2', port: 8080 });
+        expect(serviceTargetOf(service as never, endpoints as never, 9100)).toEqual({ pod: 'web-2', port: 9090 });
+    });
+
+    it('follows a named target port to the number each set of pods gives it', async () => {
+        const { serviceTargetOf } = await import('../../../src/main/k8s/port-forward.js');
+        // Two subsets exist when pods behind one service name the same port differently.
+        const endpoints = {
+            subsets: [
+                { notReadyAddresses: [{ ip: '10.0.0.1' }], ports: [{ name: 'http', port: 8080 }] },
+                {
+                    addresses: [{ ip: '10.0.0.3', targetRef: { kind: 'Pod', name: 'web-3' } }],
+                    ports: [{ name: 'http', port: 8081 }],
+                },
+            ],
+        };
+        expect(serviceTargetOf(service as never, endpoints as never, 80)).toEqual({ pod: 'web-3', port: 8081 });
+    });
+
+    it('matches the one unnamed port of a single-port service', async () => {
+        const { serviceTargetOf } = await import('../../../src/main/k8s/port-forward.js');
+        const single = { spec: { ports: [{ port: 80, targetPort: 8080 }] } };
+        const endpoints = {
+            subsets: [
+                { addresses: [{ ip: '10.0.0.2', targetRef: { kind: 'Pod', name: 'web-2' } }], ports: [{ port: 8080 }] },
+            ],
+        };
+        expect(serviceTargetOf(single as never, endpoints as never, 80)).toEqual({ pod: 'web-2', port: 8080 });
+    });
+
+    it('finds nothing without a ready pod, a service, or a port the service declares', async () => {
+        const { serviceTargetOf } = await import('../../../src/main/k8s/port-forward.js');
+        const endpoints = {
+            subsets: [
+                {
+                    addresses: [{ ip: '10.0.0.2', targetRef: { kind: 'Pod', name: 'web-2' } }],
+                    ports: [{ name: 'http', port: 8080 }],
+                },
+            ],
+        };
+        expect(serviceTargetOf(service as never, endpoints as never, 443)).toBeNull();
+        expect(serviceTargetOf(undefined, endpoints as never, 80)).toBeNull();
         expect(
-            readyPodOf({
-                subsets: [
-                    { addresses: [{ ip: '10.0.0.1', targetRef: { kind: 'Service', name: 'x' } }] },
-                    { addresses: [{ ip: '10.0.0.2', targetRef: { kind: 'Pod', name: 'web-2' } }] },
-                ],
-            } as never),
-        ).toBe('web-2');
-        // Endpoints with only not-ready addresses, or none at all, resolve to nothing.
-        expect(readyPodOf({ subsets: [{ notReadyAddresses: [{ ip: '10.0.0.3' }] }] } as never)).toBeNull();
-        expect(readyPodOf(undefined)).toBeNull();
+            serviceTargetOf(service as never, { subsets: [{ notReadyAddresses: [{ ip: '10.0.0.3' }] }] } as never, 80),
+        ).toBeNull();
+        expect(serviceTargetOf(service as never, undefined, 80)).toBeNull();
     });
 });
 
@@ -56,6 +112,7 @@ describe('startPodPortForward', () => {
     beforeEach(() => {
         portForward.mockReset();
         ws.close.mockReset();
+        readOrNull.mockReset();
         readOrNull.mockResolvedValue({ metadata: { name: 'web-1' } });
         portForward.mockResolvedValue(ws);
     });
@@ -90,6 +147,44 @@ describe('startPodPortForward', () => {
         await new Promise<void>((resolve) => client.once('close', () => resolve()));
         await vi.waitFor(() => expect(ws.close).toHaveBeenCalledOnce());
         await expect(connect(localPort)).rejects.toThrow();
+    });
+
+    it('forwards a service port to the port its pods serve, and still reports the service port', async () => {
+        readOrNull.mockImplementation(async (read: () => Promise<unknown>) => read());
+        core.readNamespacedService.mockResolvedValue({
+            spec: { ports: [{ name: 'http', port: 80, targetPort: 8080 }] },
+        });
+        core.readNamespacedEndpoints.mockResolvedValue({
+            subsets: [
+                {
+                    addresses: [{ ip: '10.0.0.2', targetRef: { kind: 'Pod', name: 'web-2' } }],
+                    ports: [{ name: 'http', port: 8080 }],
+                },
+            ],
+        });
+        const localPort = await freePort();
+        const send = vi.fn();
+        const ctl = await startPodPortForward(
+            { kind: 'Service', name: 'web', namespace: 'team-a', targetPort: 80, localPort },
+            send,
+        );
+        expect(send).toHaveBeenCalledWith({
+            type: 'data',
+            data: { status: 'listening', localPort, targetPort: 80, pod: 'web-2' },
+        });
+        const client = await connect(localPort);
+        await vi.waitFor(() =>
+            expect(portForward).toHaveBeenCalledWith(
+                'team-a',
+                'web-2',
+                [8080],
+                expect.any(net.Socket),
+                null,
+                expect.any(net.Socket),
+            ),
+        );
+        client.destroy();
+        ctl.stop();
     });
 
     it('closes the pod websocket when the local socket closes on its own', async () => {
