@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-23
+
 ### Fixed
 
 - A pod's Logs and Shell tabs open on the container running the app instead of failing on an init
