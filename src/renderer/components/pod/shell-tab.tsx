@@ -13,6 +13,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ContainerRoleNote } from '@/components/pod/container-role-note';
+import type { StreamHandle } from '@/lib/ipc';
 import { containerChoices } from '@/lib/pod-containers';
 import { openPodExec } from '@/lib/pod-streams';
 import { useTerminalFontSize } from '@/lib/settings';
@@ -47,18 +48,25 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
         const fit = new FitAddon();
         term.loadAddon(fit);
         term.open(host);
-        // Fit after layout settles, so xterm sizes to the panel's real height.
-        const raf = requestAnimationFrame(() => fit.fit());
-
-        const control = openPodExec(
-            { name, namespace, container },
-            {
-                onData: (chunk) => term.write(chunk),
-                onError: (message) => term.write(`\r\n\x1b[31m${message}\x1b[0m\r\n`),
-                onEnd: () => term.write('\r\n\x1b[90m[session ended]\x1b[0m\r\n'),
-            },
-        );
-        const typed = term.onData((data) => control.send(data));
+        // Fit after layout settles, so xterm sizes to the panel's real height, and only then open the
+        // session: the size it opens with is the size the shell starts at, and a resize sent while
+        // the session is still starting has nowhere to go yet.
+        let control: StreamHandle | null = null;
+        const raf = requestAnimationFrame(() => {
+            fit.fit();
+            control = openPodExec(
+                { name, namespace, container, size: { cols: term.cols, rows: term.rows } },
+                {
+                    onData: (chunk) => term.write(chunk),
+                    onError: (message) => term.write(`\r\n\x1b[31m${message}\x1b[0m\r\n`),
+                    onEnd: () => term.write('\r\n\x1b[90m[session ended]\x1b[0m\r\n'),
+                },
+            );
+        });
+        const typed = term.onData((data) => control?.send(data));
+        // Every later fit that changes the grid is passed on to the shell, which otherwise lays out
+        // `top`, `vi` and a wrapping prompt for the size it started at.
+        const resized = term.onResize(({ cols, rows }) => control?.send({ resize: { cols, rows } }));
         // Re-fit when the panel resizes (tab layout, window), not only on a window resize.
         const resize = new ResizeObserver(() => fit.fit());
         resize.observe(host);
@@ -73,7 +81,8 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
             resize.disconnect();
             theme.disconnect();
             typed.dispose();
-            control.stop();
+            resized.dispose();
+            control?.stop();
             term.dispose();
         };
         // The font size is read when the session opens; changing it must not restart the shell.

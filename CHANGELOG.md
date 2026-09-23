@@ -31,6 +31,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   longer rewrites its metrics, and changing the CPU target replaces that target alone, where either
   used to leave an autoscaler that also watched memory or a custom metric watching CPU only.
 
+- A pod's shell knows the size of its terminal: it opens at the panel's size and follows it as the
+  window or the layout changes, so full-screen programs such as `top` and `vi` draw for the space
+  they have. The terminal used to tell the pod no size at all.
+
 ## [0.5.0] - 2026-09-22
 
 ### Added

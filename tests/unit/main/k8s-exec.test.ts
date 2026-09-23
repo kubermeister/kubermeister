@@ -72,6 +72,30 @@ describe('startPodExecStream', () => {
         expect(chunks).toEqual(['ls\n']);
     });
 
+    it('tells the pod the terminal size it opened with, and each size it is resized to', async () => {
+        const ctl = await startPodExecStream(
+            { name: 'web-1', namespace: 'team-a', size: { cols: 100, rows: 30 } },
+            vi.fn(),
+        );
+        // The client sends a resize for a stdout that carries a size and says when it changes.
+        const stdout = captured.stdout as Writable & { columns: number; rows: number };
+        expect({ columns: stdout.columns, rows: stdout.rows }).toEqual({ columns: 100, rows: 30 });
+        const resized = vi.fn();
+        stdout.on('resize', resized);
+        ctl.write?.({ resize: { cols: 132, rows: 40 } });
+        expect({ columns: stdout.columns, rows: stdout.rows }).toEqual({ columns: 132, rows: 40 });
+        expect(resized).toHaveBeenCalledOnce();
+        // Nonsense is dropped rather than sent to the pod.
+        ctl.write?.({ resize: { cols: 0, rows: -1 } });
+        expect(resized).toHaveBeenCalledOnce();
+    });
+
+    it('opens at the size a terminal starts at when none was given', async () => {
+        await startPodExecStream({ name: 'web-1', namespace: 'team-a' }, vi.fn());
+        const stdout = captured.stdout as Writable & { columns: number; rows: number };
+        expect({ columns: stdout.columns, rows: stdout.rows }).toEqual({ columns: 80, rows: 24 });
+    });
+
     it('survives a socket that throws on close', async () => {
         socket.close.mockImplementation(() => {
             throw new Error('already closed');

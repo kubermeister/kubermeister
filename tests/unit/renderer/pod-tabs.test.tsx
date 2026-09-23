@@ -33,6 +33,9 @@ const terminal = {
     dispose: vi.fn(),
     loadAddon: vi.fn(),
     onData: vi.fn(() => ({ dispose: vi.fn() })),
+    onResize: vi.fn(() => ({ dispose: vi.fn() })),
+    cols: 80,
+    rows: 24,
     options: {} as Record<string, unknown>,
 };
 let terminalOptions: Record<string, unknown> | undefined;
@@ -553,7 +556,15 @@ describe('OverviewTab', () => {
 
 describe('ShellTab', () => {
     beforeEach(() => {
-        for (const fn of [terminal.open, terminal.write, terminal.dispose, terminal.onData]) fn.mockClear();
+        // The session opens once the first fit has run, which is the frame after mounting.
+        vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => {
+            frame(0);
+            return 1;
+        });
+        for (const fn of [terminal.open, terminal.write, terminal.dispose, terminal.onData, terminal.onResize]) {
+            fn.mockClear();
+        }
+        terminal.onResize.mockReturnValue({ dispose: vi.fn() });
         terminal.options = {};
         terminal.onData.mockReturnValue({ dispose: vi.fn() });
         invoke.mockResolvedValue({ version: 1, data: { terminalFontSize: 12 } });
@@ -574,6 +585,19 @@ describe('ShellTab', () => {
         expect(screen.queryByRole('menuitem', { name: /migrate/ })).not.toBeInTheDocument();
     });
 
+    it('opens the session at the terminal size and tells the shell every time the terminal is resized', async () => {
+        const session = { stop: vi.fn(), send: vi.fn() };
+        streams.openPodExec.mockReturnValue(session);
+        renderWithQuery(<ShellTab name="web-1" namespace="team-a" pod={pod} />);
+        expect(streams.openPodExec).toHaveBeenCalledWith(
+            expect.objectContaining({ size: { cols: 80, rows: 24 } }),
+            expect.any(Object),
+        );
+        const onResize = terminal.onResize.mock.calls.at(-1)![0] as (size: { cols: number; rows: number }) => void;
+        onResize({ cols: 132, rows: 40 });
+        expect(session.send).toHaveBeenLastCalledWith({ resize: { cols: 132, rows: 40 } });
+    });
+
     it('opens one session into a themed terminal in the tab, and ends it when the tab goes', async () => {
         const session = { stop: vi.fn(), send: vi.fn() };
         streams.openPodExec.mockReturnValue(session);
@@ -582,7 +606,7 @@ describe('ShellTab', () => {
 
         expect(streams.openPodExec).toHaveBeenCalledTimes(1);
         expect(streams.openPodExec).toHaveBeenCalledWith(
-            { name: 'web-1', namespace: 'team-a', container: 'web' },
+            { name: 'web-1', namespace: 'team-a', container: 'web', size: { cols: 80, rows: 24 } },
             expect.any(Object),
         );
         expect(terminal.open).toHaveBeenCalledWith(screen.getByTestId('terminal-host'));
