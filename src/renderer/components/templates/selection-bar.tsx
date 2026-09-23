@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Table } from '@tanstack/react-table';
 import { DownloadIcon, Trash2Icon } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ManifestKind } from '../../../shared/k8s/manifest';
+import { DANGEROUS_KINDS, type ManifestKind } from '../../../shared/k8s/manifest';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -37,8 +37,9 @@ interface SelectionBarProps<T> {
 
 /**
  * The selection bar above a list: invisible until rows are checked, then it says how many and acts
- * on exactly those — saving their manifests to a file, or deleting them. Targets come from the
- * table's own selection, so a search that hides rows also excludes them.
+ * on exactly those — saving their manifests to a file, or deleting them unless the kind is one of
+ * `DANGEROUS_KINDS`. Targets come from the table's own selection, so a search that hides rows also
+ * excludes them.
  *
  * Objects are deleted one by one, the outcome is a single summary, and whatever failed stays
  * selected so a retry starts from there.
@@ -105,10 +106,15 @@ export function SelectionBar<T>({ table, kind, noun }: SelectionBarProps<T>) {
                     <DropdownMenuItem onSelect={() => void save(true)}>Cleaned for another cluster</DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
-                <Trash2Icon />
-                Delete {targets.length}
-            </Button>
+            {/* A kind whose single delete asks for its name to be typed gets no bulk delete at all:
+                a checkbox column and a delete that reaches beyond the object do not go together,
+                and a batch cannot ask for one name per object. Export still works. */}
+            {!DANGEROUS_KINDS.has(kind) && (
+                <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+                    <Trash2Icon />
+                    Delete {targets.length}
+                </Button>
+            )}
             {/* Dismissal is blocked while the batch is in flight, so the dialog states the outcome. */}
             <AlertDialog open={open} onOpenChange={(next) => !next && !bulk.isPending && setOpen(false)}>
                 <AlertDialogContent>

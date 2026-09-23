@@ -94,6 +94,15 @@ describe('storage lists', () => {
         expect(row).toHaveTextContent('RWO');
     });
 
+    it('exports checked storage classes but offers no bulk delete, which would skip the typed name', async () => {
+        renderRoutes(routeTree, '/storage/storageclasses');
+        const classes = await screen.findByTestId('storageclasses-table');
+        await userEvent.click(within(classes).getByRole('checkbox', { name: 'Select all rows on this page' }));
+        const bar = await screen.findByTestId('selection-bar');
+        expect(within(bar).getByRole('button', { name: /^Export 2/ })).toBeInTheDocument();
+        expect(within(bar).queryByRole('button', { name: /^Delete/ })).not.toBeInTheDocument();
+    });
+
     it('lists claims, storage classes with a default badge, and snapshots by polling', async () => {
         renderRoutes(routeTree, '/storage/claims');
         const claims = await screen.findByTestId('claims-table');
