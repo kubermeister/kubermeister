@@ -33,18 +33,10 @@ error is printed in red in the terminal.
 
 ## Choosing a container
 
-The **Container** picker in the terminal's header lists every container in the pod by name, in the
-order the pod runs them: init containers first, then the app's own containers, then any ephemeral
-ones. It opens on the first entry, and it is disabled when the pod has only one container.
-
-Only the pod's regular containers can be shelled into. Choosing an init or ephemeral container gives
-the error `container "<name>" of pod "<namespace>/<pod>" not found`. The **Logs** tab has the same
-picker and the same limit.
-
-:::caution[Known issue]
-On a pod with an init container, the tab opens on the init container and fails. Pick an app
-container from the list. ([#333](https://github.com/kubermeister/kubermeister/issues/333))
-:::
+The **Container** picker in the terminal's header lists the pod's app containers, then any ephemeral
+ones, marked **ephemeral**. Init containers are left out: a shell needs a running process to attach
+to, and an init container has finished before the app starts. The picker opens on the first app
+container, and it is disabled when there is only one container to choose.
 
 Choosing another container ends the session and opens a new one in that container.
 

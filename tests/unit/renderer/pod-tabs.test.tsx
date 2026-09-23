@@ -257,6 +257,20 @@ describe('LogsTab', () => {
         expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'true');
     });
 
+    it('opens on the app container when an init container comes first, and names the init one', async () => {
+        invoke.mockImplementation(answering([]));
+        streams.usePodLogStream.mockReturnValue(following(line('from stream')));
+        const withInit = {
+            ...pod,
+            containers: [{ ...pod.containers[0]!, name: 'migrate', role: 'init' as const }, ...pod.containers],
+        };
+        renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={withInit} />);
+        expect(await screen.findByText('from stream')).toBeInTheDocument();
+        expect(streams.usePodLogStream).toHaveBeenLastCalledWith(expect.objectContaining({ container: 'web' }), 2000);
+        await userEvent.click(screen.getByRole('button', { name: 'Container' }));
+        expect(screen.getByRole('menuitem', { name: /migrate/ })).toHaveTextContent('init');
+    });
+
     it('reads the tail the reader picked rather than the screen’s own', async () => {
         invoke.mockImplementation(answering([]));
         streams.usePodLogStream.mockReturnValue(following(line('from stream')));
@@ -543,6 +557,21 @@ describe('ShellTab', () => {
         terminal.options = {};
         terminal.onData.mockReturnValue({ dispose: vi.fn() });
         invoke.mockResolvedValue({ version: 1, data: { terminalFontSize: 12 } });
+    });
+
+    it('opens on the app container and never offers an init container, which has no process left', async () => {
+        streams.openPodExec.mockReturnValue({ stop: vi.fn(), send: vi.fn() });
+        const withInit = {
+            ...pod,
+            containers: [{ ...pod.containers[0]!, name: 'migrate', role: 'init' as const }, ...pod.containers],
+        };
+        renderWithQuery(<ShellTab name="web-1" namespace="team-a" pod={withInit} />);
+        expect(streams.openPodExec).toHaveBeenCalledWith(
+            expect.objectContaining({ container: 'web' }),
+            expect.any(Object),
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Container' }));
+        expect(screen.queryByRole('menuitem', { name: /migrate/ })).not.toBeInTheDocument();
     });
 
     it('opens one session into a themed terminal in the tab, and ends it when the tab goes', async () => {

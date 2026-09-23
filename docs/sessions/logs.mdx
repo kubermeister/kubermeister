@@ -45,18 +45,11 @@ since what is on screen belongs to the old choice.
 
 ## Choosing a container
 
-The **Container** picker lists every container in the pod by name, in the order the pod runs them:
-init containers first, then the app's own containers, then any ephemeral ones. It opens on the first
-entry.
-
-Only the pod's regular containers can be read. Choosing an init or ephemeral container gives the
-error `container "<name>" of pod "<namespace>/<pod>" not found`. The **Shell** tab has the same
-picker and the same limit.
-
-:::caution[Known issue]
-On a pod with an init container, the tab opens on the init container and fails. Pick an app
-container from the list. ([#333](https://github.com/kubermeister/kubermeister/issues/333))
-:::
+The **Container** picker lists every container in the pod: the app's own containers first, then its
+init containers, then any ephemeral ones, each of the last two marked **init** or **ephemeral**. It
+opens on the first app container, so a pod with an init step still opens on the container running
+the app. An init container's log is there to read after it has finished, which is where to look when
+a pod is stuck starting.
 
 There is no option to read the log of a container's previous run.
 
