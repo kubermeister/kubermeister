@@ -11,7 +11,7 @@ Kubermeister reads the kubeconfig you already have and needs nothing else instal
 no plugins, no agent in the cluster. Every screen stays live through the API server's own watches,
 so what you see is what the cluster is doing right now.
 
-<!-- Screenshots go here: docs/screenshots/summary.png, pod-detail.png, manifest-editor.png -->
+<!-- Screenshots go here, from docs/screenshots/<theme>/: summary.webp, pod-logs.webp, manifest-editor.webp -->
 
 ## What it does
 

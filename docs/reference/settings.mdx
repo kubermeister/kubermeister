@@ -1,0 +1,178 @@
+---
+title: Settings
+description: Every Kubermeister setting with its label, options and default — session restore, quit confirmation, refresh interval, read timeout, terminal font, log buffer, theme, updates, chart repositories, kubeconfig, proxy and CA bundle.
+sidebar:
+  order: 1
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Settings is one screen, "Preferences for this Kubermeister install.", in sections: **General**,
+**Appearance**, **Updates** (with **About**), **Charts** and **Connection**. There is no Save
+button: a toggle or a choice applies at once, and a text field when you press Return or leave it.
+Escape in a text field puts back what was there.
+
+<Figure
+  name="settings"
+  alt="The Kubermeister settings screen."
+  caption="General comes first: session restore, the quit dialog, and the cadences every screen runs on."
+/>
+
+Open it with **Settings** at the foot of the sidebar, from the command palette, or from the menu:
+**Kubermeister › Settings…** (`⌘,`) on macOS, **File › Settings…** on Windows and Linux.
+
+## General
+
+| Setting                            | Field            | Options                        | Default    |
+| ---------------------------------- | ---------------- | ------------------------------ | ---------- |
+| **Restore last session on launch** | toggle           | on, off                        | on         |
+| **Confirm before quitting**        | toggle           | on, off                        | on         |
+| **Live data refresh**              | Refresh interval | 5, 10, 15, 30 or 60 seconds    | 12 seconds |
+| **Cluster reads**                  | Read timeout     | 15, 30, 60, 120 or 300 seconds | 60 seconds |
+| **Terminal**                       | Font size        | 11, 12, 14 or 16 pt            | 12 pt      |
+| **Log buffer**                     | Buffered lines   | 2k, 10k or 50k lines           | 2k lines   |
+
+- **Restore last session on launch** reopens on the context and namespace you last used. When off,
+  the app follows your kubeconfig's `current-context` instead. See
+  [where it reopens](/docs/clusters/contexts-namespaces/#where-it-reopens).
+- **Confirm before quitting** decides whether quitting asks first. See [quitting](#quitting).
+- **Refresh interval** is how often lists, metrics and the dashboard poll for updates, and how often
+  the context selector's health dot is refreshed. Lists kept current by a watch do not wait for it.
+  The 12-second default is not one of the choices; once you pick another, it is gone from the list.
+- **Read timeout** is how long one request to the API server may take before it is reported as timed
+  out. It both fails the request and **aborts** it, so a screen that polls cannot pile up requests
+  against a cluster that never answers. Large clusters need longer. See
+  [read timeouts](/docs/clusters/connecting/#read-timeouts).
+- **Font size** is the size of the [shell](/docs/sessions/shell/) terminal on a pod. A shell already
+  open keeps its size; the next one uses the new one.
+- **Buffered lines** is how many lines a live [log follow](/docs/sessions/logs/) keeps before
+  dropping the oldest. It is read live, so changing it trims from the next batch on rather than
+  restarting the follow.
+
+## Appearance
+
+**Theme** switches the whole window between **Light**, **Dark** and **System**, which follows your
+operating system's preference and changes with it. The default is **Dark**.
+
+The theme is not in the settings file: it is kept in the window's own local storage.
+
+## Updates
+
+**Automatic updates** decides what happens when a new version is found.
+
+| Field                           | Options                                                                                        | Default                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------ |
+| **When a new version is found** | **Download in the background**, **Notify me and let me choose**, **Never check automatically** | **Download in the background** |
+| **Check for new versions**      | **Every hour**, **Every 4 hours**, **Every 12 hours**, **Once a day**                          | **Every 4 hours**              |
+
+See [updates](/docs/reference/updates/) for what each mode does.
+
+### About
+
+The **About** card shows the app's version, the Electron, Chrome and Node versions it runs on, and
+the updater's latest outcome, with **Check for updates**. Depending on that outcome it adds
+**Download update**, **Restart now**, **What's new** or **Get the update**, each described in
+[updates](/docs/reference/updates/#where-you-see-it).
+
+**Report a bug** opens the bug report form on GitHub in your browser, with the version already
+filled in, and the operating system too on macOS and Windows. On Linux you pick the installer
+yourself, since the app cannot tell an AppImage from a `.deb`.
+
+## Charts
+
+### Chart repositories
+
+The chart sources Kubermeister reads, each a **Classic repository**, which serves an `index.yaml`,
+or an **OCI registry**, addressed as `oci://host`. **Add repository** takes a name (lowercase
+letters, digits, dashes, dots or underscores), the URL, and an optional username and password. Each
+row shows its source, how many charts its index holds, when it was last read, and buttons to
+refresh or remove it. Up to 50 can be added.
+
+In 0.5.0 these sources are read, checked and cached, but nothing installs from them: there is no
+Helm install or upgrade.
+
+Chart sources are a fact about your install, not about the cluster you are pointed at, so a context
+switch leaves them alone. Three things are kept in step: the entry in settings, the cached index,
+and the credential.
+
+- **A source is read before it is recorded.** An address that answers with no index is refused when
+  you add it ("That address does not serve a Helm repository index."), rather than reported as
+  broken from then on. A credential stored for an add that then failed is taken back out.
+- **A password never reaches the settings file.** It is sealed with the operating system's secret
+  store — Keychain on macOS, libsecret on Linux, DPAPI on Windows — and only the ciphertext is
+  written, to its own file beside the settings. A system with no secret store is told so, and the
+  repository can be added without a credential. A credential this machine can no longer open, such
+  as one copied from another machine, reads as absent.
+- **A password is refused for a plaintext `http` address** ("A password needs an https URL."). That
+  repository is still usable anonymously.
+- An **OCI registry** publishes no index, so it is verified the way `helm registry login` does: the
+  registry must answer and accept the credential. Its row shows no chart count, because there is
+  nothing to count.
+- A failed refresh keeps the last good index. Removing a source removes its cached index and its
+  credential with it; nothing in the cluster changes.
+
+## Connection
+
+| Card                      | Field                   | Default                                   |
+| ------------------------- | ----------------------- | ----------------------------------------- |
+| **Kubeconfig**            | Kubeconfig path         | `$KUBECONFIG or ~/.kube/config (default)` |
+| **Proxy**                 | Proxy                   | **Follow the environment**                |
+|                           | Proxy URL               | empty, shown under **Use this proxy**     |
+|                           | Never proxy these hosts | empty, which follows `NO_PROXY`           |
+| **Certificate authority** | CA bundle               | The system certificate authorities only   |
+
+- **Kubeconfig path** changes through **Browse…**, a native file dialog, and **Use default**. See
+  [which kubeconfig it reads](/docs/clusters/connecting/#which-kubeconfig-it-reads).
+- **Proxy** is **Follow the environment**, **Use this proxy** or **Connect directly**. A context whose
+  kubeconfig sets its own `proxy-url` always uses that one, in every mode.
+- **Never proxy these hosts** is a comma-separated list, as `NO_PROXY` spells it, shown under the
+  first two modes.
+- **CA bundle** changes through **Choose file…**, a native file dialog, and **Clear**. It is added to
+  the authorities already trusted, never put in their place.
+
+The interface never sets a file path itself: both paths come from the operating system's dialog.
+Changing the kubeconfig, the proxy or the CA bundle ends every stream and reloads the kubeconfig. See
+[proxies and certificates](/docs/clusters/proxies-and-certificates/).
+
+## The settings file
+
+Settings live in `settings.json` in the app's user-data directory —
+`~/Library/Application Support/Kubermeister` on macOS. The app writes it whole on every change,
+through a temporary file that is then renamed, so a crash mid-write cannot leave half a file.
+
+Beside the settings above, it holds the last context and namespace, the port forwards you have
+started (so they can be offered again), and where the window last stood. The window reopens there,
+unless less than 100 pixels of it would fall on a current display; otherwise it opens at the default
+1200 × 800.
+
+The file is versioned. An older version is migrated forward on load, one the app does not recognise
+falls back to defaults, and each section is checked on its own, so one section that fails falls back
+to its defaults without taking the rest of the file with it.
+
+## Quitting
+
+Quitting ends every port forward, shell, log follow and drain at once, and none of them come back on
+the next launch. So the app asks first, in a native dialog: "Quit Kubermeister?", with that
+consequence spelled out. The text is fixed, and the dialog asks even when nothing is running.
+
+**Cancel** is the default button, so Return, Escape or a repeated `⌘Q` leave everything running;
+quitting has to be chosen. A second `⌘Q` while the dialog is open does not open another.
+
+The dialog is the main process's own rather than the interface's, so it can be answered when the
+window never finished loading.
+
+It asks on the two paths you actually take:
+
+- the **Quit** menu item — **Kubermeister › Quit Kubermeister** (`⌘Q`) on macOS, **File › Quit** on
+  Windows and Linux;
+- closing the window on Windows and Linux, by its close button or `Alt+F4`, where closing the last
+  window quits.
+
+On macOS, closing the window neither asks nor quits: the app keeps running, and clicking its Dock icon
+opens the window again. It does still end every port forward, shell, log follow and drain the window
+had open. An update's restart and a shutdown the operating system asks for do not ask
+either.
+
+Turn it off with **Confirm before quitting** in **Settings › General**, or with **Don't ask again**
+in the dialog itself. The checkbox is only acted on when you answer **Quit**: a cancelled quit is no
+moment to write a preference nobody agreed to.

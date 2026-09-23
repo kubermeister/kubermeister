@@ -1,0 +1,117 @@
+---
+title: Finding your way around
+description: The Kubermeister window — the sidebar and its domains, the top bar with the context and namespace selectors, the command palette, list screens and the detail tab rail.
+sidebar:
+  order: 2
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+The window is the same shape everywhere: a sidebar of domains on the left, a bar across the top
+carrying the scope you are working in, and one screen in the middle that is either a list or one
+object's detail. The app opens on **Overview › Cluster summary**.
+
+## The sidebar
+
+The sidebar holds six domains. Each one collapses; they all start open, and navigating to a screen
+inside a collapsed domain opens it again so the current item is never hidden.
+
+| Domain        | What it holds                                                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Overview**  | Cluster summary, Nodes, Namespaces, Events stream, Quotas, Limits, Priority Classes, Leases, Runtime Classes                                                                         |
+| **Workloads** | COMPUTE: Pods, Deployments, Stateful Sets, Daemon Sets, Replica Sets, Replication Controllers. BATCH: Jobs, Cron Jobs. CONFIG: Config Maps, Secrets, Autoscalers, Disruption Budgets |
+| **Network**   | TRAFFIC: Services, Ingresses, Endpoints, Ingress Classes. POLICY: Network Policies                                                                                                   |
+| **Storage**   | Volumes, Claims, Storage Classes, Snapshots. CSI: CSI Drivers, CSI Nodes, Storage Capacity                                                                                           |
+| **Access**    | IDENTITY: Service Accounts. ROLES: Roles, Role Bindings, Cluster Roles, Cluster Role Bindings                                                                                        |
+| **Add-ons**   | Helm charts, Releases, CRDs. ADMISSION: Mutating Webhooks, Validating Webhooks, Admission Policies. API SERVER: API Services, Flow Schemas                                           |
+
+The footer holds **Quick actions**, which opens the command palette, and **Settings**.
+[Supported resource kinds](/docs/reference/kinds/) maps every kind to its place here.
+
+## The top bar
+
+From left to right:
+
+- **Back** and **Forward** step through the screens you have visited.
+- The **context selector** says which cluster you are on. The dot beside the name carries its
+  health: "Cluster reachable, all nodes ready", "Cluster unreachable or nodes not ready", or "No
+  active cluster". A context the kubeconfig cannot back is struck through in the list and marked
+  "Unusable: names a missing cluster or user".
+- The **namespace selector** scopes every namespaced list to one namespace or to **All
+  namespaces**, with a "Filter namespaces…" box for long lists. It shows names only; it never
+  counts pods beside them, because that would be a whole-cluster pod list dressed as a label.
+- A **connection notice** appears here when the kubeconfig will not load or the context is
+  unusable. See [connecting a cluster](/docs/clusters/connecting/).
+- **Breadcrumbs**: the sidebar item you are under, then the namespace and name of the object you
+  have open. The first crumb links back to the list.
+- The **port forwards** button, shown once there is a forward to list, opens every forward in one
+  place wherever you started it. See [port forwarding](/docs/sessions/port-forwarding/).
+- The **update pill**, shown only when there is something to say about an update: "Update
+  available", "Downloading N%", "Restart to update" or "Update failed". See
+  [updates](/docs/reference/updates/).
+- **Create resource** opens the [Create screen](/docs/browse/manifests/#creating).
+
+Switching context or namespace resets every cluster query, so screens go back to loading rather
+than showing the previous scope's rows. If you are on a detail page, the app takes you back to its
+list first, because the object you were looking at belongs to the scope you are leaving. A context
+switch also stops every port forward.
+
+## The command palette
+
+`⌘K` or `Ctrl+K` opens **Quick actions**, on every platform. Type to filter:
+
+- **Contexts** and **Namespaces** switch scope, as the top bar's selectors do.
+- **Actions**: **Create resource**, and **Check for updates**, which starts a check and opens
+  Settings, where the result shows.
+- Then every screen, grouped by domain, with Settings last.
+
+<Figure
+  name="command-palette"
+  alt="The Kubermeister command palette, listing contexts, namespaces, actions and screens."
+  caption="Contexts and namespaces come first, then the actions, then every screen by domain."
+/>
+
+The other keys, including the ones in the tab rail and the editors, are listed under
+[keyboard shortcuts](/docs/reference/shortcuts/).
+
+## List screens
+
+A list asks for one thing: its kind, in its namespace. The search box narrows the rows already on
+screen against the columns on screen — nothing about it reaches the API server, so it is instant and
+costs the cluster nothing. A header click sorts, and the **Columns** menu hides what you do not
+need.
+
+<Figure
+  name="pods-list"
+  alt="A live list of pods with status, ready ratio, restarts, age and usage meters."
+  caption="The footer counts the results and says “live” while the list is following a watch."
+/>
+
+Rows render only where they are in view, so a list costs the size of your window rather than the
+size of your cluster. [Resource lists](/docs/browse/lists/) covers selection, export and bulk
+delete.
+
+## Detail screens
+
+A header naming the object, with its status and actions (**Refresh**, **Edit**, **Delete** and any
+the kind adds), over a left rail of tabs in labelled groups:
+
+- **OBSERVE**, on every kind: usually Overview and Events, plus what the kind has to watch, such
+  as a pod's Logs and Related tabs or a workload's Pods and Logs.
+- **INSPECT**, on every kind: usually Manifest and Labels, plus Describe on pods and nodes and a
+  pod's Network tab, where its port forwards are started.
+- **CONNECT**, on pods only: Shell.
+
+A few kinds add a group of their own: **DATA** on ConfigMaps (Entries) and Secrets (Keys),
+**NETWORK** on Services (Ports, Endpoints, Selector), **ROUTING** on Ingresses (Rules, TLS) and
+**ROLLOUT** on Deployments (Status, History, Replica Sets). There is no metrics tab; usage is shown
+on the Overview.
+
+The arrow keys move between tabs once one has focus. Tabs that hold something you would not want to
+lose — a pod's Logs and Network tabs, and every Manifest tab — stay mounted when you switch away, so
+a follow, a forward or an edit survives. The Shell tab deliberately does not, so merely opening a
+pod's page never execs into it. [Detail pages](/docs/browse/details/) goes through the shared tabs.
+
+## Next
+
+[Your first five minutes](/docs/start/first-cluster/) puts this to use.

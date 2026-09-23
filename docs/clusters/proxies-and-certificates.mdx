@@ -1,0 +1,90 @@
+---
+title: Proxies and certificate authorities
+description: Using Kubermeister behind a corporate HTTP or SOCKS proxy and with a private certificate authority — how HTTPS_PROXY, NO_PROXY, a kubeconfig's proxy-url and a CA bundle are applied.
+sidebar:
+  order: 3
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Kubermeister proxies what a `kubectl` in the same shell would, and adds a certificate authority
+rather than replacing the ones already trusted. Both are set in **Settings › Connection**.
+
+<Figure
+  name="settings-connection"
+  alt="Settings › Connection, with the Kubeconfig, Proxy and Certificate authority cards."
+  caption="The defaults: the environment’s proxy, no hosts excluded, and the system’s authorities only."
+/>
+
+The proxy and the certificate authorities are written onto the kubeconfig the app has loaded, per
+cluster, in memory. That is the one place every path already reads — ordinary calls and the exec and
+port-forward websockets alike — and the file on disk is never touched.
+
+## Which proxy a cluster uses
+
+In order of precedence:
+
+1. **`proxy-url` in the kubeconfig's cluster entry.** A cluster that carries one always uses it, in
+   every mode, including **Connect directly**. The file is the more specific answer.
+2. **The mode in Settings › Connection › Proxy**:
+   - **Follow the environment** (the default) — `HTTPS_PROXY` for an `https` API server and
+     `HTTP_PROXY` for an `http` one, with no fallback from one scheme to the other. The lower-case
+     spellings are read when the upper-case ones are unset, and a bare `host:port` is read as an
+     `http://` proxy.
+   - **Use this proxy** — the **Proxy URL** you give, in place of `HTTPS_PROXY` and `HTTP_PROXY`.
+     It takes `http`, `https`, `socks`, `socks4`, `socks5` and `socks5h` URLs, and does not save
+     anything else. Left empty, calls connect directly.
+   - **Connect directly** — no proxy, whatever the environment says.
+
+The environment is your login shell's as well as the app's own: on macOS and Linux the app asks your
+shell for the proxy variables at startup, so an app launched from the Dock proxies what a terminal
+would. A variable the app was launched with wins over the shell's.
+
+Loopback addresses — `localhost`, `*.localhost`, `127.*` and `::1` — are never proxied, so a kind,
+k3s or minikube cluster keeps working behind a corporate proxy.
+
+## Hosts that skip the proxy
+
+**Never proxy these hosts** is shown under both **Follow the environment** and **Use this proxy**.
+It takes a comma-separated list spelled as `NO_PROXY` spells it. When it is set it replaces
+`NO_PROXY`; when it is empty, `NO_PROXY` from the environment applies.
+
+An entry matches:
+
+- `*` — every host;
+- a host name exactly, or as a domain suffix, with or without the leading dot (`corp.example` and
+  `.corp.example` both match `api.corp.example`);
+- an IPv4 range in CIDR form, such as `10.0.0.0/8`;
+- any of those with a `:port`, which must match too.
+
+IPv6 ranges are not matched.
+
+## Certificate authorities
+
+**Settings › Connection › Certificate authority** takes a **CA bundle**, a PEM file of extra
+authorities to trust for cluster TLS — for a private authority, or a proxy that inspects traffic.
+**Choose file…** picks it through a native dialog, titled "Choose a CA bundle"; the interface never
+takes a typed path. **Clear** removes it, and the card then reads "The system certificate
+authorities only".
+
+The bundle is **added** to what a cluster already trusts, never substituted for it — the way
+`NODE_EXTRA_CA_CERTS` behaves. A cluster with an authority of its own in the kubeconfig trusts that
+plus your bundle; one with none trusts the public roots plus your bundle. If a cluster's own
+`certificate-authority` file cannot be read, the bundle is not applied to that cluster, and the
+connection fails the way the kubeconfig alone would.
+
+A bundle that cannot be read, or holds no PEM certificate, changes nothing about the connection.
+The **Proxy and certificates** startup check reports it instead, and the top bar shows **CA bundle
+unreadable**, whose popover names the file and offers **Try again**. The fix is in Settings: choose
+the file again, or clear it.
+
+A certificate the cluster presents and the app does not trust is reported as **Cluster
+unreachable** ("The cluster API server is unreachable."), not as a certificate error. If a private
+cluster is unreachable only from Kubermeister, a missing CA is the first thing to check.
+
+## When either changes
+
+Changing the proxy mode, the proxy URL, the bypass list or the CA bundle ends every stream and
+reloads the kubeconfig, because all of them are read once, when it loads. Port forwards leave the
+top bar's list, and an open shell prints "The proxy settings changed" and `[session ended]` — the
+reason given for a CA bundle change too.

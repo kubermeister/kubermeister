@@ -1,14 +1,22 @@
 # The screenshot harness
 
-Generates the screenshots in `docs/screenshots/` for the README, the website and the docs. It is not
-a test suite: nothing here asserts that the app is correct, and `npm run test:e2e` never touches it.
+Generates the screenshots the documentation in `docs/` and the website show. It is not a test suite:
+nothing here asserts that the app is correct, and `npm run test:e2e` never touches it.
 
 ```sh
-npm run build          # the harness drives out/, like the end-to-end suite
-npm run screenshots    # boots the demo cluster, shoots every shot in both themes
+npm run build                          # the harness drives out/, like the end-to-end suite
+npm run screenshots                    # boots the demo cluster, shoots every shot in both themes
+npm run screenshots:sync -- <shot>...  # commits the named shots as WebP
 ```
 
-Shots land in `docs/screenshots/dark/` and `docs/screenshots/light/`, one PNG per shot name.
+Raw shots land in `.screenshots/dark/` and `.screenshots/light/`, one PNG per shot name, and are
+ignored by git. What is committed is `docs/screenshots/<theme>/<shot>.webp`, which the sync writes
+from them: near-lossless WebP at most 2048 px wide, a third the size of the PNG.
+
+The sync writes **only the shots it is given**, plus any shot that has no image yet; `--all`
+replaces the whole set. Every run differs from the last in ages, timestamps, chart lines and
+generated pod names, so a pull request commits the shots of the screens it changed and leaves the
+rest alone, rather than adding a whole set of new bytes to history each time.
 
 ## Why generate them
 

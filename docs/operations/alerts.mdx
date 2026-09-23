@@ -1,0 +1,78 @@
+---
+title: Cluster alerts
+description: The alerts on Kubermeister's Cluster summary — pending, failed and crash-looping pods, image pull failures, NotReady and cordoned nodes, failed Jobs, and Pending or Lost PersistentVolumeClaims — and how they are found without listing every pod.
+sidebar:
+  order: 4
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Alerts are derived from cluster state, cluster-wide, with rules the app decides rather than ones you
+tune. They are meant to answer "is anything obviously wrong" at a glance.
+
+## Where alerts show
+
+Alerts appear in one place: the **Alerts** panel on **Overview › Cluster summary**, the screen the
+app opens on. A badge beside the title counts them, and the panel reads "No active alerts." when
+there are none. Each alert has a title naming the object and a line of detail under it.
+
+- The list is **cluster-wide**, whatever namespace the top bar is scoped to, so the summary means the
+  same thing on every screen.
+- **Danger alerts come first**, then warnings, and the panel shows **at most 20**. On a cluster with
+  more, warnings are the first to be left out.
+- It is re-read at the **Live data refresh** interval, and straight after a write that could change
+  it, such as a cordon or a delete.
+- Each source is best-effort: if your RBAC forbids reading Jobs, say, the other alerts still show.
+
+## The rules
+
+| Alert                     | Tone    | Raised when                                                                                                                                                                                   |
+| ------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pod pending: _pod_        | warning | The pod's phase is `Pending`, and it is not one of the two cases below.                                                                                                                       |
+| CrashLoopBackOff: _pod_   | danger  | A `Pending` pod has a container waiting in `CrashLoopBackOff`; **or** the pod had a Warning `BackOff` event in the last 10 minutes whose message does not mention pulling an image.           |
+| Image pull failure: _pod_ | danger  | A `Pending` pod has a container waiting in `ImagePullBackOff` or `ErrImagePull`; **or** the pod had a Warning `BackOff` event in the last 10 minutes whose message mentions pulling an image. |
+| Pod failed: _pod_         | danger  | The pod's phase is `Failed`.                                                                                                                                                                  |
+| Node NotReady: _node_     | danger  | The node's `Ready` condition is not `True`.                                                                                                                                                   |
+| Node cordoned: _node_     | warning | The node is ready but unschedulable (`spec.unschedulable`).                                                                                                                                   |
+| Job failed: _job_         | danger  | The Job has a `Failed` condition that is `True`.                                                                                                                                              |
+| PVC Pending: _claim_      | warning | The PersistentVolumeClaim's phase is `Pending`.                                                                                                                                               |
+| PVC Lost: _claim_         | danger  | The PersistentVolumeClaim's phase is `Lost`.                                                                                                                                                  |
+
+A pod gets **one** alert however many rules it matches: a pending pod that also has back-off events
+is one problem, not two. A NotReady node that is also cordoned reads as NotReady.
+
+The detail line names where the object is (`namespace/name`). A crash loop found from events also
+says how many back-offs it saw in the last 10 minutes, a pod crash loop found from its status gives
+its restart count, a failed Job gives its completions, and a claim gives its storage class.
+
+## How pod alerts avoid reading every pod
+
+**Pod alerts never read every pod**, which on a busy cluster would be megabytes on every refresh:
+
+<Figure
+  name="events"
+  alt="The events stream, which is where crash loops and image pull failures are found."
+  caption="A CrashLoopBackOff pod is phase Running, so the kubelet’s own Warning events are the cheap signal."
+/>
+
+- **Pending and failed pods** come from `status.phase` field selectors, so the API server does the
+  filtering and returns only the pods in question.
+- **Crash loops and image pull failures** of running pods come from the Warning `BackOff` events
+  the kubelet emits for them. Only events from the **last 10 minutes** count, since an older one
+  describes a pod that has since settled or gone, and they are grouped per pod.
+
+That second one is not an optimisation, it is a correctness point: a CrashLoopBackOff pod is phase
+`Running`, so no field selector finds it. The event is the only cheap signal.
+
+Nodes, Jobs and PersistentVolumeClaims are small lists by comparison, so the app reads each of them
+in full, across all namespaces, on every refresh.
+
+## What is deliberately missing
+
+There is **no high-restarts alert**, because healthy pods' restart counts are never read. Adding one
+would mean listing every pod in the cluster on a timer, which is exactly what the rest of the app
+avoids.
+
+There is also no alert for a Deployment or other workload with fewer available replicas than it
+wants. A rollout in trouble shows on the Deployment's **Status** tab instead — see
+[deployments and rollouts](/docs/workloads/rollouts/).

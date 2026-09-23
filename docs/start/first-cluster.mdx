@@ -1,0 +1,77 @@
+---
+title: Your first five minutes
+description: A short tour of Kubermeister — check the connection, find a workload, read its logs, shell into a pod, forward a port and look at the cluster summary.
+sidebar:
+  order: 3
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Kubermeister reads the kubeconfig you already have. If `kubectl get pods` works in your terminal,
+the app works too.
+
+## 1. Check the connection
+
+The top bar tells you which context you are on, and the dot beside it whether the cluster answers
+and its nodes are ready. If something is wrong with the kubeconfig or the context, a notice appears
+there with the ways out: **Try again**, **Choose kubeconfig…**, and **Use default kubeconfig** when
+you have chosen a kubeconfig of your own. The app itself always loads, even when no cluster will
+answer.
+
+## 2. Find a workload
+
+The app opens on the cluster summary. Open **Workloads › Deployments**. The list is live — it
+watches the API server rather than polling, so a rollout appears as it happens, and the footer says
+"live" while the watch is connected. Type in the search box to narrow to the rows you want.
+
+## 3. Read its logs
+
+Open a deployment and go to its **Logs** tab. It is already following, and it is following _every_
+pod the deployment owns at once, merged in arrival order and coloured by pod. There is no API call
+for "the logs of this deployment", so the app opens one stream per pod. The set of pods is re-read
+at the refresh interval, so a replaced pod stops being followed and its replacement starts.
+
+Search narrows the console. Turn on **Highlight matches**, the highlighter button beside the search
+box, if you would rather keep every line and mark the matches where they sit.
+
+## 4. Shell into a pod
+
+Open one of its pods from the **Pods** tab and choose the **Shell** tab. The session opens with the
+tab and ends when you leave, which is how a shell is closed — nothing is left attached in the
+background.
+
+:::caution[Known issue]
+On a pod with an init container, Shell and Logs open on the init container and fail. Pick an app
+container from the list. ([#333](https://github.com/kubermeister/kubermeister/issues/333))
+:::
+
+## 5. Forward a port
+
+On a pod, the **Network** tab starts a forward to one of its declared container ports; on a
+Service, the **Ports** tab does the same for one of its ports. Forwards are listed under the port
+forwards button in the top bar and stopped from there, wherever you started them. A forward aimed
+at a Service picks a ready pod behind it for each new connection, so the next rollout does not end
+it.
+
+:::caution[Known issue]
+A Service forward sends traffic to the Service's `port` on the pod, not its `targetPort`, so it only
+works where the two are the same.
+([#334](https://github.com/kubermeister/kubermeister/issues/334))
+:::
+
+## 6. Look at the cluster
+
+**Overview › Cluster summary** puts node health, usage, recent events and alerts on one screen. The
+usage charts are sampled while the app is open — they start empty on every launch and reset when
+you switch context, so they never claim history the app does not have.
+
+<Figure
+  name="summary"
+  alt="The Kubermeister cluster summary with node health, usage charts, recent events and alerts."
+  caption="The cluster summary. The charts cover only the time the app has been open."
+/>
+
+## Next
+
+[Finding your way around](/docs/start/interface/), [contexts and
+namespaces](/docs/clusters/contexts-namespaces/), or jump to [logs](/docs/sessions/logs/).

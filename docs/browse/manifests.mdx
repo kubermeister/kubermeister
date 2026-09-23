@@ -1,0 +1,119 @@
+---
+title: Manifests and YAML
+description: Reading a Kubernetes object as YAML in Kubermeister, editing it with dry run, a review of the changes and conflict recovery, and creating objects from a template, a file or a paste.
+sidebar:
+  order: 3
+---
+
+import Figure from '@/components/docs/Figure.astro';
+
+Every object's detail page has a **Manifest** tab showing it as the cluster holds it. Manifests
+are serialised with plain YAML rather than the client library's typed dump, which drops fields it
+does not know about — so anything a controller or a CRD put there is on screen. Two things are left
+out as noise: `managedFields` and the `kubectl.kubernetes.io/last-applied-configuration`
+annotation.
+
+The editor has line numbers, bracket matching and its own search. **Download** saves what it shows
+as `<name>.yaml`.
+
+## Editing
+
+**Edit**, on the Manifest tab or in the page header, re-reads the object first, so you start from
+its current version. The bar then reads "Editing — Save replaces the live object", with **Cancel**,
+**Dry run**, **Review changes** and **Save**. The tab stays mounted, so an edit survives switching
+to another tab and back. A Helm release's Manifest tab is the exception: it is what the chart
+rendered, and it is never editable.
+
+<Figure
+  name="manifest-editor"
+  alt="The manifest editor showing an object as YAML in edit mode."
+  caption="The bar says what Save does: it replaces the live object with this buffer."
+/>
+
+- **Dry run** sends the manifest through the API server's full admission chain with nothing
+  persisted, and says "Dry run passed" when the server would accept it.
+- **Review changes** shows what Save is about to write, as a diff against the object you started
+  from: lines marked − go, lines marked + arrive. **Save** in the dialog writes it; **Keep editing**
+  goes back. With nothing changed it says so.
+- **Save** writes straight away.
+
+<Figure
+  name="manifest-review"
+  alt="The Review changes dialog showing one removed line and one added line."
+  caption="Only the lines that differ are what the save actually changes."
+/>
+
+Saving is a **replace**, and a replace must carry the `metadata.resourceVersion` the object was read
+with. That is what turns a concurrent change into a visible conflict instead of a silent overwrite
+of somebody else's edit. When it happens, a banner says the object changed on the server since you
+started editing, and **Reload latest** takes the new version without throwing away your edits: it
+puts the fresh `resourceVersion` into your buffer, so you can look again and save.
+
+The editor also pins what it was opened on: a manifest naming a different kind, name or namespace is
+refused rather than applied somewhere unexpected. To make a new object from an existing one, use
+[Create resource](#creating).
+
+Unsaved edits are not lost by accident. **Cancel**, or leaving the page, asks "Discard unsaved
+changes?" with **Keep editing** and **Discard**.
+
+## Creating
+
+**Create resource**, in the top bar or the command palette, opens a blank editor. Its heading says
+where the manifest will go — "Apply manifest to" the current context and namespace — and, once a
+file is open, which file it came from.
+
+<Figure
+  name="create-resource"
+  alt="The Create resource screen with a Deployment template in the editor."
+  caption="The heading names the context and namespace the manifest will be applied to."
+/>
+
+Paste a manifest, open a file, or pick one from **Insert template…**:
+
+| Workloads               | Networking    | Configuration and storage | Access         |
+| ----------------------- | ------------- | ------------------------- | -------------- |
+| Deployment              | Service       | ConfigMap                 | ServiceAccount |
+| StatefulSet             | Ingress       | Secret                    | Role           |
+| DaemonSet               | NetworkPolicy | PersistentVolumeClaim     | RoleBinding    |
+| Job                     |               |                           |                |
+| CronJob                 |               |                           |                |
+| HorizontalPodAutoscaler |               |                           |                |
+
+The picker shows each template's API version beside it, such as `apps/v1` or `autoscaling/v2`.
+
+**Dry run** checks the manifest against the server the same way the editor's does. **Create**
+applies it, and on success takes you to that kind's list; a custom resource leaves you on the
+Create screen. The API path is derived from the manifest's own `apiVersion` and `kind`, so a custom
+resource rides exactly the same call as a Pod.
+
+The editor takes **one object**. The manifest must be a single YAML document with `apiVersion`,
+`kind` and `metadata.name` (or `generateName`); a file of several documents, such as one saved with
+[Export](/docs/browse/lists/#exporting) from a selection of several rows, is refused.
+
+Namespace rules are enforced at the boundary:
+
+- A manifest that names no namespace takes the **active** one.
+- With **All namespaces** selected and no namespace in the manifest, the write is refused rather than
+  left to a client-library default. The heading says as much: "the namespace each manifest names".
+- A cluster-scoped kind has any `metadata.namespace` removed before it is written.
+- A kind the app does not recognise is asked of API discovery to learn whether it is namespaced.
+
+## Opening a manifest from a file
+
+There is no File menu for this. A file comes in one of two ways, and either opens the Create screen
+on it without applying anything:
+
+- **Import**, on the Create screen, opens the system's "Open a manifest" dialog, which offers
+  `.yaml`, `.yml` and `.json` files (or any file, if you choose).
+- **Drop a file anywhere on the window**, from any screen. The window shows "Drop to open the
+  manifest"; only the first file of a drop is taken.
+
+The file must be text and at most 2 MB. A file only ever enters the app through the OS — a native
+dialog, or a real drag-and-drop — never through a path the interface chose. A template, an import
+and a drop all ask "Replace editor content?" before they replace work you have typed in.
+
+## Secrets
+
+A Secret's **Manifest** tab shows the object as the cluster holds it, values included, because that
+is what editing it requires. Everywhere else, values are handled one key at a time — see
+[security](/docs/reference/security/).

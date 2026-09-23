@@ -31,7 +31,7 @@ const SOAK_MS = Number(process.env.KM_DEMO_SOAK_SEC ?? 150) * 1_000;
 test.beforeAll(async () => {
     // One project per theme, so the project's name is which theme this run is shooting.
     theme = test.info().project.name as Theme;
-    outDir = resolve('docs/screenshots', theme);
+    outDir = resolve('.screenshots', theme);
     mkdirSync(outDir, { recursive: true });
     launched = await launchApp(theme);
 
