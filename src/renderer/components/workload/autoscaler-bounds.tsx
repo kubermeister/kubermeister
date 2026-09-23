@@ -56,7 +56,11 @@ export function AutoscalerBounds({ name, namespace, min, max, targetCpuPercent }
                 namespace,
                 minReplicas,
                 maxReplicas,
-                ...(parsedTarget === undefined ? {} : { targetCpuPercent: parsedTarget }),
+                // Only a target the reader changed is sent: sending the one it opened with would
+                // rewrite the autoscaler's metrics for a save that meant to move the bounds.
+                ...(parsedTarget === undefined || parsedTarget === targetCpuPercent
+                    ? {}
+                    : { targetCpuPercent: parsedTarget }),
             })
             .catch(() => null);
         if (!done) return;

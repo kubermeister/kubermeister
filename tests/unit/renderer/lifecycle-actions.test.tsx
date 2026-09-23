@@ -212,7 +212,7 @@ describe('job and cron job actions', () => {
 });
 
 describe('autoscaler bounds', () => {
-    it('edits the range and the CPU target where they are read', async () => {
+    it('sends only the range when only the range changed, so the metrics are left as they are', async () => {
         const { AutoscalerBounds } = await import('@/components/workload/autoscaler-bounds');
         renderInRouter(<AutoscalerBounds name="web" namespace="team-a" min={2} max={5} targetCpuPercent={80} />);
         await userEvent.click(await screen.findByRole('button', { name: 'Edit bounds' }));
@@ -228,7 +228,27 @@ describe('autoscaler bounds', () => {
                 namespace: 'team-a',
                 minReplicas: 2,
                 maxReplicas: 9,
-                targetCpuPercent: 80,
+            }),
+        );
+    });
+
+    it('sends the CPU target when it was changed', async () => {
+        const { AutoscalerBounds } = await import('@/components/workload/autoscaler-bounds');
+        renderInRouter(<AutoscalerBounds name="web" namespace="team-a" min={2} max={5} targetCpuPercent={80} />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Edit bounds' }));
+        const panel = await screen.findByTestId('autoscaler-bounds');
+        const cpu = within(panel).getByLabelText('Target CPU %');
+        await userEvent.clear(cpu);
+        await userEvent.type(cpu, '65');
+        await userEvent.click(within(panel).getByRole('button', { name: 'Save' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('autoscalers.update', {
+                context: 'alpha',
+                name: 'web',
+                namespace: 'team-a',
+                minReplicas: 2,
+                maxReplicas: 5,
+                targetCpuPercent: 65,
             }),
         );
     });

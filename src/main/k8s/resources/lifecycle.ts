@@ -1,4 +1,4 @@
-import type { KubernetesObject, V1Job, V1JobSpec, V1ObjectMeta } from '@kubernetes/client-node';
+import type { KubernetesObject, V1Job, V1JobSpec, V1ObjectMeta, V2MetricSpec } from '@kubernetes/client-node';
 import type {
     AutoscalerUpdateInput,
     CronJobSuspendInput,
@@ -196,39 +196,46 @@ interface AutoscalerPatch extends KubernetesObject {
     spec: {
         minReplicas: number;
         maxReplicas: number;
-        metrics?: {
-            type: 'Resource';
-            resource: { name: 'cpu'; target: { type: 'Utilization'; averageUtilization: number } };
-        }[];
+        metrics?: V2MetricSpec[];
     };
 }
 
+/** The autoscaler's metrics with the CPU utilisation target set, every other metric left where it was. */
+export function withCpuTarget(metrics: readonly V2MetricSpec[], averageUtilization: number): V2MetricSpec[] {
+    const cpu: V2MetricSpec = {
+        type: 'Resource',
+        resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization } },
+    };
+    const at = metrics.findIndex((metric) => metric.type === 'Resource' && metric.resource?.name === 'cpu');
+    return at === -1 ? [...metrics, cpu] : metrics.map((metric, index) => (index === at ? cpu : metric));
+}
+
 /**
- * Adjust an autoscaler's bounds, and its CPU target when it has one. A strategic merge would merge
- * the metrics list by index and leave any other metric in place, which is why the CPU target is
- * only ever sent when the caller asked to change it: an HPA watching something else keeps watching
- * it, and this write never silently narrows what an autoscaler reacts to.
+ * Adjust an autoscaler's bounds, and its CPU target when the caller asked to change it. The
+ * metrics list is atomic, so any patch that names it replaces all of it: the CPU target is
+ * therefore sent inside the whole list as the autoscaler holds it, read first and changed in that
+ * one entry, and carries the resourceVersion that read saw, so a list somebody changed in between
+ * is a conflict rather than a silent overwrite. Without a CPU target to set, the metrics are not
+ * sent at all and an HPA watching something else keeps watching it.
  */
 export function updateAutoscaler(input: AutoscalerUpdateInput): Promise<WriteResult> {
     const op = 'autoscalers.update';
     return withK8s(op, async () => {
         assertContext(input.context, op);
+        const metadata: V1ObjectMeta = { name: input.name, namespace: input.namespace };
         const patch: AutoscalerPatch = {
             apiVersion: 'autoscaling/v2',
             kind: 'HorizontalPodAutoscaler',
-            metadata: { name: input.name, namespace: input.namespace },
+            metadata,
             spec: { minReplicas: input.minReplicas, maxReplicas: input.maxReplicas },
         };
         if (input.targetCpuPercent !== undefined) {
-            patch.spec.metrics = [
-                {
-                    type: 'Resource',
-                    resource: {
-                        name: 'cpu',
-                        target: { type: 'Utilization', averageUtilization: input.targetCpuPercent },
-                    },
-                },
-            ];
+            const current = await apis().hpa.readNamespacedHorizontalPodAutoscaler({
+                name: input.name,
+                namespace: input.namespace,
+            });
+            if (current.metadata?.resourceVersion) metadata.resourceVersion = current.metadata.resourceVersion;
+            patch.spec.metrics = withCpuTarget(current.spec?.metrics ?? [], input.targetCpuPercent);
         }
         await apis().objects.patch(patch);
         return { kind: 'HorizontalPodAutoscaler', name: input.name, namespace: input.namespace };

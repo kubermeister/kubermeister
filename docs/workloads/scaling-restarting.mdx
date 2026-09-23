@@ -63,23 +63,22 @@ filled in with the autoscaler's current values, and **Save**.
 <Figure
   name="autoscaler-bounds"
   alt="The Autoscaler bounds popover with Minimum replicas, Maximum replicas and Target CPU % fields and a Save button."
-  caption="The CPU field starts with the current target, so Save sends it back even when you only change the bounds."
+  caption="Each field starts with the current value; only what you change is written."
 />
 
 **Save** stays disabled until both counts are whole numbers, the minimum is at least one and the
 maximum at least the minimum ("The maximum must be at least the minimum, and both at least one.").
 The CPU target, when given, must be a whole number of at least one; an autoscaler with no CPU target
-shows the field empty (`—`), and leaving it empty writes only the bounds.
+shows the field empty (`—`).
+
+**Save** writes the bounds, and writes the CPU target only when you changed it. Changing it replaces
+just the autoscaler's CPU utilisation target: memory, custom and external metrics it also watches
+stay as they were, and an autoscaler with no CPU target gains one after the metrics it already has.
+If the autoscaler was changed by someone else between opening the popover and saving, the save is
+refused as a conflict rather than overwriting their change.
 
 Anything else about an autoscaler — which metrics it watches, its scaling behaviour — is edited in
 the [manifest editor](/docs/browse/manifests/).
-
-:::caution[Known issue]
-Because **Target CPU %** is filled in with the current target, **Save** on an autoscaler that already
-targets CPU always writes the metrics list back as that one CPU metric. An autoscaler that also
-watches memory or a custom metric can lose them. Change such an autoscaler through the manifest
-editor instead. ([#337](https://github.com/kubermeister/kubermeister/issues/337))
-:::
 
 ## Evicting and deleting pods
 
