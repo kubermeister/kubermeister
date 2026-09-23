@@ -9,8 +9,9 @@ const batch = {
     readNamespacedCronJob: vi.fn(),
 };
 const objects = { patch: vi.fn() };
+const hpa = { readNamespacedHorizontalPodAutoscaler: vi.fn() };
 const client = {
-    apis: () => ({ core, batch, objects }),
+    apis: () => ({ core, batch, objects, hpa }),
     activeContextName: vi.fn<() => string>(() => 'alpha'),
     getActiveNamespace: vi.fn<() => string | null>(() => 'team-a'),
 };
@@ -210,13 +211,24 @@ describe('running and holding a cron job', () => {
 describe('adjusting an autoscaler', () => {
     it('sends the bounds, and the CPU target only when one was asked for', async () => {
         const target = { context: 'alpha', name: 'web', namespace: 'team-a' };
+        hpa.readNamespacedHorizontalPodAutoscaler.mockResolvedValue({
+            metadata: { resourceVersion: '41' },
+            spec: {
+                metrics: [
+                    {
+                        type: 'Resource',
+                        resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization: 80 } },
+                    },
+                ],
+            },
+        });
         await expect(
             lifecycle.updateAutoscaler({ ...target, minReplicas: 2, maxReplicas: 8, targetCpuPercent: 70 }),
         ).resolves.toEqual({ kind: 'HorizontalPodAutoscaler', name: 'web', namespace: 'team-a' });
         expect(objects.patch).toHaveBeenCalledWith({
             apiVersion: 'autoscaling/v2',
             kind: 'HorizontalPodAutoscaler',
-            metadata: { name: 'web', namespace: 'team-a' },
+            metadata: { name: 'web', namespace: 'team-a', resourceVersion: '41' },
             spec: {
                 minReplicas: 2,
                 maxReplicas: 8,
@@ -233,6 +245,84 @@ describe('adjusting an autoscaler', () => {
         await lifecycle.updateAutoscaler({ ...target, minReplicas: 1, maxReplicas: 3 });
         expect(objects.patch).toHaveBeenLastCalledWith(
             expect.objectContaining({ spec: { minReplicas: 1, maxReplicas: 3 } }),
+        );
+    });
+
+    it('changes the CPU target and keeps every other metric the autoscaler watches', async () => {
+        const memory = {
+            type: 'Resource',
+            resource: { name: 'memory', target: { type: 'Utilization', averageUtilization: 75 } },
+        };
+        const queue = {
+            type: 'External',
+            external: { metric: { name: 'queue_depth' }, target: { type: 'AverageValue', averageValue: '30' } },
+        };
+        hpa.readNamespacedHorizontalPodAutoscaler.mockResolvedValue({
+            metadata: { resourceVersion: '7' },
+            spec: {
+                metrics: [
+                    memory,
+                    {
+                        type: 'Resource',
+                        resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization: 80 } },
+                    },
+                    queue,
+                ],
+            },
+        });
+        await lifecycle.updateAutoscaler({
+            context: 'alpha',
+            name: 'web',
+            namespace: 'team-a',
+            minReplicas: 2,
+            maxReplicas: 6,
+            targetCpuPercent: 60,
+        });
+        expect(objects.patch).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                spec: {
+                    minReplicas: 2,
+                    maxReplicas: 6,
+                    // Same order, same neighbours: only the CPU entry's target is different.
+                    metrics: [
+                        memory,
+                        {
+                            type: 'Resource',
+                            resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization: 60 } },
+                        },
+                        queue,
+                    ],
+                },
+            }),
+        );
+    });
+
+    it('adds a CPU target to an autoscaler that had none, after what it already watches', async () => {
+        const memory = {
+            type: 'Resource',
+            resource: { name: 'memory', target: { type: 'Utilization', averageUtilization: 75 } },
+        };
+        hpa.readNamespacedHorizontalPodAutoscaler.mockResolvedValue({ metadata: {}, spec: { metrics: [memory] } });
+        await lifecycle.updateAutoscaler({
+            context: 'alpha',
+            name: 'web',
+            namespace: 'team-a',
+            minReplicas: 1,
+            maxReplicas: 4,
+            targetCpuPercent: 50,
+        });
+        expect(objects.patch).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                spec: expect.objectContaining({
+                    metrics: [
+                        memory,
+                        {
+                            type: 'Resource',
+                            resource: { name: 'cpu', target: { type: 'Utilization', averageUtilization: 50 } },
+                        },
+                    ],
+                }),
+            }),
         );
     });
 

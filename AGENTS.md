@@ -623,7 +623,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   figures the rows put beside their requests, read once so the two cannot disagree, and the request
   travels as a number as well as a string so the renderer never parses quantities.
 - `autoscalers.update` adjusts an HPA's bounds, and its CPU target only when the caller asked, so
-  an autoscaler watching other metrics keeps watching them.
+  an autoscaler watching other metrics keeps watching them. The metrics list is atomic, so a CPU
+  target goes out inside the whole list as read, with only the CPU entry changed and the read's
+  resourceVersion attached; the form sends a target only when the reader changed it.
 
 ### Lifecycle writes
 

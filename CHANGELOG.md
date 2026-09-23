@@ -27,6 +27,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A port forward started from a Service reaches its pods on the Service port's target port, where
   it went to the Service's own port number and failed whenever the two differed.
 
+- Saving an autoscaler's bounds keeps every metric it watches. Changing only the replica range no
+  longer rewrites its metrics, and changing the CPU target replaces that target alone, where either
+  used to leave an autoscaler that also watched memory or a custom metric watching CPU only.
+
 ## [0.5.0] - 2026-09-22
 
 ### Added
