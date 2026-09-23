@@ -83,7 +83,7 @@ object's name before **Delete** unlocks, and says what goes with it:
 ## Bulk delete
 
 Most lists have a checkbox column. Checking rows brings up a bar above the list with **N selected**,
-**Clear**, **Export N** (see [lists](/docs/browse/lists/)) and **Delete N**. The selection is exactly
+**Clear**, **Export N** (see [lists](/docs/browse/lists/)) and, unless the kind is one of those above, **Delete N**. The selection is exactly
 the checked rows that the current search shows.
 
 **Delete N** asks "Delete _N kinds_?", naming up to eight of them and counting the rest. The deletes
@@ -91,14 +91,10 @@ then run four at a time, each on its own, so one failure does not stop the other
 toast — "_N kinds_ deleted", or "_N kinds_ deleted, _M_ failed" with the reason for each failure — and
 the rows that failed stay selected, so a retry starts from exactly those.
 
-The Nodes, Namespaces and CustomResourceDefinitions lists have no checkbox column, so those kinds can
-only be deleted one at a time, by name.
-
-:::caution[Known issue]
-PersistentVolumes, StorageClasses, ClusterRoles and ClusterRoleBindings **can** be bulk deleted, and
-**Delete N** does not ask you to type any names, unlike their single delete. Check the selection
-before you confirm. ([#336](https://github.com/kubermeister/kubermeister/issues/336))
-:::
+None of the kinds above that ask for a typed name can be deleted in bulk. The PersistentVolumes,
+StorageClasses, ClusterRoles and ClusterRoleBindings lists keep their checkbox column for **Export
+N**, but the bar offers no **Delete N**; the Nodes, Namespaces and CustomResourceDefinitions lists
+have no checkbox column. Each is deleted one at a time from its detail page, by name.
 
 ## Errors
 

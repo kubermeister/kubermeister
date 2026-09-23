@@ -85,7 +85,7 @@ The exceptions are Nodes, Namespaces, the Events stream, Quotas, Limits, CRDs, c
 instances, Helm releases and Helm charts.
 
 Once rows are checked, a bar beside the search box says how many and offers **Clear**,
-**Export N** and **Delete N**. A selection belongs to the context and namespace it was made in: it
+**Export N** and, for most kinds, **Delete N**. A selection belongs to the context and namespace it was made in: it
 is set aside when you switch, so it can never act on same-named objects in the new scope. Rows that
 the search is hiding are not part of it.
 
@@ -123,14 +123,10 @@ several cannot be applied back through it.
 few at a time, and one message reports the outcome. Whatever failed stays selected, so a retry
 starts from exactly there.
 
-Deleting a single Node, Namespace or CRD from its detail page asks you to type its name; their lists
-have no selection, so they cannot be deleted in bulk.
-
-:::caution[Known issue]
-PersistentVolumes, StorageClasses, ClusterRoles and ClusterRoleBindings also ask for the typed name
-when deleted one at a time, but their lists allow bulk delete, and **Delete N** asks no typed name.
-([#336](https://github.com/kubermeister/kubermeister/issues/336))
-:::
+The kinds whose single delete asks you to type the object's name are never deleted in bulk. The
+PersistentVolumes, StorageClasses, ClusterRoles and ClusterRoleBindings lists have a checkbox column
+for **Export N**, but their bar has no **Delete N**; the Nodes, Namespaces and CRDs lists have no
+selection at all. Each of those is deleted from its own detail page, by name.
 
 ## When a list will not load
 

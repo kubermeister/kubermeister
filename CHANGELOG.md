@@ -20,6 +20,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   marks as such, and Shell no longer offers an init container, which has no process left to attach
   to.
 
+- PersistentVolumes, StorageClasses, ClusterRoles and ClusterRoleBindings can no longer be deleted
+  in bulk from their lists, where a plain confirmation skipped the typed name their single delete
+  asks for. Their rows can still be checked and exported.
+
 ## [0.5.0] - 2026-09-22
 
 ### Added
