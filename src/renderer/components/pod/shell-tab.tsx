@@ -12,6 +12,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ContainerRoleNote } from '@/components/pod/container-role-note';
+import { containerChoices } from '@/lib/pod-containers';
 import { openPodExec } from '@/lib/pod-streams';
 import { useTerminalFontSize } from '@/lib/settings';
 import { readTerminalLook, readTerminalTheme } from '@/lib/terminal-look';
@@ -23,7 +25,9 @@ import { readTerminalLook, readTerminalTheme } from '@/lib/terminal-look';
  */
 export function ShellTab({ name, namespace, pod }: { name: string; namespace: string; pod?: PodDetail | null }) {
     const ref = useRef<HTMLDivElement>(null);
-    const containers = pod?.containers.map((c) => c.name) ?? [];
+    // A shell needs a running process to attach to, which a finished init container no longer has.
+    const choices = containerChoices(pod?.containers, ['app', 'ephemeral']);
+    const containers = choices.map((c) => c.name);
     const [selectedContainer, setSelectedContainer] = useState<string | null>(null);
     const container = selectedContainer && containers.includes(selectedContainer) ? selectedContainer : containers[0];
     const fontSize = useTerminalFontSize();
@@ -96,9 +100,10 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
-                                {containers.map((one) => (
-                                    <DropdownMenuItem key={one} onSelect={() => setSelectedContainer(one)}>
-                                        {one}
+                                {choices.map((one) => (
+                                    <DropdownMenuItem key={one.name} onSelect={() => setSelectedContainer(one.name)}>
+                                        {one.name}
+                                        <ContainerRoleNote role={one.role} />
                                     </DropdownMenuItem>
                                 ))}
                             </DropdownMenuContent>

@@ -2,7 +2,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { Exec } from '@kubernetes/client-node';
 import { streamSchemas, type StreamController, type StreamSend } from '../../shared/streams.js';
 import { kubeConfig } from './client.js';
-import { reportMissingPod, resolvePodTarget } from './pod-target.js';
+import { EXEC_CONTAINER_ROLES, reportMissingPod, resolvePodTarget } from './pod-target.js';
 
 const DEFAULT_COMMAND = ['/bin/sh'];
 
@@ -25,7 +25,7 @@ export function terminalSink(send: StreamSend): Writable {
  */
 export async function startPodExecStream(rawInput: unknown, send: StreamSend): Promise<StreamController> {
     const input = streamSchemas['pods.exec'].parse(rawInput);
-    const target = await resolvePodTarget(input.name, input.namespace, input.container);
+    const target = await resolvePodTarget(input.name, input.namespace, input.container, EXEC_CONTAINER_ROLES);
     if (!target) return reportMissingPod(send, input.name, input.namespace, input.container);
 
     const stdin = new PassThrough();

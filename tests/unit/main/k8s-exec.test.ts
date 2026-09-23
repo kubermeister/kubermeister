@@ -80,6 +80,11 @@ describe('startPodExecStream', () => {
         expect(() => ctl.stop()).not.toThrow();
     });
 
+    it('only execs into a container that can still be running a process', async () => {
+        await startPodExecStream({ name: 'web-1', namespace: 'team-a', container: 'migrate' }, vi.fn());
+        expect(target).toHaveBeenCalledWith('web-1', 'team-a', 'migrate', ['app', 'ephemeral']);
+    });
+
     it('reports a missing pod without opening a session', async () => {
         target.mockResolvedValue(null);
         const send = vi.fn();

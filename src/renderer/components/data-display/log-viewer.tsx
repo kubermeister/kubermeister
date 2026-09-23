@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, HighlighterIcon, SearchIcon } from 'lucide-react';
 import type { LogLine } from '../../../shared/k8s/logs';
+import type { ContainerRole } from '../../../shared/k8s/pods';
+import { ContainerRoleNote } from '@/components/pod/container-role-note';
 import { LogViewMenu } from '@/components/data-display/log-view-menu';
 import { useFollowBottom } from '@/lib/follow-scroll';
 import { useLogViewOptions } from '@/lib/log-view-options';
@@ -88,6 +90,8 @@ interface LogViewerProps {
     /** Colour per pod, for a view following several at once; absent for a single container. */
     podColors?: Map<string, string>;
     containers: string[];
+    /** Which containers are not the app's own, named beside them so a finished init step reads as one. */
+    containerRoles?: ReadonlyMap<string, ContainerRole>;
     container?: string;
     onContainerChange: (container: string) => void;
     since: SinceOption;
@@ -119,6 +123,7 @@ export function LogViewer({
     lines,
     podColors,
     containers,
+    containerRoles,
     container,
     onContainerChange,
     since,
@@ -192,6 +197,7 @@ export function LogViewer({
                         {containers.map((c) => (
                             <DropdownMenuItem key={c} onSelect={() => onContainerChange(c)}>
                                 {c}
+                                <ContainerRoleNote role={containerRoles?.get(c)} />
                             </DropdownMenuItem>
                         ))}
                     </DropdownMenuContent>

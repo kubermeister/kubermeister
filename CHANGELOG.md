@@ -13,6 +13,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- A pod's Logs and Shell tabs open on the container running the app instead of failing on an init
+  container listed ahead of it. Logs can also read an init or ephemeral container, which the picker
+  marks as such, and Shell no longer offers an init container, which has no process left to attach
+  to.
+
 ## [0.5.0] - 2026-09-22
 
 ### Added

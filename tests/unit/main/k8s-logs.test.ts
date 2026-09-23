@@ -186,6 +186,52 @@ describe('resolvePodTarget', () => {
         vi.mocked(client.readOrNull).mockResolvedValue({ spec: { containers: [] } });
         await expect(actual.resolvePodTarget('empty', 'team-a')).resolves.toBeNull();
     });
+
+    it('defaults to the first app container even when init containers come first in the spec', async () => {
+        const actual = await vi.importActual<typeof import('../../../src/main/k8s/pod-target.js')>(
+            '../../../src/main/k8s/pod-target.js',
+        );
+        const client = await import('../../../src/main/k8s/client.js');
+        const pod = {
+            spec: {
+                initContainers: [{ name: 'migrate' }],
+                containers: [{ name: 'web' }],
+                ephemeralContainers: [{ name: 'debugger' }],
+            },
+        };
+        vi.mocked(client.readOrNull).mockResolvedValue(pod);
+        vi.mocked(client.apis).mockReturnValue({ core: { readNamespacedPod: vi.fn() } } as never);
+        await expect(actual.resolvePodTarget('web-1', 'team-a')).resolves.toMatchObject({ container: 'web' });
+    });
+
+    it('reads logs from init and ephemeral containers, and execs only into ones that can still run', async () => {
+        const actual = await vi.importActual<typeof import('../../../src/main/k8s/pod-target.js')>(
+            '../../../src/main/k8s/pod-target.js',
+        );
+        const client = await import('../../../src/main/k8s/client.js');
+        const pod = {
+            spec: {
+                initContainers: [{ name: 'migrate' }],
+                containers: [{ name: 'web' }],
+                ephemeralContainers: [{ name: 'debugger' }],
+            },
+        };
+        vi.mocked(client.readOrNull).mockResolvedValue(pod);
+        vi.mocked(client.apis).mockReturnValue({ core: { readNamespacedPod: vi.fn() } } as never);
+        const { LOG_CONTAINER_ROLES, EXEC_CONTAINER_ROLES } = actual;
+        await expect(actual.resolvePodTarget('web-1', 'team-a', 'migrate', LOG_CONTAINER_ROLES)).resolves.toMatchObject(
+            {
+                container: 'migrate',
+            },
+        );
+        await expect(
+            actual.resolvePodTarget('web-1', 'team-a', 'debugger', LOG_CONTAINER_ROLES),
+        ).resolves.toMatchObject({ container: 'debugger' });
+        await expect(actual.resolvePodTarget('web-1', 'team-a', 'migrate', EXEC_CONTAINER_ROLES)).resolves.toBeNull();
+        await expect(
+            actual.resolvePodTarget('web-1', 'team-a', 'debugger', EXEC_CONTAINER_ROLES),
+        ).resolves.toMatchObject({ container: 'debugger' });
+    });
 });
 
 // Keep EventEmitter referenced for the fake websocket shape used by sibling tests.
