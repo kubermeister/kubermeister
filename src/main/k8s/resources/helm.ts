@@ -24,7 +24,7 @@ const HELM_SECRET_TYPE = 'helm.sh/release.v1';
 /** Ceiling for one decoded release. Secrets cap at about 1 MiB and gzip can inflate a thousandfold. */
 const MAX_RELEASE_BYTES = 32 * 1024 * 1024;
 
-interface HelmReleaseData {
+export interface HelmReleaseData {
     name?: string;
     namespace?: string;
     version?: number;
@@ -181,11 +181,17 @@ export function listReleases(): Promise<Release[]> {
     return withK8s('releases.list', async () => latestPerRelease(await decodedReleases()).map((r) => toRelease(r)));
 }
 
+/** The highest revision of one release, which is the one running; null when there is none. */
+export async function currentRelease(name: string, namespace: string): Promise<HelmReleaseData | null> {
+    const matches = matching(await decodedReleases(namespace), name, namespace);
+    if (matches.length === 0) return null;
+    return matches.reduce((a, b) => ((b.version ?? 0) > (a.version ?? 0) ? b : a));
+}
+
 export function getRelease(name: string, namespace: string): Promise<Release | null> {
     return withK8s('releases.get', async () => {
-        const matches = matching(await decodedReleases(namespace), name, namespace);
-        if (matches.length === 0) return null;
-        const latest = matches.reduce((a, b) => ((b.version ?? 0) > (a.version ?? 0) ? b : a));
+        const latest = await currentRelease(name, namespace);
+        if (!latest) return null;
         return toRelease(latest, { values: releaseValues(latest), manifest: releaseManifest(latest) });
     });
 }

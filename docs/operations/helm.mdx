@@ -43,8 +43,10 @@ Status is Helm's own word, mapped to the app's:
 
 ## A release's detail
 
-Opening a release shows three tabs.
+Opening a release shows four tabs, starting on **Resources**.
 
+- **Resources**: every object the current revision rendered, read live. See
+  [a release's objects](#a-releases-objects).
 - **Revisions**: the **Revision history** of every revision the cluster still holds, newest first,
   with Rev, Status, Chart version, Updated and Description (Helm's own note, such as "Install
   complete" or "Rollback to 2").
@@ -64,6 +66,41 @@ shows only its row in the history.
 />
 
 A release has no **Events** tab, because it is not an API object of its own.
+
+## A release's objects
+
+**Resources** lists the objects in the manifest Helm stored for the current revision, the one
+**Manifest** shows, with Kind, Name, Namespace and Status. An object is listed because Helm rendered
+it, never because its name looks like the release's. The cluster is asked with one list per kind and
+namespace, at the `apiVersion` the manifest names, so custom resources are listed too, and the tab
+is re-read at the **Live data refresh** interval while it is open.
+
+Status says what the cluster holds now:
+
+- A kind with a status of its own shows that status as its own list does: a Pod's Running or
+  CrashLoop, a Deployment's Healthy or Progressing, and likewise for Jobs, Services, Ingresses,
+  persistent volumes and claims, volume snapshots, disruption budgets, webhook configurations and
+  API services.
+- Any other kind, custom resources included, shows **Present**.
+- An object the manifest names and the cluster does not hold shows **Missing**, as does every object
+  of a kind the cluster no longer serves.
+- **Unknown** means the app was not allowed to list that kind; hovering the badge says so. It is
+  never counted as missing.
+
+An object's name links to its own screen when the app has one for its kind and the object is there.
+
+The **Health** card above the table judges the release from those objects rather than from the
+status Helm recorded, since `deployed` only says the install went through:
+
+| Health   | When                                                                            |
+| -------- | ------------------------------------------------------------------------------- |
+| Healthy  | Every object is present and none is in a warning or failing state.              |
+| Degraded | The worst object is in a warning state, such as a Deployment still Progressing. |
+| Failing  | An object is missing or failing, such as a Pod in CrashLoop.                    |
+| Unknown  | Nothing is wrong that could be seen, but some objects could not be read.        |
+
+When the release is not healthy, the card names the worst object as the reason, for example
+"ConfigMap web-config is Missing", and how many others need attention.
 
 ## Rolling back
 

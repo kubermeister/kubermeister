@@ -20,6 +20,7 @@ vi.mock('sonner', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
+const { IpcError } = await import('@/lib/ipc');
 
 const crd = {
     name: 'helmcharts.helm.cattle.io',
@@ -51,6 +52,35 @@ const revisions = [
     { rev: '2', status: 'Deployed', chartVersion: '28.0.0', updated: '1h ago', description: 'Upgrade complete' },
     { rev: '1', status: 'Superseded', chartVersion: '27.0.0', updated: '2h ago', description: 'Install complete' },
 ];
+const releaseObjects = [
+    {
+        apiVersion: 'apps/v1',
+        kind: 'Deployment',
+        name: 'traefik',
+        namespace: 'kube-system',
+        state: 'Present',
+        status: { kind: 'Deployment', value: 'Healthy' },
+        path: '/workloads/deployments/kube-system/traefik',
+    },
+    {
+        apiVersion: 'v1',
+        kind: 'Service',
+        name: 'traefik',
+        namespace: 'kube-system',
+        state: 'Missing',
+        status: null,
+        path: null,
+    },
+    {
+        apiVersion: 'traefik.io/v1alpha1',
+        kind: 'IngressRoute',
+        name: 'dashboard',
+        namespace: 'kube-system',
+        state: 'Present',
+        status: null,
+        path: null,
+    },
+];
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date' },
     'contexts.list': [{ name: 'alpha', cluster: 'a', user: 'u', current: true }],
@@ -62,6 +92,7 @@ const data: Record<string, unknown> = {
     'releases.list': [release],
     'releases.get': release,
     'releases.revisions': revisions,
+    'releases.resources': releaseObjects,
     'helmCharts.list': [chart],
     'releases.rollback': { name: 'traefik', namespace: 'kube-system', revision: 3, removed: 1, kept: 0 },
     'releases.uninstall': { name: 'traefik', namespace: 'kube-system', removed: 4, kept: 1 },
@@ -105,7 +136,7 @@ describe('add-on lists', () => {
 
 describe('add-on details', () => {
     it('shows a release with its revision history and user-supplied values', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/addons/releases/kube-system/traefik/revisions');
         const page = await screen.findByTestId('release-page');
         await waitFor(() => expect(page).toHaveTextContent('chart: traefik-28.0.0'));
         expect(page).toHaveTextContent('revision: 2');
@@ -117,8 +148,52 @@ describe('add-on details', () => {
         expect(within(page).getByTestId('release-values')).toHaveTextContent('type: LoadBalancer');
     });
 
-    it('rolls back to an older revision, and offers no rollback for the one running', async () => {
+    it('opens on the objects the release rendered, naming the one that breaks it', async () => {
         renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        const page = await screen.findByTestId('release-page');
+        const table = await within(page).findByTestId('release-resources');
+        expect(invoke).toHaveBeenCalledWith('releases.resources', { name: 'traefik', namespace: 'kube-system' });
+
+        const health = within(page).getByTestId('release-health');
+        expect(health).toHaveAttribute('data-health', 'Failing');
+        expect(health).toHaveTextContent('Service traefik is Missing.');
+
+        const deployment = table.querySelector('[data-object="Deployment/traefik"]') as HTMLElement;
+        expect(deployment).toHaveTextContent('Healthy');
+        expect(within(deployment).getByRole('link', { name: 'traefik' })).toHaveAttribute(
+            'href',
+            '/workloads/deployments/kube-system/traefik',
+        );
+        const service = table.querySelector('[data-object="Service/traefik"]') as HTMLElement;
+        expect(service).toHaveAttribute('data-worst', 'true');
+        expect(within(service).getByText('Missing')).toBeInTheDocument();
+        expect(within(service).queryByRole('link')).not.toBeInTheDocument();
+        // A custom resource the registry has no screen for is named, and read as merely present.
+        const route = table.querySelector('[data-object="IngressRoute/dashboard"]') as HTMLElement;
+        expect(route).toHaveTextContent('Present');
+        expect(within(route).queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    it('says why the objects could not be read', async () => {
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'releases.resources') {
+                return Promise.reject(
+                    new IpcError({ kind: 'timeout', detail: 'The cluster did not answer.', op: 'releases.resources' }),
+                );
+            }
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        const page = await screen.findByTestId('release-page');
+        await waitFor(() =>
+            expect(within(page).getByTestId('release-resources-state')).toHaveTextContent(
+                'The cluster did not answer.',
+            ),
+        );
+    });
+
+    it('rolls back to an older revision, and offers no rollback for the one running', async () => {
+        renderRoutes(routeTree, '/addons/releases/kube-system/traefik/revisions');
         const page = await screen.findByTestId('release-page');
         const history = await within(page).findByTestId('release-revisions');
         await waitFor(() => expect(history).toHaveTextContent('#1'));
@@ -144,7 +219,7 @@ describe('add-on details', () => {
     });
 
     it('leaves the release alone when either dialog is dismissed', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/addons/releases/kube-system/traefik/revisions');
         const page = await screen.findByTestId('release-page');
         const history = await within(page).findByTestId('release-revisions');
         await waitFor(() => expect(history).toHaveTextContent('#1'));

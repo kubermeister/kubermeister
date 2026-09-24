@@ -435,6 +435,12 @@ test('lists the cluster definitions and the seeded helm release', async () => {
     await release.getByRole('link').click();
     const page = window.getByTestId('release-page');
     await expect(page).toContainText('chart: demo-1.2.3');
+    // The release opens on its objects, read live: both ConfigMaps revision 2 rendered are seeded.
+    const objects = page.getByTestId('release-resources');
+    await expect(objects.locator('[data-object="ConfigMap/demo-extra"]')).toContainText('Present');
+    await expect(objects.locator('[data-object="ConfigMap/demo-config"]').getByRole('link')).toBeVisible();
+    await expect(page.getByTestId('release-health')).toHaveAttribute('data-health', 'Healthy');
+    await window.getByRole('tab', { name: /Revisions/ }).click();
     await expect(page.getByTestId('release-revisions')).toContainText('Install complete');
     await window.getByRole('tab', { name: /Values/ }).click();
     await expect(page.getByTestId('release-values')).toContainText('replicaCount: 2');

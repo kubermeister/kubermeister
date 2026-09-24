@@ -652,6 +652,20 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   uninstalled.
 - Objects annotated `helm.sh/resource-policy: keep` are never deleted by either, and are counted
   back to the caller.
+- **A release's Resources tab reads the current revision's stored manifest and nothing else**
+  (`releases.resources`, `src/main/k8s/resources/helm-objects.ts`), so an object belongs to a release
+  because Helm rendered it, never because its name resembles the release's. It reads one list per kind
+  and namespace: a kind in `RELEASE_STATUS_KINDS` goes through its registered list transform
+  (`listRowsOf`), which is where its status word comes from, and every other kind through
+  `apis().objects.list` at the manifest's own `apiVersion`, so custom resources ride along. A kind
+  matches the registry on its API group as well as its name (`registeredKindOf`), because a custom
+  resource may call itself `Service`. An object the list lacks is Missing, a kind the server no longer
+  serves makes all its objects Missing, and a refused list is Unknown rather than Missing, since a
+  refusal is not an absence.
+- The health roll-up is the renderer's (`src/renderer/lib/release-health.ts`), because the tone maps
+  are: `KIND_STATUS_TONE` colours each status with its kind's own map, and the worst object, first in
+  manifest order, is named as the reason. Resources is the release's first tab, so a bare release
+  link opens on it.
 
 ### Chart repositories
 

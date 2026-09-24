@@ -51,6 +51,7 @@ import {
     rollbackRelease,
     uninstallRelease,
 } from '../k8s/resources/helm.js';
+import { getReleaseObjects } from '../k8s/resources/helm-objects.js';
 import {
     addChartRepository,
     listChartRepositories,
@@ -314,6 +315,7 @@ const handlers: Handlers = {
     'releases.list': () => listReleases(),
     'releases.get': ({ name, namespace }) => getRelease(name, namespace),
     'releases.revisions': ({ name, namespace }) => getReleaseRevisions(name, namespace),
+    'releases.resources': ({ name, namespace }) => getReleaseObjects(name, namespace),
     'releases.rollback': (input) => rollbackRelease(input),
     'releases.uninstall': (input) => uninstallRelease(input),
     'helmCharts.list': () => listHelmCharts(),

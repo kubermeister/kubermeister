@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { CodeIcon, FileTextIcon, HistoryIcon, RocketIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { YamlEditor } from '@/components/data-display/yaml-editor';
+import { releaseResourcesTab } from '@/components/release/release-resources-tab';
 import { ReleaseRollbackButton } from '@/components/release/release-rollback-button';
 import { UninstallReleaseButton } from '@/components/release/uninstall-release-button';
 import { DetailCard } from '@/components/templates/detail-cards';
@@ -25,6 +26,8 @@ function ReleaseDetailPage() {
         {
             label: 'OBSERVE',
             items: [
+                // First, so a release opens on whether what it installed is there and running.
+                releaseResourcesTab({ name, namespace }),
                 {
                     id: 'revisions',
                     label: 'Revisions',
