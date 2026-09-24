@@ -17,6 +17,8 @@ const app = {
     requestSingleInstanceLock: vi.fn(() => true),
     quit: vi.fn(),
     setAsDefaultProtocolClient: vi.fn(),
+    isDefaultProtocolClient: vi.fn(() => false),
+    removeAsDefaultProtocolClient: vi.fn(),
     on: vi.fn((event: string, listener: Listener) => {
         listeners.set(event, listener);
         return app;
@@ -39,6 +41,17 @@ function emit(event: string, ...args: unknown[]): void {
     const listener = listeners.get(event);
     if (!listener) throw new Error(`nothing listens for ${event}`);
     listener(...args);
+}
+
+/** Electron's platform is Node's, which Vitest does not let a test choose. */
+async function onPlatform(platform: NodeJS.Platform, run: () => Promise<void>): Promise<void> {
+    const was = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    Object.defineProperty(process, 'platform', { value: platform, configurable: true });
+    try {
+        await run();
+    } finally {
+        Object.defineProperty(process, 'platform', was);
+    }
 }
 
 const LINK = 'kubermeister://open/prod-eu/workloads/pods/default/web-1/logs';
@@ -73,6 +86,9 @@ describe('receiving a link', () => {
         openWindow.mockReset();
         broadcast.mockReset();
         app.setAsDefaultProtocolClient.mockReset();
+        app.isDefaultProtocolClient.mockReset();
+        app.isDefaultProtocolClient.mockReturnValue(false);
+        app.removeAsDefaultProtocolClient.mockReset();
         delete process.env.ELECTRON_RENDERER_URL;
     });
 
@@ -160,18 +176,40 @@ describe('receiving a link', () => {
         expect(takeDeepLink()).toMatchObject({ ok: false, reason: expect.any(String) });
     });
 
-    it('registers the scheme for the dev server only', async () => {
-        const { watchDeepLinks } = await load();
-        watchDeepLinks([]);
-        expect(app.setAsDefaultProtocolClient).not.toHaveBeenCalled();
+    it('registers the scheme for the dev server only, with the app path to start', async () => {
+        await onPlatform('linux', async () => {
+            const { watchDeepLinks } = await load();
+            watchDeepLinks([]);
+            expect(app.setAsDefaultProtocolClient).not.toHaveBeenCalled();
 
-        process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173';
-        const again = await load();
-        again.watchDeepLinks([]);
-        expect(app.setAsDefaultProtocolClient).toHaveBeenCalledWith(
-            'kubermeister',
-            process.execPath,
-            expect.any(Array),
-        );
+            process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173';
+            const again = await load();
+            again.watchDeepLinks([]);
+            expect(app.setAsDefaultProtocolClient).toHaveBeenCalledWith(
+                'kubermeister',
+                process.execPath,
+                expect.any(Array),
+            );
+        });
+    });
+
+    it('never registers the dev server on macOS, which would bind the stock Electron bundle', async () => {
+        await onPlatform('darwin', async () => {
+            process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173';
+            const { watchDeepLinks } = await load();
+            watchDeepLinks([]);
+            expect(app.setAsDefaultProtocolClient).not.toHaveBeenCalled();
+            expect(app.removeAsDefaultProtocolClient).not.toHaveBeenCalled();
+        });
+    });
+
+    it('takes back a macOS registration an earlier dev run left on the stock Electron bundle', async () => {
+        await onPlatform('darwin', async () => {
+            process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173';
+            app.isDefaultProtocolClient.mockReturnValue(true);
+            const { watchDeepLinks } = await load();
+            watchDeepLinks([]);
+            expect(app.removeAsDefaultProtocolClient).toHaveBeenCalledWith('kubermeister');
+        });
     });
 });

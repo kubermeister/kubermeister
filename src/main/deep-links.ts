@@ -89,13 +89,23 @@ export function showWindowsForDeepLinks(open: () => void): void {
 
 /**
  * A packaged build is registered for the scheme by its installer (`protocols` in
- * `electron-builder.yml`, the Linux desktop entry). `npm run dev` has no installer, so it registers
- * itself, passing the app path Electron needs to be started with. Only the dev server does this: an
- * end-to-end run also starts unpackaged, and it must never take the scheme away from the
- * Kubermeister installed on the machine running it.
+ * `electron-builder.yml`, the Linux desktop entry). `npm run dev` has no installer, so on Windows
+ * and Linux it registers itself, passing the app path Electron needs to be started with. Only the
+ * dev server does this: an end-to-end run also starts unpackaged, and it must never take the scheme
+ * away from the Kubermeister installed on the machine running it.
+ *
+ * macOS ignores the path and the arguments and binds the scheme to the running bundle, which in
+ * development is the stock `Electron.app` every Electron checkout shares: a link then starts a bare
+ * Electron that shows its empty default window, and the binding goes on taking links from an
+ * installed Kubermeister. So a macOS dev run registers nothing and takes back a binding an earlier
+ * one left; links are tried there against `npm run package:dir`, whose bundle has its own id.
  */
 function registerDevelopmentProtocol(): void {
     if (app.isPackaged || !process.env.ELECTRON_RENDERER_URL) return;
+    if (process.platform === 'darwin') {
+        if (app.isDefaultProtocolClient(DEEP_LINK_SCHEME)) app.removeAsDefaultProtocolClient(DEEP_LINK_SCHEME);
+        return;
+    }
     const entry = process.argv[1];
     if (entry) app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME, process.execPath, [resolve(entry)]);
 }
