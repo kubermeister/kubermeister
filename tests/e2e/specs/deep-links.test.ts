@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
-import { CONTEXT_NAME, NAMESPACE, clusterKubectl } from '../harness/cluster';
+import { load as loadYaml } from 'js-yaml';
+import { readFileSync } from 'node:fs';
+import { normalizeServer } from '../../../src/shared/deep-link';
+import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
 import { appEnv, closeApp, launchApp, type LaunchedApp } from '../harness/launch';
 
 let launched: LaunchedApp | undefined;
@@ -10,7 +13,13 @@ test.afterEach(async () => {
     launched = undefined;
 });
 
-const link = (context: string, path: string) => `kubermeister://open/${encodeURIComponent(context)}${path}`;
+const link = (server: string, path: string) => `kubermeister://open/${encodeURIComponent(server)}${path}`;
+
+/** The test cluster's API server, which is how a link names it. */
+function testServer(): string {
+    const config = loadYaml(readFileSync(KUBECONFIG_PATH, 'utf8')) as { clusters: { cluster: { server: string } }[] };
+    return normalizeServer(config.clusters[0]!.cluster.server)!;
+}
 
 /** The route the window shows, read from its hash history. */
 async function routeOf({ window }: LaunchedApp): Promise<string> {
@@ -29,7 +38,7 @@ test('opens the link a launch carries, on the pod’s first tab rather than its 
         'jsonpath={.items[0].metadata.name}',
     ]);
     expect(pod).not.toBe('');
-    launched = await launchApp({ args: [link(CONTEXT_NAME, `/workloads/pods/${NAMESPACE}/${pod}/shell`)] });
+    launched = await launchApp({ args: [link(testServer(), `/workloads/pods/${NAMESPACE}/${pod}/shell`)] });
     await expect(launched.window.getByTestId('pod-page')).toContainText(pod);
     await expect.poll(() => routeOf(launched!)).toBe(`/workloads/pods/${NAMESPACE}/${pod}`);
     await expect(launched.window.getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
@@ -45,7 +54,7 @@ test('a second launch hands its link to the running app and quits', async () => 
             // root-owned chrome-sandbox, and Chromium aborts rather than start without one.
             ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
             'out/main/index.mjs',
-            link(CONTEXT_NAME, `/workloads/deployments/${NAMESPACE}/web/manifest`),
+            link(testServer(), `/workloads/deployments/${NAMESPACE}/web/manifest`),
         ],
         { env: appEnv(launched.userData), timeout: 60_000 },
     );
@@ -58,8 +67,8 @@ test('a second launch hands its link to the running app and quits', async () => 
     await expect.poll(() => routeOf(launched!)).toBe(`/workloads/deployments/${NAMESPACE}/web/manifest`);
 });
 
-test('says so for a context the kubeconfig does not have, and stays on its own', async () => {
-    launched = await launchApp({ args: [link('somebody-elses-cluster', '/workloads/pods')] });
-    await expect(launched.window.getByText('Context not in your kubeconfig')).toBeVisible();
+test('says so for a cluster no context reaches, and stays on its own', async () => {
+    launched = await launchApp({ args: [link('https://somebody-elses-cluster.example.com', '/workloads/pods')] });
+    await expect(launched.window.getByText('No context for that cluster')).toBeVisible();
     await expect(launched.window.getByTestId('context-selector')).toHaveText(CONTEXT_NAME);
 });

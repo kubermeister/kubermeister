@@ -12,6 +12,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { linkablePath, planDeepLink, type LinkPlan } from '@/lib/deep-link';
 import { invoke, subscribe } from '@/lib/ipc';
 import { useSwitchContext } from '@/lib/scope';
@@ -27,31 +28,30 @@ function failed(error: unknown): void {
 /**
  * Opens the `kubermeister://` links the OS hands the app. It sits in the shell, behind the startup
  * gate, so a link that arrived with the launch waits in main until there is a screen to open it on.
- * A link only ever navigates: a link for another context asks before switching, and one for a
- * context the kubeconfig lacks says so and switches nothing.
+ * A link only ever navigates: a link for a cluster the current context does not reach asks before
+ * switching to one that does, and one for a cluster no context reaches says so and switches nothing.
  */
 export function DeepLinkHandler() {
     const router = useRouter();
     const navigateTo = useNavigateTo();
     const switchContext = useSwitchContext();
     const [confirm, setConfirm] = useState<Confirm | null>(null);
+    const [choice, setChoice] = useState<string | undefined>();
 
     const open = useEffectEvent(async () => {
         const { link } = await invoke('deepLink.take', {});
         if (!link) return;
         const [current, contexts] = await Promise.all([invoke('context.current', {}), invoke('contexts.list', {})]);
-        const plan = planDeepLink(
-            link,
-            { current: current?.name, contexts: contexts.map((context) => context.name) },
-            (path) => linkablePath(router, path),
+        const plan = planDeepLink(link, { current: current ?? undefined, contexts }, (path) =>
+            linkablePath(router, path),
         );
         switch (plan.kind) {
             case 'refused':
                 toast.error('That link cannot be opened', { description: plan.message });
                 return;
-            case 'missingContext':
-                toast.error('Context not in your kubeconfig', {
-                    description: `The link opens a screen in “${plan.context}”, which your kubeconfig does not have. Nothing was switched.`,
+            case 'missingCluster':
+                toast.error('No context for that cluster', {
+                    description: `The link opens a screen on the cluster at ${plan.server}, and no context in your kubeconfig reaches that address. Nothing was switched.`,
                 });
                 return;
             case 'navigate':
@@ -59,6 +59,7 @@ export function DeepLinkHandler() {
                 navigateTo(plan.path);
                 return;
             case 'confirm':
+                setChoice(plan.candidates[0]);
                 setConfirm(plan);
         }
     });
@@ -71,30 +72,46 @@ export function DeepLinkHandler() {
         return unsubscribe;
     }, []);
 
-    const accept = async (plan: Confirm) => {
+    const accept = async (plan: Confirm, to: string) => {
         setConfirm(null);
         try {
-            await switchContext(plan.to);
+            await switchContext(to);
             navigateTo(plan.path);
         } catch (error) {
             failed(error);
         }
     };
 
+    const several = (confirm?.candidates.length ?? 0) > 1;
     return (
         <AlertDialog open={confirm !== null} onOpenChange={(next) => !next && setConfirm(null)}>
             <AlertDialogContent data-testid="deep-link-confirm">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Switch to “{confirm?.to}”?</AlertDialogTitle>
+                    <AlertDialogTitle>{several ? 'Switch context?' : `Switch to “${choice}”?`}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        The link opens a screen in context “{confirm?.to}”, and you are on{' '}
+                        The link opens a screen on the cluster at {confirm?.server}, which{' '}
+                        {several ? 'these contexts reach' : `context “${choice}” reaches`}, and you are on{' '}
                         {confirm?.from ? `“${confirm.from}”` : 'no context'}. Switching ends every port forward, shell
                         and log follow open now. The namespace selection stays as it is.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
+                {several && (
+                    <Select value={choice} onValueChange={setChoice}>
+                        <SelectTrigger aria-label="Context">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {confirm?.candidates.map((name) => (
+                                <SelectItem key={name} value={name}>
+                                    {name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
                 <AlertDialogFooter>
                     <AlertDialogCancel>Stay</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => confirm && void accept(confirm)}>
+                    <AlertDialogAction onClick={() => confirm && choice && void accept(confirm, choice)}>
                         Switch and open
                     </AlertDialogAction>
                 </AlertDialogFooter>

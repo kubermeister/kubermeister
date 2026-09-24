@@ -21,27 +21,39 @@ export function linkablePath(router: AnyRouter, path: string): string | null {
 export type LinkPlan =
     | { kind: 'refused'; message: string }
     | { kind: 'navigate'; path: string }
-    | { kind: 'confirm'; from: string | undefined; to: string; path: string }
-    | { kind: 'missingContext'; context: string };
+    | { kind: 'confirm'; from: string | undefined; server: string; candidates: string[]; path: string }
+    | { kind: 'missingCluster'; server: string };
+
+/** The part of a kubeconfig context the plan reads. */
+interface LinkContext {
+    name: string;
+    server?: string;
+    problem?: string;
+}
 
 /**
- * Decide what a link does. It only ever navigates: under the current context straight away, under
- * another one of the kubeconfig's only once the user has agreed to switch, and under one the
- * kubeconfig lacks not at all. The namespace in the path is the object's own, so the namespace
- * selection is never part of the plan.
+ * Decide what a link does. A link names the cluster by its API server, since a context is whatever
+ * each kubeconfig calls it, and every context is matched on its own cluster entry's server, read from
+ * the kubeconfig alone. It only ever navigates: straight away when the current context reaches that
+ * cluster, only once the user has agreed to switch when other contexts do (every one is offered, since
+ * two contexts on one cluster usually differ in who they act as), and not at all when none does. The
+ * namespace in the path is the object's own, so the namespace selection is never part of the plan.
  */
 export function planDeepLink(
     link: DeepLink,
-    scope: { current: string | undefined; contexts: readonly string[] },
+    scope: { current: LinkContext | undefined; contexts: readonly LinkContext[] },
     resolvePath: (path: string) => string | null,
 ): LinkPlan {
     if (!link.ok) return { kind: 'refused', message: link.reason };
     const path = resolvePath(link.path);
     if (path === null)
         return { kind: 'refused', message: 'The link names a screen this version of Kubermeister does not have.' };
-    if (link.context === scope.current) return { kind: 'navigate', path };
-    if (!scope.contexts.includes(link.context)) return { kind: 'missingContext', context: link.context };
-    return { kind: 'confirm', from: scope.current, to: link.context, path };
+    if (scope.current?.server === link.server && !scope.current.problem) return { kind: 'navigate', path };
+    const candidates = scope.contexts
+        .filter((context) => context.server === link.server && !context.problem)
+        .map((context) => context.name);
+    if (candidates.length === 0) return { kind: 'missingCluster', server: link.server };
+    return { kind: 'confirm', from: scope.current?.name, server: link.server, candidates, path };
 }
 
 /** The route path Copy link writes for the screen at `pathname`: a Shell tab is copied as the object's first tab. */

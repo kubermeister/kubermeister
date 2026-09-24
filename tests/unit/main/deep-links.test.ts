@@ -54,7 +54,9 @@ async function onPlatform(platform: NodeJS.Platform, run: () => Promise<void>): 
     }
 }
 
-const LINK = 'kubermeister://open/prod-eu/workloads/pods/default/web-1/logs';
+const PROD = 'https://prod.example.com:6443';
+const DEV = 'https://dev.example.com:6443';
+const LINK = `kubermeister://open/${encodeURIComponent(PROD)}/workloads/pods/default/web-1/logs`;
 
 describe('the single-instance lock', () => {
     beforeEach(() => {
@@ -106,7 +108,7 @@ describe('receiving a link', () => {
         expect(openWindow).not.toHaveBeenCalled();
         expect(takeDeepLink()).toEqual({
             ok: true,
-            context: 'prod-eu',
+            server: PROD,
             path: '/workloads/pods/default/web-1/logs',
         });
     });
@@ -123,15 +125,15 @@ describe('receiving a link', () => {
         const { takeDeepLink, watchDeepLinks } = await load();
         watchDeepLinks([]);
         emit('open-url', { preventDefault: vi.fn() }, LINK);
-        emit('open-url', { preventDefault: vi.fn() }, 'kubermeister://open/dev/workloads/pods');
-        expect(takeDeepLink()).toMatchObject({ context: 'dev', path: '/workloads/pods' });
+        emit('open-url', { preventDefault: vi.fn() }, `kubermeister://open/${encodeURIComponent(DEV)}/workloads/pods`);
+        expect(takeDeepLink()).toMatchObject({ server: DEV, path: '/workloads/pods' });
         expect(takeDeepLink()).toBeNull();
     });
 
     it('reads the link a Windows or Linux launch carries in argv', async () => {
         const { takeDeepLink, watchDeepLinks } = await load();
         watchDeepLinks(['/opt/Kubermeister/kubermeister', LINK]);
-        expect(takeDeepLink()).toMatchObject({ ok: true, context: 'prod-eu' });
+        expect(takeDeepLink()).toMatchObject({ ok: true, server: PROD });
     });
 
     it('takes the link out of a second launch’s argv and brings the window forward', async () => {
