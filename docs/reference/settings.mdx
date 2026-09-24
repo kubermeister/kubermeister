@@ -136,18 +136,80 @@ Changing the kubeconfig, the proxy or the CA bundle ends every stream and reload
 
 ## The settings file
 
-Settings live in `settings.json` in the app's user-data directory —
-`~/Library/Application Support/Kubermeister` on macOS. The app writes it whole on every change,
-through a temporary file that is then renamed, so a crash mid-write cannot leave half a file.
+Everything on this screen is kept in one JSON file you can also write yourself, keep in a dotfiles
+repository and provision onto a machine:
 
-Beside the settings above, it holds the last context and namespace, the port forwards you have
-started (so they can be offered again), and where the window last stood. The window reopens there,
-unless less than 100 pixels of it would fall on a current display; otherwise it opens at the default
-1200 × 800.
+| Operating system      | File                                   |
+| --------------------- | -------------------------------------- |
+| macOS, Linux, Windows | `~/.config/kubermeister/settings.json` |
 
-The file is versioned. An older version is migrated forward on load, one the app does not recognise
-falls back to defaults, and each section is checked on its own, so one section that fails falls back
-to its defaults without taking the rest of the file with it.
+`$XDG_CONFIG_HOME/kubermeister/settings.json` is used instead when `XDG_CONFIG_HOME` is set, and
+`KUBERMEISTER_CONFIG` names any other file outright:
+
+```sh
+KUBERMEISTER_CONFIG=~/work/kubermeister.json open -a Kubermeister
+```
+
+On Windows that is `%USERPROFILE%\.config\kubermeister\settings.json`, beside kubectl's own
+`%USERPROFILE%\.kube\config`, so one dotfiles setup serves every operating system. Unlike
+`%APPDATA%`, the user profile does not roam between machines on a domain with roaming profiles; set
+`KUBERMEISTER_CONFIG` to a path under `%APPDATA%` for a file that should.
+
+Every key is optional, and a missing one takes its default, so a file holds only what you want
+different:
+
+```json
+{
+  "general": { "confirmQuit": false },
+  "data": { "refreshIntervalSec": 5, "readTimeoutSec": 120 },
+  "updates": { "mode": "check" },
+  "network": { "proxyMode": "manual", "proxyUrl": "http://proxy.corp:3128", "noProxy": ".corp,10.0.0.0/8" },
+  "charts": {
+    "repositories": [{ "name": "bitnami", "kind": "classic", "url": "https://charts.bitnami.com/bitnami" }]
+  }
+}
+```
+
+| Key                          | Values                                                              | Default |
+| ---------------------------- | ------------------------------------------------------------------- | ------- |
+| `general.confirmQuit`        | `true`, `false`                                                     | `true`  |
+| `session.restoreOnLaunch`    | `true`, `false`                                                     | `true`  |
+| `connection.kubeconfigPath`  | a path, or `null` for `$KUBECONFIG` or `~/.kube/config`             | `null`  |
+| `data.refreshIntervalSec`    | seconds, a positive whole number                                    | `12`    |
+| `data.readTimeoutSec`        | seconds, 5 to 600                                                   | `60`    |
+| `data.logBufferLines`        | lines, a positive whole number                                      | `2000`  |
+| `data.terminalFontSize`      | points, 8 to 32                                                     | `12`    |
+| `updates.mode`               | `"check"`, `"download"`, `"off"`, or `null` for the default         | `null`  |
+| `updates.checkIntervalHours` | hours, 1 to 168                                                     | `4`     |
+| `network.proxyMode`          | `"env"`, `"manual"`, `"off"`                                        | `"env"` |
+| `network.proxyUrl`           | an `http`, `https` or `socks` URL, or `null`                        | `null`  |
+| `network.noProxy`            | hosts as `NO_PROXY` spells them, or `null` to follow `NO_PROXY`     | `null`  |
+| `network.caBundlePath`       | a path to a PEM file, or `null`                                     | `null`  |
+| `charts.repositories`        | a list of `{ "name", "kind": "classic" or "oci", "url" }`, up to 50 | `[]`    |
+
+The file may take values Settings does not offer, within the ranges above. A chart repository listed
+there is read the first time you refresh it in Settings, and its username and password never go in the file: add them in Settings and they are kept in the system
+keychain. `version` is optional; the app adds it the first time it saves.
+
+A value that is not valid falls back to its own default and leaves the rest of the file alone.
+When a setting is changed in the app, only that key is written. Keys you never wrote stay absent,
+keys the app does not know are kept, the file keeps its indentation, and a symlinked file is written
+through the link. Each write goes to a temporary file that is then renamed over the original, so a
+crash mid-write cannot leave half a file.
+
+What the app records about itself rather than what you configure is kept apart, in `state.json` in
+the app's user-data directory (`~/Library/Application Support/Kubermeister` on macOS,
+`~/.config/Kubermeister` on Linux, `%APPDATA%\Kubermeister` on Windows): the last context and
+namespace, the port forwards you have started (so they can be offered again), and where the window
+last stood. The window reopens there, unless less than 100 pixels of it would fall on a current
+display; otherwise it opens at the default 1200 × 800. Theme, list columns and log view options stay
+with the window's own storage.
+
+An install from before the file moved keeps its settings: on the first launch the old
+`settings.json` in the user-data directory is carried over, with the values that were only ever
+defaults left out, and the old file is left where it was. A settings file you wrote before that
+launch is kept exactly as it is; only the last context, the remembered forwards and the window's
+place come across from the old file.
 
 ## Quitting
 

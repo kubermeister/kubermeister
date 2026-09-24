@@ -13,6 +13,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Settings are kept in `~/.config/kubermeister/settings.json` on every operating system, a file you
+  can write by hand, keep with your dotfiles and provision onto a machine: every key is optional, a
+  change made in the app rewrites only that key, and the settings you already have are carried over
+  on the first launch.
+
 ## [0.5.1] - 2026-09-23
 
 ### Fixed

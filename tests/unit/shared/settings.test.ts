@@ -3,8 +3,11 @@ import {
     DEFAULT_SETTINGS,
     SETTINGS_VERSION,
     isProxyUrl,
+    isStateKey,
     mergeSettings,
     parseSettings,
+    readSettings,
+    STATE_KEYS,
     settingsInputSchema,
     settingsPatchSchema,
 } from '../../../src/shared/settings';
@@ -48,20 +51,69 @@ describe('parseSettings', () => {
         expect(parseSettings([1, 2])).toEqual(DEFAULT_SETTINGS);
     });
 
-    it('falls back to defaults on an unknown version', () => {
-        expect(parseSettings({ ...DEFAULT_SETTINGS, version: 99 })).toEqual(DEFAULT_SETTINGS);
-        expect(parseSettings({ ...DEFAULT_SETTINGS, version: '2' })).toEqual(DEFAULT_SETTINGS);
+    it('reads a file with no version as the current version, since that is what somebody writing one means', () => {
+        expect(parseSettings({ data: { refreshIntervalSec: 5 } }).data.refreshIntervalSec).toBe(5);
+        expect(readSettings({ data: { refreshIntervalSec: 5 } }).problems).toEqual([]);
     });
 
-    it('resets only the section whose field has the wrong type', () => {
+    it('reads what still validates in a file of a version it does not know, and says so', () => {
+        const newer = readSettings({ version: 99, data: { refreshIntervalSec: 30 } });
+        expect(newer.newer).toBe(true);
+        expect(newer.settings.data.refreshIntervalSec).toBe(30);
+        expect(newer.problems.map((problem) => problem.path)).toEqual(['version']);
+        const odd = readSettings({ version: '2' });
+        expect(odd.newer).toBe(false);
+        expect(odd.problems).toEqual([{ path: 'version', message: 'Unknown settings version "2".' }]);
+    });
+
+    it('resets only the value that has the wrong type, and names it', () => {
         const bad = {
             version: SETTINGS_VERSION,
             session: { lastContext: 'prod', lastNamespace: null, restoreOnLaunch: 'yes' },
             connection: { kubeconfigPath: '/tmp/k' },
         };
-        const parsed = parseSettings(bad);
-        expect(parsed.session).toEqual(DEFAULT_SETTINGS.session);
-        expect(parsed.connection).toEqual({ kubeconfigPath: '/tmp/k' });
+        const { settings, problems } = readSettings(bad);
+        expect(settings.session).toEqual({ ...DEFAULT_SETTINGS.session, lastContext: 'prod' });
+        expect(settings.connection).toEqual({ kubeconfigPath: '/tmp/k' });
+        expect(problems).toEqual([{ path: 'session.restoreOnLaunch', message: expect.any(String) }]);
+    });
+
+    it('names a section that is not an object, and keys and sections it does not know', () => {
+        const { settings, problems } = readSettings({
+            $schema: 'x',
+            general: 'on',
+            data: { refreshSec: 5 },
+            extra: {},
+        });
+        expect(settings.general).toEqual(DEFAULT_SETTINGS.general);
+        expect(problems).toEqual([
+            { path: 'extra', message: 'Unknown section, ignored.' },
+            { path: 'general', message: 'Expected an object.' },
+            { path: 'data.refreshSec', message: 'Unknown setting, ignored.' },
+        ]);
+    });
+
+    it('reads what the app records about itself from the state file first, then from the settings file', () => {
+        const config = { session: { lastContext: 'old', restoreOnLaunch: false }, window: { bounds: null } };
+        const state = { session: { lastContext: 'new', lastNamespace: 'web' } };
+        expect(readSettings(config, state).settings.session).toEqual({
+            lastContext: 'new',
+            lastNamespace: 'web',
+            restoreOnLaunch: false,
+        });
+        expect(readSettings(config).settings.session.lastContext).toBe('old');
+        // A key that is not state is never read from the state file.
+        expect(readSettings({}, { session: { restoreOnLaunch: false } }).settings.session.restoreOnLaunch).toBe(true);
+    });
+
+    it('marks exactly the last context, namespace, forwards and window bounds as state', () => {
+        expect(STATE_KEYS).toEqual({
+            session: ['lastContext', 'lastNamespace'],
+            data: ['forwards'],
+            window: ['bounds'],
+        });
+        expect(isStateKey('session', 'restoreOnLaunch')).toBe(false);
+        expect(isStateKey('data', 'forwards')).toBe(true);
     });
 
     it('fills missing keys and sections with defaults and drops unknown keys', () => {
@@ -165,8 +217,7 @@ describe('parseSettings', () => {
         expect(parseSettings({ version: SETTINGS_VERSION, window: { bounds } }).window).toEqual({ bounds });
     });
 
-    it('resets a data section that is not usable, keeping one that is', () => {
-        // The section is parsed as a whole, so one bad field takes the section's defaults with it.
+    it('resets a data value that is not usable, keeping the rest of the section', () => {
         const defaults = {
             refreshIntervalSec: 12,
             readTimeoutSec: 60,
@@ -184,25 +235,30 @@ describe('parseSettings', () => {
         expect(parseSettings({ version: SETTINGS_VERSION, data: { refreshIntervalSec: 'soon' } }).data).toEqual(
             defaults,
         );
-        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, refreshIntervalSec: 0 } }).data).toEqual(
-            defaults,
-        );
-        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, logBufferLines: 0 } }).data).toEqual(
-            defaults,
-        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, refreshIntervalSec: 0 } }).data).toEqual({
+            ...good,
+            refreshIntervalSec: defaults.refreshIntervalSec,
+        });
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, logBufferLines: 0 } }).data).toEqual({
+            ...good,
+            logBufferLines: defaults.logBufferLines,
+        });
         // A read ceiling under five seconds cuts every real cluster short; over ten minutes is a hang.
-        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 1 } }).data).toEqual(
-            defaults,
-        );
-        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 601 } }).data).toEqual(
-            defaults,
-        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 1 } }).data).toEqual({
+            ...good,
+            readTimeoutSec: defaults.readTimeoutSec,
+        });
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 601 } }).data).toEqual({
+            ...good,
+            readTimeoutSec: defaults.readTimeoutSec,
+        });
         expect(
             parseSettings({ version: SETTINGS_VERSION, data: { ...good, readTimeoutSec: 5 } }).data.readTimeoutSec,
         ).toBe(5);
-        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, terminalFontSize: 99 } }).data).toEqual(
-            defaults,
-        );
+        expect(parseSettings({ version: SETTINGS_VERSION, data: { ...good, terminalFontSize: 99 } }).data).toEqual({
+            ...good,
+            terminalFontSize: defaults.terminalFontSize,
+        });
         expect(parseSettings({ version: SETTINGS_VERSION, data: good }).data).toEqual(good);
     });
 });
