@@ -41,6 +41,9 @@ test('a second launch hands its link to the running app and quits', async () => 
         process.execPath,
         [
             'node_modules/electron/cli.js',
+            // What Playwright passes its own Linux launches: a runner's development Electron has no
+            // root-owned chrome-sandbox, and Chromium aborts rather than start without one.
+            ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
             'out/main/index.mjs',
             link(CONTEXT_NAME, `/workloads/deployments/${NAMESPACE}/web/manifest`),
         ],
