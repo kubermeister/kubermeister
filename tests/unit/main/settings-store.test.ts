@@ -261,7 +261,7 @@ describe('settings store', () => {
                 exists: true,
                 blocked: true,
                 readOnly: expect.stringMatching(
-                    /^It is not valid JSON: .*will not write the file until it is fixed\.$/,
+                    /^It is not valid JSON: .*[.!?] Kubermeister is running on its defaults and will not write the file until it is fixed\.$/,
                 ),
             });
         });
@@ -358,6 +358,91 @@ describe('settings store', () => {
             expect(settingsFileStatus().readOnly).toBe(null);
         },
     );
+
+    describe('an edit made outside the app', () => {
+        beforeEach(() => {
+            mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        });
+
+        it('is taken in, with what the settings were before it', async () => {
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 5 } }));
+            const { getSettings, reloadSettingsFile } = await loadStore();
+            expect(getSettings().data.refreshIntervalSec).toBe(5);
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 30 } }));
+            const change = reloadSettingsFile();
+            expect(change?.before.data.refreshIntervalSec).toBe(5);
+            expect(change?.after.data.refreshIntervalSec).toBe(30);
+            expect(getSettings().data.refreshIntervalSec).toBe(30);
+        });
+
+        it('is nothing when the file reads as the app last wrote it', async () => {
+            const { reloadSettingsFile, updateSettings } = await loadStore();
+            updateSettings({ general: { confirmQuit: false } });
+            expect(reloadSettingsFile()).toBe(null);
+        });
+
+        it('keeps the app’s own state, which the settings file does not hold', async () => {
+            const { getSettings, reloadSettingsFile, updateSettings } = await loadStore();
+            updateSettings({ session: { lastContext: 'prod' } });
+            writeFileSync(configFile, JSON.stringify({ general: { confirmQuit: false } }));
+            reloadSettingsFile();
+            expect(getSettings().session.lastContext).toBe('prod');
+            expect(getSettings().general.confirmQuit).toBe(false);
+        });
+
+        it('stops the app writing a file broken on disk, and lets it again once the file is fixed', async () => {
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 5 } }));
+            const { getSettings, reloadSettingsFile, settingsFileStatus, updateSettings } = await loadStore();
+            getSettings();
+            writeFileSync(configFile, '{ "data": ');
+            expect(reloadSettingsFile()?.after).toEqual(DEFAULT_SETTINGS);
+            expect(settingsFileStatus().blocked).toBe(true);
+            updateSettings({ general: { confirmQuit: false } });
+            expect(readFileSync(configFile, 'utf8')).toBe('{ "data": ');
+
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 10 } }));
+            reloadSettingsFile();
+            expect(settingsFileStatus().blocked).toBe(false);
+            // The file is what the app runs on again, not the change it could not save.
+            expect(getSettings().general.confirmQuit).toBe(true);
+            expect(getSettings().data.refreshIntervalSec).toBe(10);
+        });
+
+        it('goes back to the defaults when the file is deleted', async () => {
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 5 } }));
+            const { getSettings, reloadSettingsFile } = await loadStore();
+            getSettings();
+            rmSync(configFile);
+            expect(reloadSettingsFile()?.after).toEqual(DEFAULT_SETTINGS);
+        });
+
+        it('is noticed by the watch within its polling interval, and not after the watch stops', async () => {
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 5 } }));
+            const { getSettings, watchSettingsFile } = await loadStore();
+            getSettings();
+            const onChange = vi.fn();
+            const stop = watchSettingsFile(onChange);
+            try {
+                // Written until noticed: the watch takes its first reading asynchronously, and an edit
+                // landing before that reading is the baseline rather than a change. Writing the same
+                // text again is no change either, so the listener still hears exactly one.
+                await vi.waitFor(
+                    () => {
+                        writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 30 } }));
+                        expect(onChange).toHaveBeenCalled();
+                    },
+                    { timeout: 10_000, interval: 250 },
+                );
+                expect(onChange).toHaveBeenCalledOnce();
+                expect(onChange.mock.calls[0]?.[0].after.data.refreshIntervalSec).toBe(30);
+            } finally {
+                stop();
+            }
+            writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 60 } }));
+            await new Promise((resolve) => setTimeout(resolve, 1_500));
+            expect(onChange).toHaveBeenCalledOnce();
+        }, 15_000);
+    });
 
     it('survives a write failure without throwing', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => {});

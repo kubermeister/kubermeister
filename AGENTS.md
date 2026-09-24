@@ -747,6 +747,14 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   refused value by path; the Settings screen's `SettingsFileCard` lists them, and the `settings`
   startup check raises the top-bar notice for a file that will not be saved. The notice puts a
   failing connection ahead of it, since a settings file does not stop any screen working.
+- **An edit on disk takes effect while the app runs.** `watchSettingsFile` polls the file with
+  `fs.watchFile` (a stat a second) rather than an OS watch, which loses an editor's rename-into-place
+  and a symlink's target and cannot be set on a file that does not exist yet. A change whose text
+  matches what the app last read or wrote is its own save and is ignored. `applySettingsChange` in
+  `src/main/ipc/index.ts` is the one place a change reaches what read settings once (read ceiling,
+  update schedule, the loaded kubeconfig with its proxy and CA bundle), for `settings.set` and for
+  the file alike, and the `settings.changed` push tells the renderer whether the connection was
+  remade.
 - An install from before the move has its whole-object `userData/settings.json` carried over once,
   dropping every value equal to its default: that file was rewritten whole on every save, so such a
   value is no evidence that anybody chose it.

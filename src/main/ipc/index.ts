@@ -9,6 +9,7 @@ import { getCurrentContext, listContexts, setContext, setNamespace } from '../k8
 import { K8sError, setReadTimeoutSec } from '../k8s/errors.js';
 import { listAlerts } from '../k8s/alerts.js';
 import { resetHistory } from '../k8s/sampler.js';
+import { broadcast } from './push.js';
 import { endAllStreams } from './streams.js';
 import { stopAllInformers } from '../k8s/watch.js';
 import { readPodLogSnapshot, readPodLogText } from '../k8s/logs.js';
@@ -79,7 +80,13 @@ import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
 import { pickManifestFile, readManifestFile } from '../manifest-file.js';
 import type { ManifestExport, ManifestExportInput } from '../../shared/k8s/manifest.js';
 import type { Settings } from '../../shared/settings.js';
-import { getSettings, settingsFileStatus, settingsFilePath, updateSettings } from '../settings/store.js';
+import {
+    getSettings,
+    settingsFileStatus,
+    settingsFilePath,
+    updateSettings,
+    watchSettingsFile,
+} from '../settings/store.js';
 import { runStartupChecks } from '../startup/checks.js';
 import { applyCheckInterval, checkForUpdates, downloadUpdate, getUpdateState, installUpdate } from '../updater.js';
 
@@ -195,6 +202,38 @@ function leaveConnection(reason: string): void {
     resetSchemaCache();
 }
 
+/**
+ * Carry a change of settings into everything that read them once rather than on every use: the
+ * read ceiling, the update schedule, and the loaded kubeconfig, which holds the proxy and the CA
+ * bundle as well as the file itself. Answers whether the connection was remade, since every cluster
+ * read the renderer holds then belongs to the connection that was left.
+ */
+export function applySettingsChange(before: Settings, after: Settings): { reconnected: boolean } {
+    setReadTimeoutSec(after.data.readTimeoutSec);
+    applyCheckInterval(after.updates.checkIntervalHours);
+    if (before.connection.kubeconfigPath !== after.connection.kubeconfigPath) {
+        leaveConnection('The kubeconfig changed');
+        reloadKubeConfig();
+        return { reconnected: true };
+    }
+    if (networkChanged(before.network, after.network)) {
+        reconnect();
+        return { reconnected: true };
+    }
+    return { reconnected: false };
+}
+
+/**
+ * Take in edits made to the settings file outside the app, exactly as a change made in Settings is
+ * taken in, and tell every window so its screens follow. Answers the function that stops following.
+ */
+export function followSettingsFile(): () => void {
+    return watchSettingsFile(({ before, after }) => {
+        const { reconnected } = applySettingsChange(before, after);
+        broadcast('settings.changed', { reconnected });
+    });
+}
+
 const handlers: Handlers = {
     'app.info': async () => ({
         name: app.getName(),
@@ -219,13 +258,9 @@ const handlers: Handlers = {
     'namespace.set': async ({ namespace }) => setNamespace(namespace),
     'settings.get': async () => getSettings(),
     'settings.set': async (patch) => {
-        const before = getSettings().network;
+        const before = getSettings();
         const settings = updateSettings(patch);
-        setReadTimeoutSec(settings.data.readTimeoutSec);
-        applyCheckInterval(settings.updates.checkIntervalHours);
-        // The proxy and the CA bundle are read once, when the kubeconfig loads, so a change to either
-        // only reaches the cluster after a reload.
-        if (networkChanged(before, settings.network)) reconnect();
+        applySettingsChange(before, settings);
         return settings;
     },
     'settingsFile.status': async () => settingsFileStatus(),

@@ -17,7 +17,7 @@ const CLUSTER_PROBE_TIMEOUT_MS = 5_000;
 export function checkSettings(): StartupCheck {
     const base = { id: 'settings', label: 'Settings file' } as const;
     const status = settingsFileStatus();
-    const hint = `Fix ${status.path}; the app reads it again on the next launch.`;
+    const hint = `Fix ${status.path}; the app reads it again as soon as it is saved.`;
     if (status.readOnly) return { ...base, status: 'error', detail: status.readOnly, hint };
     if (status.problems.length > 0) {
         const detail = status.problems.map((problem) => `${problem.path}: ${problem.message}`).join(' ');

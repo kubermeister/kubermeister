@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from 'electron';
-import { registerHandlers } from './ipc/index.js';
+import { followSettingsFile, registerHandlers } from './ipc/index.js';
 import { setReadTimeoutSec } from './k8s/errors.js';
 import { registerStreamHandlers, stopAllStreams } from './ipc/streams.js';
 import { stopSampler } from './k8s/sampler.js';
@@ -35,6 +35,8 @@ void app.whenReady().then(async () => {
     installApplicationMenu();
     registerHandlers();
     registerStreamHandlers();
+    // An edit to the settings file takes effect while the app runs, as a change in Settings does.
+    followSettingsFile();
     startUpdater();
     createMainWindow();
 

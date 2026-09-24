@@ -1,8 +1,23 @@
 import { app } from 'electron';
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    realpathSync,
+    renameSync,
+    unwatchFile,
+    watchFile,
+    writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import type { Settings, SettingsFileStatus, SettingsPatch, SettingsProblem } from '../../shared/settings.js';
+import type {
+    Settings,
+    SettingsFileStatus,
+    SettingsPatch,
+    SettingsProblem,
+    SettingsRead,
+} from '../../shared/settings.js';
 import { mergeSettings, migrateSettingsDocument, parseSettings, readSettings } from '../../shared/settings.js';
 import type { SettingsDocument } from './document.js';
 import {
@@ -28,12 +43,14 @@ import {
 interface LoadedFile {
     doc: SettingsDocument | undefined;
     indent: string;
+    /** The file's text as last read or written, so a change on disk can be told from the app's own write. */
+    text: string | null;
     exists: boolean;
     /** Why a file that exists could not be used at all: not readable, not JSON, not an object. */
     error: string | null;
 }
 
-const NO_FILE: LoadedFile = { doc: undefined, indent: '    ', exists: false, error: null };
+const NO_FILE: LoadedFile = { doc: undefined, indent: '    ', text: null, exists: false, error: null };
 
 let current: Settings | null = null;
 let config: LoadedFile = NO_FILE;
@@ -81,6 +98,11 @@ function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+/** A library's message as a sentence, so the one that follows it reads as a second sentence. */
+function sentence(text: string): string {
+    return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
 function readFile(path: string): LoadedFile {
     let text: string;
     try {
@@ -88,15 +110,15 @@ function readFile(path: string): LoadedFile {
     } catch (error) {
         // A missing file is the first run, not a problem.
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return NO_FILE;
-        return { ...NO_FILE, exists: true, error: `It could not be read: ${errorMessage(error)}` };
+        return { ...NO_FILE, exists: true, error: sentence(`It could not be read: ${errorMessage(error)}`) };
     }
-    const found = { ...NO_FILE, exists: true, indent: detectIndent(text) };
+    const found = { ...NO_FILE, exists: true, text, indent: detectIndent(text) };
     try {
         const parsed: unknown = JSON.parse(text);
         if (isDocument(parsed)) return { ...found, doc: parsed };
         return { ...found, error: 'It holds JSON, but not an object of settings.' };
     } catch (error) {
-        return { ...found, error: `It is not valid JSON: ${errorMessage(error)}` };
+        return { ...found, error: sentence(`It is not valid JSON: ${errorMessage(error)}`) };
     }
 }
 
@@ -104,12 +126,12 @@ function readFile(path: string): LoadedFile {
  * Write through a symlink rather than over it: a file linked in by stow, chezmoi or home-manager
  * stays linked, and the temporary file sits next to the real one so the rename stays on one volume.
  */
-function writeFile(path: string, doc: SettingsDocument, indent: string): string | null {
+function writeFile(path: string, text: string): string | null {
     try {
         const target = existsSync(path) ? realpathSync(path) : path;
         mkdirSync(dirname(target), { recursive: true });
         const tmp = `${target}.tmp`;
-        writeFileSync(tmp, serializeDocument(doc, indent), 'utf8');
+        writeFileSync(tmp, text, 'utf8');
         renameSync(tmp, target);
         return null;
     } catch (error) {
@@ -134,17 +156,14 @@ function migrateLegacy(configPath: string): void {
     const legacy = readFile(legacyPath);
     if (!legacy.doc) return;
     const settings = parseSettings(legacy.doc);
-    if (needsConfig) writeFile(configPath, configFromLegacy(settings), legacy.indent);
-    if (needsState) writeFile(stateFilePath(), stateFromLegacy(settings), legacy.indent);
+    if (needsConfig) writeFile(configPath, serializeDocument(configFromLegacy(settings), legacy.indent));
+    if (needsState) writeFile(stateFilePath(), serializeDocument(stateFromLegacy(settings), legacy.indent));
 }
 
-function loadSettings(): Settings {
-    const configPath = settingsFilePath();
-    migrateLegacy(configPath);
-    const loaded = readFile(configPath);
+/** Take in the settings file as read, over the state already held. */
+function takeConfig(loaded: LoadedFile): SettingsRead {
     // Kept migrated, so the first save also brings an older file up to the current version.
     config = { ...loaded, doc: loaded.doc && migrateSettingsDocument(loaded.doc) };
-    state = readFile(stateFilePath());
     const read = readSettings(config.doc, state.doc);
     problems = read.problems;
     blocked = config.error
@@ -153,7 +172,14 @@ function loadSettings(): Settings {
           ? 'A newer version of Kubermeister wrote this file, so this one will not write it.'
           : null;
     writeFailure = null;
-    return read.settings;
+    return read;
+}
+
+function loadSettings(): Settings {
+    const configPath = settingsFilePath();
+    migrateLegacy(configPath);
+    state = readFile(stateFilePath());
+    return takeConfig(readFile(configPath)).settings;
 }
 
 export function getSettings(): Settings {
@@ -167,14 +193,15 @@ export function updateSettings(patch: SettingsPatch): Settings {
     const nextConfig = blocked ? null : patchDocument(config.doc ?? {}, patch, 'config');
     if (nextConfig) {
         const written = configForWrite(nextConfig);
-        config = { ...config, doc: written, exists: true };
-        const failure = writeFile(settingsFilePath(), written, config.indent);
+        const text = serializeDocument(written, config.indent);
+        config = { ...config, doc: written, text, exists: true };
+        const failure = writeFile(settingsFilePath(), text);
         writeFailure = failure && `The file could not be saved (${failure}). Changes made here last until you quit.`;
     }
     const nextState = patchDocument(state.doc ?? {}, patch, 'state');
     if (nextState) {
         state = { ...state, doc: nextState };
-        writeFile(stateFilePath(), nextState, state.indent);
+        writeFile(stateFilePath(), serializeDocument(nextState, state.indent));
     }
     return current;
 }
@@ -189,4 +216,41 @@ export function settingsFileStatus(): SettingsFileStatus {
         blocked: blocked !== null,
         problems,
     };
+}
+
+export interface SettingsChange {
+    before: Settings;
+    after: Settings;
+}
+
+/**
+ * Read the settings file again after it changed on disk. Null when it reads exactly as the app last
+ * read or wrote it, which is what the app's own saves look like from here. A change made in the app
+ * that the file never took, because it could not be written, gives way to what the file says.
+ */
+export function reloadSettingsFile(): SettingsChange | null {
+    const before = getSettings();
+    const loaded = readFile(settingsFilePath());
+    if (loaded.text === config.text && loaded.error === config.error) return null;
+    current = takeConfig(loaded).settings;
+    return { before, after: current };
+}
+
+/** How often the file is looked at: an edit takes effect within a second of being saved. */
+const WATCH_INTERVAL_MS = 1_000;
+
+/**
+ * Follow the settings file for edits made outside the app. The file is polled rather than watched
+ * through the OS: an editor that saves by renaming a new file into place, a symlink whose target
+ * changes, and a file that does not exist yet are all a stat away, where an OS watch loses track
+ * of the first two and cannot be set on the third. The poll keeps no process alive.
+ */
+export function watchSettingsFile(onChange: (change: SettingsChange) => void): () => void {
+    const path = settingsFilePath();
+    const listener = () => {
+        const change = reloadSettingsFile();
+        if (change) onChange(change);
+    };
+    watchFile(path, { interval: WATCH_INTERVAL_MS, persistent: false }, listener);
+    return () => unwatchFile(path, listener);
 }

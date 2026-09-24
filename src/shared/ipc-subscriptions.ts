@@ -11,6 +11,11 @@ export const subSchemas = {
     'update.state': updateStateSchema,
     /** The application menu's Settings item; the renderer routes to the settings screen. */
     'open-settings': z.object({}),
+    /**
+     * The settings file changed on disk and main has taken the change in. `reconnected` says the
+     * connection was remade with it, so every cluster read the renderer holds is from before.
+     */
+    'settings.changed': z.object({ reconnected: z.boolean() }),
 } as const satisfies Record<AllowedSubscription, z.ZodType>;
 
 export type SubChannel = AllowedSubscription;

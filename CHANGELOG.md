@@ -22,6 +22,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A settings file that is not valid JSON, or holds a value Kubermeister refuses, is no longer reset
   to the defaults and overwritten: Settings names every value it did not use and why, and a file it
   cannot read is left untouched while the top bar says so.
+- An edit to `settings.json` takes effect while Kubermeister runs, within a second of being saved,
+  the same way a change made in Settings does.
 
 ## [0.5.1] - 2026-09-23
 

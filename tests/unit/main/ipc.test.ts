@@ -1,17 +1,24 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SETTINGS, mergeSettings } from '../../../src/shared/settings';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DEFAULT_SETTINGS, mergeSettings, type Settings } from '../../../src/shared/settings';
 import { K8sError, readTimeoutMs, setReadTimeoutSec } from '../../../src/main/k8s/errors';
 
 type Listener = (event: unknown, input: unknown) => Promise<unknown>;
 const registered = new Map<string, Listener>();
 
 const dialog = { showOpenDialog: vi.fn(), showSaveDialog: vi.fn() };
+const shell = { showItemInFolder: vi.fn(), openPath: vi.fn(async () => '') };
 const focused = { id: 1 };
+const pushed = vi.fn();
+const openWindow = { isDestroyed: () => false, webContents: { send: pushed } };
 vi.mock('electron', () => ({
     app: { getName: () => 'Kubermeister', getVersion: () => '0.1.1' },
     ipcMain: { handle: (channel: string, listener: Listener) => registered.set(channel, listener) },
-    BrowserWindow: { getFocusedWindow: () => focused },
+    BrowserWindow: { getFocusedWindow: () => focused, getAllWindows: () => [openWindow] },
     dialog,
+    shell,
 }));
 
 const updater = {
@@ -23,7 +30,13 @@ const updater = {
 };
 const client = { reloadKubeConfig: vi.fn() };
 const context = { listContexts: vi.fn(), getCurrentContext: vi.fn(), setContext: vi.fn(), setNamespace: vi.fn() };
-const store = { getSettings: vi.fn(), updateSettings: vi.fn() };
+const store = {
+    getSettings: vi.fn(),
+    updateSettings: vi.fn(),
+    settingsFileStatus: vi.fn(),
+    settingsFilePath: vi.fn(() => '/nowhere/settings.json'),
+    watchSettingsFile: vi.fn<(onChange: (change: { before: Settings; after: Settings }) => void) => () => void>(),
+};
 const startup = { runStartupChecks: vi.fn() };
 const resources = {
     listNamespaces: vi.fn(),
@@ -115,7 +128,7 @@ vi.mock('../../../src/main/k8s/resources/describe.js', () => describeMod);
 vi.mock('../../../src/main/k8s/openapi/index.js', () => schemasMod);
 vi.mock('../../../src/main/manifest-file.js', () => manifestFileMod);
 
-const { registerHandlers } = await import('../../../src/main/ipc/index.js');
+const { applySettingsChange, followSettingsFile, registerHandlers } = await import('../../../src/main/ipc/index.js');
 const { ipcSchemas } = await import('../../../src/shared/ipc.js');
 
 const alpha = { name: 'alpha', cluster: 'c', user: 'u', namespace: 'team-a', current: true };
@@ -354,6 +367,85 @@ describe('registerHandlers', () => {
         // Streams and sampled usage belong to the kubeconfig that was just left.
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The kubeconfig changed');
         expect(samplerMod.resetHistory).toHaveBeenCalledOnce();
+    });
+
+    it('answers where the settings file is and what is wrong with it', async () => {
+        const status = {
+            path: '/home/me/.config/kubermeister/settings.json',
+            exists: false,
+            readOnly: null,
+            blocked: false,
+            problems: [],
+        };
+        store.settingsFileStatus.mockReturnValue(status);
+        await expect(invoke('settingsFile.status', {})).resolves.toEqual(status);
+    });
+
+    describe('showing the settings file', () => {
+        let dir = '';
+        beforeEach(() => {
+            dir = mkdtempSync(join(tmpdir(), 'km-reveal-'));
+        });
+        afterEach(() => {
+            rmSync(dir, { recursive: true, force: true });
+        });
+
+        it('shows the file main names in the file manager', async () => {
+            const path = join(dir, 'settings.json');
+            writeFileSync(path, '{}');
+            store.settingsFilePath.mockReturnValue(path);
+            await expect(invoke('settingsFile.reveal', {})).resolves.toEqual({});
+            expect(shell.showItemInFolder).toHaveBeenCalledWith(path);
+        });
+
+        it('opens the folder a file that does not exist yet goes in, creating it', async () => {
+            const folder = join(dir, 'kubermeister');
+            store.settingsFilePath.mockReturnValue(join(folder, 'settings.json'));
+            await invoke('settingsFile.reveal', {});
+            expect(shell.showItemInFolder).not.toHaveBeenCalled();
+            expect(shell.openPath).toHaveBeenCalledWith(folder);
+        });
+    });
+
+    describe('a change of settings', () => {
+        const changed = (patch: Parameters<typeof mergeSettings>[1]) => mergeSettings(DEFAULT_SETTINGS, patch);
+
+        it('applies the read ceiling and the update schedule, and leaves the connection alone', () => {
+            const after = changed({ data: { readTimeoutSec: 300 }, updates: { checkIntervalHours: 24 } });
+            try {
+                expect(applySettingsChange(DEFAULT_SETTINGS, after)).toEqual({ reconnected: false });
+                expect(readTimeoutMs()).toBe(300_000);
+            } finally {
+                setReadTimeoutSec(60);
+            }
+            expect(updater.applyCheckInterval).toHaveBeenCalledWith(24);
+            expect(client.reloadKubeConfig).not.toHaveBeenCalled();
+        });
+
+        it('remakes the connection when the kubeconfig path changes', () => {
+            const after = changed({ connection: { kubeconfigPath: '/home/me/.kube/work' } });
+            expect(applySettingsChange(DEFAULT_SETTINGS, after)).toEqual({ reconnected: true });
+            expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The kubeconfig changed');
+            expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        });
+
+        it('remakes the connection when the proxy changes', () => {
+            const after = changed({ network: { proxyMode: 'off' } });
+            expect(applySettingsChange(DEFAULT_SETTINGS, after)).toEqual({ reconnected: true });
+            expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+        });
+
+        it('takes in an edit to the file and tells every window', () => {
+            const stop = vi.fn();
+            store.watchSettingsFile.mockReturnValue(stop);
+            expect(followSettingsFile()).toBe(stop);
+            const onChange = store.watchSettingsFile.mock.calls[0]?.[0];
+            onChange?.({ before: DEFAULT_SETTINGS, after: changed({ network: { proxyMode: 'off' } }) });
+            expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+            expect(pushed).toHaveBeenCalledWith('sub.settings.changed', { reconnected: true });
+            onChange?.({ before: DEFAULT_SETTINGS, after: changed({ general: { confirmQuit: false } }) });
+            expect(pushed).toHaveBeenLastCalledWith('sub.settings.changed', { reconnected: false });
+        });
     });
 
     it('reloads the connection when the proxy or the CA bundle changes, and only then', async () => {

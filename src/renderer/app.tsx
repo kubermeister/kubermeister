@@ -8,10 +8,13 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { subscribe } from '@/lib/ipc';
 import { queryClient } from '@/lib/query';
 import { router } from '@/lib/router';
+import { followSettingsFile } from '@/lib/settings';
 
 export function App() {
     // The application menu's Settings item pushes this from the main process.
     useEffect(() => subscribe('open-settings', () => void router.navigate({ to: '/settings' })), []);
+    // An edit to the settings file on disk reaches every screen reading a setting.
+    useEffect(() => followSettingsFile(queryClient), []);
     return (
         <ThemeProvider defaultTheme="dark" storageKey="km-theme">
             <QueryClientProvider client={queryClient}>
