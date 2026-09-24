@@ -94,9 +94,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   it (Added, Changed, Deprecated, Removed, Fixed, Security), present tense, naming no issue or pull
   request. A refactor, a test, a dependency bump or anything else invisible from outside the
   repository adds nothing, and an empty section is left out rather than written empty.
-- The file starts at the version it was introduced in; earlier releases stay on the releases page
-  rather than being reconstructed from their pull request titles, which is the very list the file
-  exists not to repeat.
+- Every release has its section, the ones from before the file existed included, written from their
+  pull requests in the same terms as the rest: what the app then did, not the titles. Something
+  added and taken out again within one release is left out, since no release shipped it. The
+  comparison links at the bottom gain a line per release, and `[Unreleased]` compares the newest
+  tag with `HEAD`.
 
 ### The documentation
 
@@ -844,7 +846,8 @@ through the next release.
   blockmaps), publish as latest.
 - Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps package.json **and turns
   `## [Unreleased]` in `CHANGELOG.md` into `## [X.Y.Z] - YYYY-MM-DD` with a fresh empty
-  `## [Unreleased]` above it**, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The draft release
+  `## [Unreleased]` above it, adding the `[X.Y.Z]` comparison link and moving `[Unreleased]` on
+  to compare from `vX.Y.Z`**, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The draft release
   step prepends a link to the file above the generated notes, so the two are read together.
 - The `verify` job refuses a tag whose version differs from package.json and a tag whose commit is
   not on `main`, before anything is built: a tag on any other commit would still publish as latest
