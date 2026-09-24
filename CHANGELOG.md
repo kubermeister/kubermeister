@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-24
+
 ### Changed
 
 - Settings are kept in `~/.config/kubermeister/settings.json` on every operating system, a file you
