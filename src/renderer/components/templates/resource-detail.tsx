@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavLink } from '@/components/layout/nav-link';
-import { CopyLinkButton } from '@/components/templates/copy-link-button';
 import { DetailCard, PropertyGrid } from '@/components/templates/detail-cards';
 import { DetailHeader, type DetailHeaderProps } from '@/components/templates/detail-header';
 import { ObjectEvents } from '@/components/templates/object-events';
@@ -208,17 +207,7 @@ export function ResourceDetail({
     return (
         <ManifestEditContext value={editControl}>
             <div className="flex h-full flex-col bg-background" data-testid={testId}>
-                {/* Every detail screen can be linked to, so the header grows Copy link here rather
-                    than on each screen. */}
-                <DetailHeader
-                    {...header}
-                    actions={
-                        <>
-                            <CopyLinkButton tab={tabParam} />
-                            {header.actions}
-                        </>
-                    }
-                />
+                <DetailHeader {...header} />
 
                 {state === 'loading' ? (
                     <div
