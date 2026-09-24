@@ -206,6 +206,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   groups (OBSERVE, INSPECT, CONNECT), built from the `overviewTab`, `labelsTab` and `eventsTab`
   factories plus bespoke tabs, with `fill` for panels that scroll themselves and `keepMounted` for
   panels holding live state.
+- A failed detail read says why the way a list does: both take the sentence from
+  `readErrorSentence` in `src/renderer/lib/k8s-error.ts` (a plural noun for a list, one object for a
+  detail) under `describeError`'s title, so the two never word one failure differently. A `notFound`
+  error is the not-found panel, not a failure, since the custom-resource and Helm readers throw it
+  where the others answer `null`.
 - Cards inside tabs use `DetailCard`, `PropertyGrid`, `KeyValueCard` and `DetailMetrics`.
 - Status always goes through `StatusBadge`/`StatusDot` with a `StatusTone` from the per-kind maps
   in `src/renderer/lib/status.ts`. Status vocabularies are per domain (`PodStatus`,
@@ -855,7 +860,7 @@ through the next release.
 ### Cutting a release
 
 - A release (`.github/workflows/release.yml`) is a `vX.Y.Z` tag whose version matches package.json:
-  draft release, package on three OSes, upload installers named
+  draft release, package on three OSes (Linux twice, x64 and arm64), upload installers named
   `Kubermeister-<version>-<os>-<arch>.<ext>` plus electron-updater metadata (`latest*.yml`,
   blockmaps), publish as latest.
 - Cutting a release: merge a `chore(release): X.Y.Z` PR that bumps package.json **and turns
@@ -952,10 +957,21 @@ through the next release.
 
 - **Publishing is fail-safe, not fail-proof:** GitHub's upload service does fail a large asset now
   and then, so the packaging action uploads one file at a time with retries, reads every asset back
-  and checks its size and checksum, and only then uploads the `*.yml` feed.
+  and checks its size and checksum, and only then uploads the `*.yml` feeds and reads those back
+  too.
 - Installer names carry the version, so a new build never overwrites the files a live feed points
-  at, and any failure leaves the previous build complete; the feed file is the one asset written in
-  place.
+  at, and any failure leaves the previous build complete; the feeds are the assets written in place.
+- **Linux has one feed per architecture**: electron-updater reads `latest-linux.yml` on x64 and
+  `latest-linux-arm64.yml` on arm64, and a feed that never arrives fails nothing — its users just
+  never hear of an update. So `.github/actions/package/name-assets.sh` finds the feeds rather than
+  naming one, and refuses a build missing the feed its runner's updater reads, carrying another
+  architecture's feed, or with an installer no feed names; the package smoke runs the same script
+  on both architectures, and `tests/unit/repo/package-action.test.ts` covers it.
+- **Each Linux architecture is built natively on its own runner** (`ubuntu-latest`,
+  `ubuntu-24.04-arm`), in the release and in `package smoke (linux <arch>)`, because an arm64
+  package only starts on arm64. The Linux targets in `electron-builder.yml` therefore list no
+  `arch`: a listed one is built whatever `--x64`/`--arm64` says, so each runner would cross-build
+  the other's packages and overwrite its feed.
 
 ## Testing
 

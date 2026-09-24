@@ -14,7 +14,9 @@ import { ObjectEvents } from '@/components/templates/object-events';
 import { ManifestEditContext, useManifestEditBridge } from '@/components/templates/manifest-edit';
 import { ObjectMetaCard } from '@/components/templates/object-meta-card';
 import { isManifestKind } from '../../../shared/k8s/manifest';
+import { ReadErrorHints } from '@/components/templates/read-error-hints';
 import { publishDetailTab } from '@/lib/detail-tab';
+import { describeError, readErrorSentence } from '@/lib/k8s-error';
 import { cn } from '@/lib/utils';
 
 export interface DetailTab {
@@ -108,7 +110,7 @@ export function labelsTab(meta?: { labels: [string, string][]; annotations: [str
 }
 
 /** The slice of the page's primary query the layout reads to derive load, error and not-found states. */
-type DetailQuery = Pick<UseQueryResult<unknown>, 'isPending' | 'isError' | 'isSuccess' | 'refetch'>;
+type DetailQuery = Pick<UseQueryResult<unknown>, 'isPending' | 'isError' | 'isSuccess' | 'error' | 'refetch'>;
 
 interface ResourceDetailProps extends DetailHeaderProps {
     groups: DetailTabGroup[];
@@ -193,13 +195,20 @@ export function ResourceDetail({
 
     // Non-ready states share the header (title is known from the route before the load) and replace
     // the rail and body with one state panel.
+    // Some readers (custom resources, Helm releases) answer a missing object with a notFound error
+    // rather than null; missing is not a failure, and retrying would only repeat the answer.
+    const failure = query.isError ? describeError(query.error) : null;
     const state = query.isPending
         ? 'loading'
-        : query.isError
-          ? 'error'
+        : failure
+          ? failure.kind === 'notFound'
+              ? 'notFound'
+              : 'error'
           : query.isSuccess && !found
             ? 'notFound'
             : 'ready';
+    const subject = { one: kind ?? 'resource' };
+    const sentence = failure ? readErrorSentence(failure.kind, subject) : '';
     // A cluster-scoped kind lives in no namespace, so the not-found copy names none.
     const clusterScoped = !!kind && (KINDS as readonly string[]).includes(kind) && kindInfo(kind as Kind).clusterScoped;
     const where = clusterScoped ? '' : namespace ? ` in namespace “${namespace}”` : ' in the current namespace';
@@ -226,9 +235,17 @@ export function ResourceDetail({
                             ))}
                         </div>
                     </div>
-                ) : state === 'error' ? (
+                ) : state === 'error' && failure ? (
                     <StatePanel testId="detail-error">
-                        <span>Failed to load {kind ?? 'this resource'}.</span>
+                        <div className="flex flex-col items-center gap-1">
+                            <span className="font-medium text-foreground">{failure.title}</span>
+                            <span>{sentence}</span>
+                            {/* The classified reason, when it says more than the kind already did. */}
+                            {failure.detail !== failure.title && failure.detail !== sentence && (
+                                <span className="max-w-xl text-meta text-text-dim">{failure.detail}</span>
+                            )}
+                            <ReadErrorHints kind={failure.kind} noun={`this ${subject.one}`} />
+                        </div>
                         <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
                                 Retry

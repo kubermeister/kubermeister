@@ -81,8 +81,11 @@ linux:
   category: Development
   synopsis: Desktop Kubernetes client
   maintainer: Ararat Poghosyan <ararat.poghosyan@gmail.com>
+  # x64 and arm64, each built natively on its own runner (release.yml, ci.yml's package smoke),
+  # which is why no `arch` is listed: a target with no arch builds for the host alone. A listed arch
+  # is always built, whatever `--x64` or `--arm64` says, so `[x64, arm64]` here would have each
+  # runner cross-build the other's packages, which nothing could start, and upload a second copy of
+  # the other runner's feed over its own.
   target:
-    - target: AppImage
-      arch: [x64]
-    - target: deb
-      arch: [x64]
+    - AppImage
+    - deb

@@ -91,10 +91,19 @@ jobs:
   # development Electron binary, so a packaged build that cannot launch passes every other gate —
   # which is how the AppImage shipped needing a library Ubuntu dropped (#299). Linux only: it is
   # where both packages are cheap to build and where one of them is a bare binary with its own
-  # runtime, and packaging three OSes on every pull request would cost more than it catches.
+  # runtime, and packaging three OSes on every pull request would cost more than it catches. Both
+  # architectures, each on its own runner, since an arm64 package only starts on an arm64 machine.
   package:
-    name: package smoke (linux)
-    runs-on: ubuntu-latest
+    name: package smoke (linux ${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -107,6 +116,18 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run package
+
+      # The release runs this same script before it uploads anything, so what it finds here — the
+      # installers, and the feed this architecture's updater reads — is what a release would ship.
+      - name: The feed names this architecture's installers
+        run: |
+          out=$(mktemp)
+          GITHUB_OUTPUT="$out" bash .github/actions/package/name-assets.sh
+          for feed in release/latest*.yml; do
+            echo "::group::$feed"
+            cat "$feed"
+            echo "::endgroup::"
+          done
 
       # A window that stays open is the signal: the app is meant to keep running, so `timeout`
       # killing it is success and anything else is the process giving up on its own.

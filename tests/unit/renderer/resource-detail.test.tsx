@@ -15,6 +15,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { EditResourceButton } from '@/components/templates/edit-resource-button';
 import { useRegisterManifestEdit } from '@/components/templates/manifest-edit';
 import { KeyValueCard, labelsTab, overviewTab, ResourceDetail } from '@/components/templates/resource-detail';
+import { IpcError } from '@/lib/ipc';
+import type { K8sErrorKind } from '../../../src/shared/k8s/errors';
 
 vi.mock('@/lib/ipc', async () => ({
     ...(await vi.importActual<typeof import('@/lib/ipc')>('@/lib/ipc')),
@@ -22,7 +24,13 @@ vi.mock('@/lib/ipc', async () => ({
 }));
 
 type Props = Partial<Parameters<typeof ResourceDetail>[0]>;
-const ready = { isPending: false, isError: false, isSuccess: true, refetch: vi.fn() };
+const ready = { isPending: false, isError: false, isSuccess: true, error: null, refetch: vi.fn() };
+const failed = (kind: K8sErrorKind, detail: string) => ({
+    ...ready,
+    isError: true,
+    isSuccess: false,
+    error: new IpcError({ kind, detail, op: 'resources.get' }),
+});
 
 const groups = [
     {
@@ -238,6 +246,48 @@ describe('ResourceDetail', () => {
         expect(refetch).toHaveBeenCalledOnce();
         await userEvent.click(screen.getByRole('link', { name: 'Back to list' }));
         await waitFor(() => expect(router.state.location.pathname).toBe('/list'));
+    });
+
+    it.each<[K8sErrorKind, string, string]>([
+        ['forbidden', 'Access denied', "You don't have permission to view this Pod."],
+        ['unauthorized', 'Not authenticated', "Your session isn't authenticated to the cluster."],
+        ['unreachable', 'Cluster unreachable', 'The cluster API server is unreachable.'],
+        ['timeout', 'Cluster timed out', 'The cluster took too long to return this Pod.'],
+        ['kubeconfig', 'Kubeconfig not loaded', 'The kubeconfig could not be loaded, so no cluster can be asked.'],
+        ['invalid', 'Invalid manifest', 'Failed to load Pod.'],
+        ['unknown', 'Something went wrong', 'Failed to load Pod.'],
+    ])('says why a %s read failed, keeping retry and the way back', async (kind, title, sentence) => {
+        const detail = `the API server's own words for ${kind}`;
+        renderDetail({ query: failed(kind, detail) });
+        const panel = await screen.findByTestId('detail-error');
+        expect(within(panel).getByText(title)).toBeInTheDocument();
+        expect(within(panel).getByText(sentence)).toBeInTheDocument();
+        expect(within(panel).getByText(detail)).toBeInTheDocument();
+        expect(within(panel).getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+        expect(within(panel).getByRole('link', { name: 'Back to list' })).toBeInTheDocument();
+        if (kind === 'timeout') {
+            expect(within(panel).getByTestId('read-timeout-hint')).toHaveTextContent('Settings');
+        } else {
+            expect(within(panel).queryByTestId('read-timeout-hint')).not.toBeInTheDocument();
+        }
+        // One object is not made smaller by picking a namespace.
+        expect(within(panel).queryByTestId('all-namespaces-hint')).not.toBeInTheDocument();
+    });
+
+    it('leaves out a detail that only repeats the sentence', async () => {
+        renderDetail({ query: failed('unreachable', 'The cluster API server is unreachable.') });
+        const panel = await screen.findByTestId('detail-error');
+        expect(within(panel).getAllByText('The cluster API server is unreachable.')).toHaveLength(1);
+    });
+
+    it('reads a notFound failure as not found, with nothing to retry', async () => {
+        renderDetail({ query: failed('notFound', 'widgets "web-1" not found'), found: true, namespace: 'team-a' });
+        expect(await screen.findByTestId('not-found')).toHaveTextContent(
+            'Pod “web-1” was not found in namespace “team-a”.',
+        );
+        expect(screen.queryByTestId('detail-error')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Back to list' })).toBeInTheDocument();
     });
 
     it('shows not found naming the namespace when known, otherwise the current one', async () => {
