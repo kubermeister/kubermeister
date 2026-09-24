@@ -1,99 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { KindSchema, SchemaNode } from '../../../src/shared/k8s/openapi';
 import { readManifest, validateManifest, type ManifestDiagnostic } from '@/lib/manifest-validation';
-
-const ref = (name: string): SchemaNode => ({ allOf: [{ $ref: `#/components/schemas/${name}` }] });
-const string: SchemaNode = { type: 'string' };
-const stringMap: SchemaNode = { type: 'object', additionalProperties: { type: 'string', default: '' } };
-
-/** Shaped as the API server publishes it: refs wrapped in `allOf`, never inlined. */
-const deployment: KindSchema = {
-    apiVersion: 'apps/v1',
-    kind: 'Deployment',
-    document: 'apis/apps/v1',
-    name: 'io.k8s.api.apps.v1.Deployment',
-    definitions: {
-        'io.k8s.api.apps.v1.Deployment': {
-            type: 'object',
-            properties: {
-                apiVersion: string,
-                kind: string,
-                metadata: ref('io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta'),
-                spec: ref('io.k8s.api.apps.v1.DeploymentSpec'),
-            },
-        },
-        'io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta': {
-            type: 'object',
-            properties: { name: string, generateName: string, namespace: string, labels: stringMap },
-        },
-        'io.k8s.api.apps.v1.DeploymentSpec': {
-            type: 'object',
-            required: ['selector', 'template'],
-            properties: {
-                replicas: { type: 'integer', format: 'int32' },
-                selector: { type: 'object', properties: { matchLabels: stringMap } },
-                template: ref('io.k8s.api.core.v1.PodTemplateSpec'),
-                strategy: {
-                    type: 'object',
-                    properties: { type: { type: 'string', enum: ['Recreate', 'RollingUpdate'] } },
-                },
-                extra: { type: 'object', 'x-kubernetes-preserve-unknown-fields': true },
-            },
-        },
-        'io.k8s.api.core.v1.PodTemplateSpec': {
-            type: 'object',
-            properties: {
-                metadata: ref('io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta'),
-                spec: ref('io.k8s.api.core.v1.PodSpec'),
-            },
-        },
-        'io.k8s.api.core.v1.PodSpec': {
-            type: 'object',
-            required: ['containers'],
-            properties: { containers: { type: 'array', items: ref('io.k8s.api.core.v1.Container') } },
-        },
-        'io.k8s.api.core.v1.Container': {
-            type: 'object',
-            required: ['name'],
-            properties: {
-                name: string,
-                image: string,
-                env: {
-                    type: 'array',
-                    items: { type: 'object', required: ['name'], properties: { name: string, value: string } },
-                },
-                ports: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        required: ['containerPort'],
-                        properties: { containerPort: { type: 'integer' }, name: string },
-                    },
-                },
-                resources: {
-                    type: 'object',
-                    properties: {
-                        limits: {
-                            type: 'object',
-                            additionalProperties: ref('io.k8s.apimachinery.pkg.api.resource.Quantity'),
-                        },
-                    },
-                },
-                readinessProbe: {
-                    type: 'object',
-                    properties: {
-                        port: { $ref: '#/components/schemas/io.k8s.apimachinery.pkg.util.intstr.IntOrString' },
-                        grace: { 'x-kubernetes-int-or-string': true },
-                        mode: { oneOf: [{ type: 'string' }, { type: 'boolean' }] },
-                    },
-                },
-            },
-        },
-        // Published as a plain string by older servers, though a number is what everyone writes.
-        'io.k8s.apimachinery.pkg.api.resource.Quantity': { type: 'string' },
-        'io.k8s.apimachinery.pkg.util.intstr.IntOrString': { type: 'string', format: 'int-or-string' },
-    },
-};
+import { deployment } from './schema-fixture';
 
 const VALID = `apiVersion: apps/v1
 kind: Deployment
@@ -243,8 +150,10 @@ describe('readManifest', () => {
 
     it('marks a YAML syntax error where the parser stopped', () => {
         const text = 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\ndata:\n  a: [1, 2\n';
-        const { diagnostics, head } = readManifest(text);
-        expect(head).toBe(null);
+        const { diagnostics, head, doc } = readManifest(text);
+        // The kind is still named, so completion can offer fields while the text does not parse.
+        expect(head).toEqual({ apiVersion: 'v1', kind: 'ConfigMap' });
+        expect(doc).toBe(null);
         expect(diagnostics).toHaveLength(1);
         expect(diagnostics[0]).toMatchObject({ severity: 'error' });
         expect(diagnostics[0]?.message).not.toContain('\n');

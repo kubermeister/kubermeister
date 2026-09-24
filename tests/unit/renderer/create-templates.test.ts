@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { load } from 'js-yaml';
 import { TEMPLATES } from '@/lib/create-templates';
+import { readManifest } from '@/lib/manifest-validation';
 
 interface Manifest {
     apiVersion?: string;
@@ -11,6 +12,14 @@ interface Manifest {
 const parsed = TEMPLATES.map((template) => ({ template, manifest: load(template.yaml) as Manifest }));
 
 describe('create screen templates', () => {
+    it('start out with nothing the editor would mark, naming the kind their label says', () => {
+        for (const template of TEMPLATES) {
+            const read = readManifest(template.yaml);
+            expect(read.diagnostics, template.id).toEqual([]);
+            expect(read.head, template.id).toEqual({ apiVersion: template.api, kind: template.label });
+        }
+    });
+
     it('offers every kind under its own name, with no two sharing an id', () => {
         expect(new Set(TEMPLATES.map((t) => t.id)).size).toBe(TEMPLATES.length);
         expect(new Set(TEMPLATES.map((t) => t.label)).size).toBe(TEMPLATES.length);

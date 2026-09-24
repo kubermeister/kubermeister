@@ -472,6 +472,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   fields are warnings, since the API server drops them rather than refusing. `Quantity` and
   `IntOrString` accept a number whatever an older server publishes for them, and null is never
   wrong. Diagnostics carry the text they were found in, and the editor places none on another text.
+- Completion and the description over a field come from the same schema
+  (`src/renderer/lib/manifest-completion.ts`, pure). The cursor's place is read from the key columns
+  and `- ` markers of the lines above rather than from a parse, since text mid-edit rarely parses,
+  and for the same reason `readManifest` still names the kind of a document that does not. Both
+  indentation styles for lists are read, kubectl's flush one included. `YamlEditor` takes the schema
+  as a prop read through a ref, so one editor follows the kind the text names.
 - A manifest opened from a file is text like any other: the shell takes the drop wherever it lands,
   stages it (`src/renderer/lib/manifest-import.ts`) and opens the Create screen on it, which applies
   it through the same create path and the same namespace checks as one typed in. Both a file and a
