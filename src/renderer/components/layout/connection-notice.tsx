@@ -4,14 +4,22 @@ import { StatusDot } from '@/components/data-display/status-dot';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIpcQuery } from '@/lib/query';
-import { pickKubeconfig, recheckConnection, resetKubeconfig, useSettings } from '@/lib/settings';
+import { pickKubeconfig, recheckConnection, resetKubeconfig, revealSettingsFile, useSettings } from '@/lib/settings';
 
-/** The pill's words for each check that can fail; the popover carries the check's own sentence. */
+/**
+ * The pill's words for each check that can fail; the popover carries the check's own sentence. In
+ * the order they are shown when several fail: a connection that cannot work comes before a settings
+ * file the app will not write, which leaves every screen working.
+ */
 const LABELS = {
     kubeconfig: 'Kubeconfig not loaded',
     context: 'Context unusable',
     network: 'CA bundle unreadable',
+    settings: 'Settings file not saved',
 } as const;
+
+type NoticeId = keyof typeof LABELS;
+const NOTICE_ORDER = Object.keys(LABELS) as NoticeId[];
 
 /**
  * A kubeconfig that would not load, or a current context whose cluster or user the file does not
@@ -27,9 +35,10 @@ export function ConnectionNotice() {
     const report = useIpcQuery('startupChecks', {}, { staleTime: Infinity, gcTime: Infinity });
     const settings = useSettings();
     const [busy, setBusy] = useState(false);
-    const problem = report.data?.checks.find(
-        (check): check is typeof check & { id: keyof typeof LABELS } => check.status === 'error' && check.id in LABELS,
+    const failing = report.data?.checks.filter(
+        (check): check is typeof check & { id: NoticeId } => check.status === 'error' && check.id in LABELS,
     );
+    const problem = failing?.sort((a, b) => NOTICE_ORDER.indexOf(a.id) - NOTICE_ORDER.indexOf(b.id))[0];
     if (!problem) return null;
 
     const run = async (action: () => Promise<void>) => {
@@ -64,8 +73,13 @@ export function ConnectionNotice() {
                     <Button size="sm" disabled={busy} onClick={() => void run(() => recheckConnection(client))}>
                         {busy ? 'Checking…' : 'Try again'}
                     </Button>
+                    {problem.id === 'settings' && (
+                        <Button size="sm" variant="outline" onClick={() => void revealSettingsFile()}>
+                            Show file
+                        </Button>
+                    )}
                     {/* A bundle that cannot be read is fixed on Settings, not by choosing another kubeconfig. */}
-                    {problem.id !== 'network' && (
+                    {(problem.id === 'kubeconfig' || problem.id === 'context') && (
                         <Button
                             size="sm"
                             variant="outline"
@@ -75,16 +89,17 @@ export function ConnectionNotice() {
                             Choose kubeconfig…
                         </Button>
                     )}
-                    {problem.id !== 'network' && settings.data?.connection.kubeconfigPath && (
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busy}
-                            onClick={() => void run(() => resetKubeconfig(client))}
-                        >
-                            Use default kubeconfig
-                        </Button>
-                    )}
+                    {(problem.id === 'kubeconfig' || problem.id === 'context') &&
+                        settings.data?.connection.kubeconfigPath && (
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={() => void run(() => resetKubeconfig(client))}
+                            >
+                                Use default kubeconfig
+                            </Button>
+                        )}
                 </div>
             </PopoverContent>
         </Popover>

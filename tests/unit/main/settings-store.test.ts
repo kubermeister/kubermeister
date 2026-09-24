@@ -1,4 +1,5 @@
 import {
+    chmodSync,
     existsSync,
     lstatSync,
     mkdirSync,
@@ -242,12 +243,129 @@ describe('settings store', () => {
         });
     });
 
+    describe('a file it cannot fully read', () => {
+        beforeEach(() => {
+            mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        });
+
+        it('never writes a file that is not JSON, and says why', async () => {
+            writeFileSync(configFile, '{ "data": { "refreshIntervalSec": 5, } }');
+            const { getSettings, settingsFileStatus, updateSettings } = await loadStore();
+            expect(getSettings()).toEqual(DEFAULT_SETTINGS);
+            const next = updateSettings({ general: { confirmQuit: false } });
+            // The change still holds for this run; only the file is left alone.
+            expect(next.general.confirmQuit).toBe(false);
+            expect(readFileSync(configFile, 'utf8')).toBe('{ "data": { "refreshIntervalSec": 5, } }');
+            expect(settingsFileStatus()).toMatchObject({
+                path: configFile,
+                exists: true,
+                blocked: true,
+                readOnly: expect.stringMatching(
+                    /^It is not valid JSON: .*will not write the file until it is fixed\.$/,
+                ),
+            });
+        });
+
+        it('never writes a file that holds JSON other than an object', async () => {
+            writeFileSync(configFile, '[1, 2]');
+            const { settingsFileStatus, updateSettings } = await loadStore();
+            updateSettings({ general: { confirmQuit: false } });
+            expect(readFileSync(configFile, 'utf8')).toBe('[1, 2]');
+            expect(settingsFileStatus().readOnly).toMatch(/^It holds JSON, but not an object of settings\./);
+        });
+
+        it('never writes a file a newer version wrote, while using what of it still validates', async () => {
+            const newer = JSON.stringify({ version: 3, data: { refreshIntervalSec: 5 } });
+            writeFileSync(configFile, newer);
+            const { getSettings, settingsFileStatus, updateSettings } = await loadStore();
+            expect(getSettings().data.refreshIntervalSec).toBe(5);
+            updateSettings({ general: { confirmQuit: false } });
+            expect(readFileSync(configFile, 'utf8')).toBe(newer);
+            expect(settingsFileStatus()).toMatchObject({ blocked: true, readOnly: expect.stringContaining('newer') });
+        });
+
+        it('still records the app’s own state while the settings file is blocked', async () => {
+            writeFileSync(configFile, 'nope');
+            const { updateSettings } = await loadStore();
+            updateSettings({ session: { lastContext: 'prod' } });
+            expect(readJson(join(userData, 'state.json'))).toEqual({ session: { lastContext: 'prod' } });
+        });
+
+        it('names every refused value and unknown key, and still writes the file', async () => {
+            writeFileSync(configFile, JSON.stringify({ data: { readTimeoutSec: 1, refreshSec: 5 } }));
+            const { settingsFileStatus, updateSettings } = await loadStore();
+            expect(settingsFileStatus()).toEqual({
+                path: configFile,
+                exists: true,
+                readOnly: null,
+                blocked: false,
+                problems: [
+                    { path: 'data.readTimeoutSec', message: expect.any(String) },
+                    { path: 'data.refreshSec', message: 'Unknown setting, ignored.' },
+                ],
+            });
+            updateSettings({ general: { confirmQuit: false } });
+            // The refused value stays in the file for its author to fix; the app does not overwrite it.
+            expect(readJson(configFile)).toEqual({
+                version: 2,
+                data: { readTimeoutSec: 1, refreshSec: 5 },
+                general: { confirmQuit: false },
+            });
+        });
+    });
+
+    it('never writes where the file cannot even be read', async () => {
+        // A file where the directory should be: reading fails with something other than "missing".
+        writeFileSync(join(root, 'config'), 'not a directory');
+        const { settingsFileStatus, updateSettings } = await loadStore();
+        updateSettings({ general: { confirmQuit: false } });
+        expect(settingsFileStatus()).toMatchObject({
+            exists: true,
+            blocked: true,
+            readOnly: /^It could not be read: /,
+        });
+    });
+
+    it('reports no file while there is none', async () => {
+        const { settingsFileStatus } = await loadStore();
+        expect(settingsFileStatus()).toEqual({
+            path: configFile,
+            exists: false,
+            readOnly: null,
+            blocked: false,
+            problems: [],
+        });
+    });
+
+    it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+        'reports a file it could not save, and clears that once a save lands',
+        async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            const dir = join(root, 'config', 'kubermeister');
+            mkdirSync(dir, { recursive: true });
+            writeFileSync(configFile, '{}');
+            chmodSync(dir, 0o555);
+            const { settingsFileStatus, updateSettings } = await loadStore();
+            updateSettings({ general: { confirmQuit: false } });
+            expect(settingsFileStatus()).toMatchObject({
+                blocked: false,
+                readOnly: expect.stringMatching(
+                    /^The file could not be saved \(.+\)\. Changes made here last until you quit\.$/,
+                ),
+            });
+            chmodSync(dir, 0o755);
+            updateSettings({ general: { confirmQuit: true } });
+            expect(settingsFileStatus().readOnly).toBe(null);
+        },
+    );
+
     it('survives a write failure without throwing', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-        // A file where the directory should be makes mkdir fail.
-        writeFileSync(join(root, 'config'), 'not a directory');
+        // A file where the state file's directory should be makes the write fail.
+        rmSync(userData, { recursive: true });
+        writeFileSync(userData, 'not a directory');
         const { updateSettings } = await loadStore();
-        expect(() => updateSettings({ general: { confirmQuit: false } })).not.toThrow();
+        expect(() => updateSettings({ session: { lastNamespace: 'web' } })).not.toThrow();
         expect(error).toHaveBeenCalledOnce();
     });
 });

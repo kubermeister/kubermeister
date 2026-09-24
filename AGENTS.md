@@ -741,6 +741,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   and is named as a problem; a file with no `version` is the current version. A save rewrites only
   the keys it sets (`src/main/settings/document.ts`): keys the user never wrote stay absent, unknown
   keys and the file's indentation survive, and a symlink is written through.
+- **A file the app cannot fully read is never written**: one that is not JSON, not an object, or
+  written by a newer version would otherwise be replaced by what the app managed to read, which is
+  a configuration nobody wrote. `settingsFile.status` carries why (`readOnly`, `blocked`) and every
+  refused value by path; the Settings screen's `SettingsFileCard` lists them, and the `settings`
+  startup check raises the top-bar notice for a file that will not be saved. The notice puts a
+  failing connection ahead of it, since a settings file does not stop any screen working.
 - An install from before the move has its whole-object `userData/settings.json` carried over once,
   dropping every value equal to its default: that file was rewritten whole on every save, so such a
   value is no evidence that anybody chose it.

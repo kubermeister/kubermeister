@@ -250,10 +250,22 @@ export function isStateKey(section: string, key: string): boolean {
 const FILE_KEYS = new Set(['version', '$schema']);
 
 /** One value the file carried that was not used, and why; the path is dotted, `data.readTimeoutSec`. */
-export interface SettingsProblem {
-    path: string;
-    message: string;
-}
+export const settingsProblemSchema = z.object({ path: z.string(), message: z.string() });
+
+export type SettingsProblem = z.infer<typeof settingsProblemSchema>;
+
+/** Where the settings file is and what is wrong with it, for the Settings screen and the top bar. */
+export const settingsFileStatusSchema = z.object({
+    path: z.string(),
+    exists: z.boolean(),
+    /** Why the app will not, or could not, write the file; null while saves reach it. */
+    readOnly: z.string().nullable(),
+    /** True when the app will not write the file at all until it is fixed, rather than failed to once. */
+    blocked: z.boolean(),
+    problems: z.array(settingsProblemSchema),
+});
+
+export type SettingsFileStatus = z.infer<typeof settingsFileStatusSchema>;
 
 export interface SettingsRead {
     settings: Settings;

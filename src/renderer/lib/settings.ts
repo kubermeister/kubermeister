@@ -5,9 +5,20 @@ import { invalidateClusterQueries, ipcQueryKey, useIpcQuery } from './query';
 
 const SETTINGS_KEY = ipcQueryKey('settings.get', {});
 const STARTUP_KEY = ipcQueryKey('startupChecks', {});
+const FILE_KEY = ipcQueryKey('settingsFile.status', {});
 
 export function useSettings() {
     return useIpcQuery('settings.get', {});
+}
+
+/** Where the settings file is and what is wrong with it. */
+export function useSettingsFile() {
+    return useIpcQuery('settingsFile.status', {});
+}
+
+/** Show the settings file in the file manager; main names the path, never the renderer. */
+export async function revealSettingsFile(): Promise<void> {
+    await invoke('settingsFile.reveal', {});
 }
 
 /** Live-poll cadence in milliseconds from the persisted refresh interval, falling back while settings load. */
@@ -32,6 +43,8 @@ export function useTerminalFontSize(fallback = 12): number {
 export async function updateSettings(client: QueryClient, patch: SettingsInput): Promise<Settings> {
     const settings = await invoke('settings.set', patch);
     client.setQueryData(SETTINGS_KEY, settings);
+    // A save is what reveals a file that cannot be written, and what creates one that did not exist.
+    await client.invalidateQueries({ queryKey: FILE_KEY });
     return settings;
 }
 
@@ -74,5 +87,6 @@ export async function resetKubeconfig(client: QueryClient): Promise<void> {
  */
 export async function recheckConnection(client: QueryClient): Promise<void> {
     await client.invalidateQueries({ queryKey: STARTUP_KEY });
+    await client.invalidateQueries({ queryKey: FILE_KEY });
     await invalidateClusterQueries();
 }

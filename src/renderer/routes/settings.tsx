@@ -18,6 +18,7 @@ import {
 import { bugReportUrl } from '../../shared/bug-report';
 import { releasePageUrl } from '../../shared/updates';
 import { ChartRepositoriesCard } from '@/components/settings/chart-repositories-card';
+import { SettingsFileCard } from '@/components/settings/settings-file-card';
 import { SettingsPage } from '@/components/templates/settings-page';
 import { Field, FormCard, FormInput, FormSelect, Toggle } from '@/components/templates/settings-form';
 import { Button } from '@/components/ui/button';
@@ -123,6 +124,8 @@ function SettingsScreen() {
     return (
         <SettingsPage title="Settings" desc="Preferences for this Kubermeister install.">
             <Section title="General">
+                <SettingsFileCard />
+
                 <FormCard
                     title="Restore last session on launch"
                     desc="Reopen on the context and namespace you last used."

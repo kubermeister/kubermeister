@@ -17,6 +17,8 @@ export const IPC_CHANNELS = [
     'namespace.set',
     'settings.get',
     'settings.set',
+    'settingsFile.status',
+    'settingsFile.reveal',
     'kubeconfig.pick',
     'kubeconfig.useDefault',
     'caBundle.pick',
