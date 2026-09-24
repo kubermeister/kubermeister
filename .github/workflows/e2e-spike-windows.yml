@@ -57,11 +57,13 @@ jobs:
       - name: find a loopback path from windows to dockerd
         run: |
           "--- .wslconfig"; Get-Content "$env:USERPROFILE\.wslconfig" -ErrorAction SilentlyContinue
+          # The image boots systemd, which owns dockerd; a daemon started from `wsl --exec` dies with
+          # that call, so the TCP listener is added to the service itself.
           function Start-Dockerd($bind) {
             Start-Process -WindowStyle Hidden wsl -ArgumentList '-d','km','-u','root','--exec','sleep','infinity'
             Start-Sleep 3
-            wsl -d km -u root --exec sh -c "setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://${bind}:2375 > /var/log/dockerd.log 2>&1 < /dev/null &"
-            wsl -d km -u root --exec sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; ip -4 -o addr show; ss -ltnp; tail -8 /var/log/dockerd.log'
+            wsl -d km -u root --exec sh -c "mkdir -p /etc/systemd/system/docker.service.d && printf '[Service]\nExecStart=\nExecStart=/usr/bin/dockerd -H fd:// -H tcp://${bind}:2375 --containerd=/run/containerd/containerd.sock\n' > /etc/systemd/system/docker.service.d/tcp.conf && systemctl daemon-reload && systemctl restart docker"
+            wsl -d km -u root --exec sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; ip -4 -o addr show; ss -ltnp | grep -E "State|dockerd"; systemctl is-active docker'
           }
           function Test-Loopback($label) {
             $code = curl.exe -s -m 5 -o NUL -w '%{http_code}' http://127.0.0.1:2375/_ping
@@ -70,7 +72,6 @@ jobs:
           }
           Start-Dockerd '127.0.0.1'
           if (Test-Loopback 'nat, bound to 127.0.0.1') { "WSL_MODE=nat-loopback" >> $env:GITHUB_ENV; exit 0 }
-          wsl -d km -u root --exec sh -c 'pkill dockerd; sleep 3'
           Start-Dockerd '0.0.0.0'
           if (Test-Loopback 'nat, bound to 0.0.0.0') { "WSL_MODE=nat-any" >> $env:GITHUB_ENV; exit 0 }
           "[wsl2]`nnetworkingMode=mirrored" | Set-Content "$env:USERPROFILE\.wslconfig"
@@ -78,7 +79,7 @@ jobs:
           Start-Sleep 8
           Start-Dockerd '127.0.0.1'
           if (Test-Loopback 'mirrored, bound to 127.0.0.1') { "WSL_MODE=mirrored" >> $env:GITHUB_ENV; exit 0 }
-          wsl -d km -u root --exec sh -c 'tail -20 /var/log/dockerd.log'
+          wsl -d km -u root --exec sh -c 'journalctl -u docker --no-pager | tail -20'
           exit 1
       - name: docker from windows
         run: |
