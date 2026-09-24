@@ -115,10 +115,10 @@ jobs:
       - name: start dockerd in wsl
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
-          wsl -d km -u root -- sh -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io > /dev/null'
+          wsl -d km -u root --exec sh -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io > /dev/null'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          wsl -d km -u root -- sh -c 'setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://127.0.0.1:2375 > /var/log/dockerd.log 2>&1 < /dev/null &'
-          wsl -d km -u root -- sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker version; tail -5 /var/log/dockerd.log'
+          wsl -d km -u root --exec sh -c 'setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://127.0.0.1:2375 > /var/log/dockerd.log 2>&1 < /dev/null &'
+          wsl -d km -u root --exec sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker version; tail -5 /var/log/dockerd.log'
           "dockerd up after $([int]$sw.Elapsed.TotalSeconds)s"
       - name: docker from windows
         run: |
