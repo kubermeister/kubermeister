@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { KIND_REGISTRY, KINDS, kindInfo, kindSchema } from '../../../src/shared/k8s/registry';
+import {
+    apiGroupOf,
+    KIND_REGISTRY,
+    KINDS,
+    kindInfo,
+    kindSchema,
+    registeredKindOf,
+} from '../../../src/shared/k8s/registry';
 import {
     resourceGetInputSchema,
     resourceGetOutputSchema,
@@ -96,6 +103,22 @@ describe('kind registry', () => {
         expect(kindSchema.safeParse('Deployment').success).toBe(true);
         expect(kindSchema.safeParse('ReplicaSet').success).toBe(true);
         expect(kindSchema.safeParse('ReplicaSets').success).toBe(false);
+    });
+
+    it('names the API group of an apiVersion, the core group being empty', () => {
+        expect(apiGroupOf('v1')).toBe('');
+        expect(apiGroupOf('apps/v1')).toBe('apps');
+        expect(apiGroupOf('rbac.authorization.k8s.io/v1')).toBe('rbac.authorization.k8s.io');
+    });
+
+    it('matches a manifest kind to the registry by group as well as by name, at any version', () => {
+        expect(registeredKindOf('v1', 'Service')).toBe('Service');
+        expect(registeredKindOf('apps/v1', 'Deployment')).toBe('Deployment');
+        expect(registeredKindOf('apps/v1beta2', 'Deployment')).toBe('Deployment');
+        expect(registeredKindOf('autoscaling/v1', 'HorizontalPodAutoscaler')).toBe('HorizontalPodAutoscaler');
+        // A custom resource calling itself Service is not the core Service.
+        expect(registeredKindOf('serving.knative.dev/v1', 'Service')).toBeUndefined();
+        expect(registeredKindOf('messaging.example.com/v1', 'Queue')).toBeUndefined();
     });
 });
 

@@ -1,4 +1,5 @@
-import type { ReleaseStatus } from '../../shared/k8s/addons';
+import type { ReleaseObjectState, ReleaseStatus, ReleaseStatusKind } from '../../shared/k8s/addons';
+import type { ReleaseHealth } from './release-health';
 import type { ClusterStatus, NodeStatus } from '../../shared/k8s/status';
 import type { NamespaceTone } from '../../shared/k8s/cluster';
 import type { EndpointReady, NetworkStatus } from '../../shared/k8s/network';
@@ -72,6 +73,38 @@ export const API_SERVICE_TONE: Record<ApiServiceStatus, StatusTone> = { Availabl
 /** A budget allowing no disruption blocks a drain, which is worth flagging rather than colouring ok. */
 export const DISRUPTION_TONE: Record<DisruptionStatus, StatusTone> = { Satisfied: 'ok', Blocked: 'warn' };
 export const JOB_TONE: Record<JobStatus, StatusTone> = { Complete: 'ok', Running: 'accent', Failed: 'danger' };
+
+/** An object a release rendered and the cluster no longer holds is drift, which a release is broken by. */
+export const RELEASE_OBJECT_TONE: Record<ReleaseObjectState, StatusTone> = {
+    Present: 'ok',
+    Missing: 'danger',
+    Unknown: 'neutral',
+};
+export const RELEASE_HEALTH_TONE: Record<ReleaseHealth, StatusTone> = {
+    Healthy: 'ok',
+    Degraded: 'warn',
+    Failing: 'danger',
+    Unknown: 'neutral',
+};
+
+/**
+ * The tone map each kind's own list colours its status with, so an object a release rendered reads
+ * the same beside the release as on its own screen.
+ */
+export const KIND_STATUS_TONE: Record<ReleaseStatusKind, Record<string, StatusTone>> = {
+    Pod: POD_TONE,
+    Deployment: DEPLOYMENT_TONE,
+    Job: JOB_TONE,
+    PodDisruptionBudget: DISRUPTION_TONE,
+    Service: NETWORK_TONE,
+    Ingress: NETWORK_TONE,
+    PersistentVolume: VOLUME_TONE,
+    PersistentVolumeClaim: CLAIM_TONE,
+    VolumeSnapshot: SNAPSHOT_TONE,
+    MutatingWebhookConfiguration: WEBHOOK_TONE,
+    ValidatingWebhookConfiguration: WEBHOOK_TONE,
+    APIService: API_SERVICE_TONE,
+};
 
 /** Tone for a resource-usage percentage: ok below 75, warn from 75, danger above 90. */
 export function usageTone(percent: number): Extract<StatusTone, 'ok' | 'warn' | 'danger'> {

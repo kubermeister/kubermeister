@@ -127,6 +127,11 @@ const SOURCES: { [K in Kind]: Source<K> } = {
     CustomResourceDefinition: { list: () => listCustomResources(), get: (name) => getCustomResource(name) },
 };
 
+/** One kind's rows through that kind's own list transform, for a caller that already knows the kind. */
+export function listRowsOf<K extends Kind>(kind: K, namespace?: string): Promise<Array<RowOf<K>>> {
+    return SOURCES[kind].list(namespace);
+}
+
 export async function listResources(input: ResourceListInput): Promise<ResourceListOutput> {
     switch (input.kind) {
         case 'Pod':

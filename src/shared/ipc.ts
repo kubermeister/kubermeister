@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AllowedChannel, PreloadChannel } from './ipc-channels.js';
 import {
     helmChartSchema,
+    releaseObjectSchema,
     releaseRevisionSchema,
     releaseRollbackInputSchema,
     releaseSchema,
@@ -240,6 +241,7 @@ export const ipcSchemas = {
     'releases.list': { input: noInput, output: z.array(releaseSchema) },
     'releases.get': { input: releaseTargetSchema, output: releaseSchema.nullable() },
     'releases.revisions': { input: releaseTargetSchema, output: z.array(releaseRevisionSchema) },
+    'releases.resources': { input: releaseTargetSchema, output: z.array(releaseObjectSchema) },
     'releases.rollback': { input: releaseRollbackInputSchema, output: releaseWriteResultSchema },
     'releases.uninstall': { input: releaseUninstallInputSchema, output: releaseWriteResultSchema },
     'helmCharts.list': { input: noInput, output: z.array(helmChartSchema) },

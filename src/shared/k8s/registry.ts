@@ -310,3 +310,24 @@ export function isClusterScopedKindName(kind: string): boolean {
 export function isKnownKindName(kind: string): boolean {
     return CLUSTER_SCOPED_KIND_NAMES.has(kind) || KINDS.some((k) => KIND_REGISTRY[k].kind === kind);
 }
+
+/** The API group of an `apiVersion`: `apps` for `apps/v1`, the empty core group for `v1`. */
+export function apiGroupOf(apiVersion: string): string {
+    const slash = apiVersion.indexOf('/');
+    return slash === -1 ? '' : apiVersion.slice(0, slash);
+}
+
+/**
+ * The registered kind a manifest's `apiVersion` and `kind` name, matched on the API group as well
+ * as the kind: a custom resource may well call itself `Service` (Knative's does), and reading it as
+ * the core one would colour it with a status it does not have and link it to a screen it is not on.
+ * Any version of the group matches, since the registry records one version and a chart may render
+ * another the server still serves.
+ */
+export function registeredKindOf(apiVersion: string, kind: string): Kind | undefined {
+    const group = apiGroupOf(apiVersion);
+    return KINDS.find(
+        (candidate) =>
+            KIND_REGISTRY[candidate].kind === kind && apiGroupOf(KIND_REGISTRY[candidate].apiVersion) === group,
+    );
+}

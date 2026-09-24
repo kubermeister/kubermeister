@@ -13,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- A Helm release opens on a **Resources** tab listing every object its current revision rendered,
+  read live from the cluster with each one's own status, under a health roll-up that names the
+  object making the release unhealthy, such as one that is missing.
+
 ## [0.7.0] - 2026-09-25
 
 ### Added
