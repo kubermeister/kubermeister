@@ -26,9 +26,20 @@ Some kinds add their own, such as **Evict** on a pod, **Restart** on a workload 
 instances** on a CRD. A custom-resource instance has no **Delete**, and a Helm release has its own
 actions in place of all three; see [Helm releases](/docs/operations/helm/).
 
-While the object loads, the page shows its outline. If the read fails you get "Failed to load" with
-**Retry** and **Back to list**; if the object is not there, the page says so and names the
-namespace it looked in, for a namespaced kind.
+While the object loads, the page shows its outline. If the read fails, the page says why, the way
+a list does, with the cluster's own reason under it when that says more, and offers **Retry** and
+**Back to list**:
+
+- **Access denied**: you don't have permission to view this object.
+- **Not authenticated**: the cluster rejected your credentials.
+- **Cluster unreachable**: the cluster's API server did not answer.
+- **Cluster timed out**: the cluster took too long to return the object. The page points at
+  Settings, where the [read timeout](/docs/reference/settings/#general) can be raised.
+- **Kubeconfig not loaded**: no cluster can be asked; the top bar offers the fixes.
+
+Anything else reads "Failed to load" with the reason under it. If the object is not there, the page
+says so and names the namespace it looked in, for a namespaced kind; that includes a custom
+resource or Helm release that has been deleted, which has nothing to retry.
 
 ## The tab rail
 
