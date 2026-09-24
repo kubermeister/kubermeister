@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Linux builds for arm64, as an AppImage and a `.deb`, which update the same way as the x64 ones.
+
 ## [0.7.0] - 2026-09-25
 
 ### Added

@@ -97,7 +97,7 @@ A few rules hold everywhere:
 ## Requirements
 
 - macOS 13 or newer (Apple silicon or Intel), Windows 10 or newer (x64), or a Linux distribution
-  that can run an AppImage or install a `.deb` (x64). The AppImage carries its own runtime and needs
+  that can run an AppImage or install a `.deb` (x64 or arm64). The AppImage carries its own runtime and needs
   nothing installed first.
 - A kubeconfig with at least one context. Any cluster the current Kubernetes API speaks to should
   work; releases are tested end to end against k3s.
@@ -146,10 +146,10 @@ once per install.
 ### Linux
 
 Two packages, and the choice decides how the app is updated and whether it appears in your
-launcher. Both are x64.
+launcher. Both come for x64 and for arm64; `uname -m` says which you have (`x86_64` or `aarch64`).
 
-**AppImage** — one file, no install, **updates itself**. Download `linux-x86_64.AppImage`, make it
-executable, and run it.
+**AppImage** — one file, no install, **updates itself**. Download `linux-x86_64.AppImage`
+(`linux-arm64.AppImage` on arm64), make it executable, and run it.
 
 ```sh
 chmod +x Kubermeister-*-linux-x86_64.AppImage
@@ -159,8 +159,8 @@ chmod +x Kubermeister-*-linux-x86_64.AppImage
 It adds no menu entry and no icon of its own, so it is a file you keep somewhere and run, unless you
 integrate it with something like [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher).
 
-**Debian / Ubuntu** — installs properly, **updated by you**. Download `linux-amd64.deb` and install
-it.
+**Debian / Ubuntu** — installs properly, **updated by you**. Download `linux-amd64.deb`
+(`linux-arm64.deb` on arm64) and install it.
 
 ```sh
 sudo apt install ./Kubermeister-*-linux-amd64.deb
