@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
-import { launchApp, type LaunchedApp } from '../harness/launch';
+import { closeApp, launchApp, type LaunchedApp } from '../harness/launch';
 
 let launched: LaunchedApp;
 
@@ -13,7 +13,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-    await launched.app.close();
+    await closeApp(launched);
 });
 
 test('passes the startup gate against the isolated cluster and shows the shell', async () => {
@@ -1002,7 +1002,7 @@ test('names a current context whose cluster is missing, and switching away clear
         await expect(bad.window.getByTestId('connection-notice')).toHaveCount(0);
         await expect(bad.window.getByTestId('context-selector')).toContainText(CONTEXT_NAME);
     } finally {
-        await bad.app.close();
+        await closeApp(bad);
     }
 });
 
@@ -1028,6 +1028,6 @@ test('opens the shell with a connection notice when the kubeconfig path names no
         );
         await expect(bad.window.getByTestId('startup-error')).toHaveCount(0);
     } finally {
-        await bad.app.close();
+        await closeApp(bad);
     }
 });

@@ -77,6 +77,15 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: xvfb-run --auto-servernum npm run test:e2e
+      # A flake that passes on rerun leaves nothing behind but this: the traces, the window's state
+      # and its last screenshot, which the harness keeps for failed tests only.
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # The artifact users install, started. Everything else in this file tests `out/` through the
   # development Electron binary, so a packaged build that cannot launch passes every other gate —
