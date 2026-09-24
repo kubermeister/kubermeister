@@ -32,33 +32,12 @@ import { DataTable } from '@/components/data-display/data-table';
 import { RefreshButton } from '@/components/refresh-button';
 import { useNavigateTo } from '@/components/layout/nav-link';
 import { ageToSeconds, namespaceColumn, selectColumn } from '@/components/templates/list-columns';
-import { describeError } from '@/lib/k8s-error';
+import { describeError, readErrorSentence } from '@/lib/k8s-error';
 import { usePersistedColumns } from '@/lib/persisted-columns';
 import { SCREEN_SEARCH } from '@/lib/shortcuts';
-import type { K8sErrorKind } from '../../../shared/k8s/errors';
 
 /** The slice of a TanStack Query result the list page consumes: data, load/error flags, error, and retry. */
 type ListQuery<T> = Pick<UseQueryResult<T[]>, 'data' | 'isPending' | 'isError' | 'error' | 'refetch'>;
-
-/** Kind-specific one-liner for a failed list read; falls back to the generic message. */
-function listErrorBody(kind: K8sErrorKind, noun: string): string {
-    switch (kind) {
-        case 'kubeconfig':
-            return 'The kubeconfig could not be loaded, so no cluster can be asked.';
-        case 'forbidden':
-            return `You don't have permission to view ${noun}.`;
-        case 'unauthorized':
-            return `Your session isn't authenticated to the cluster.`;
-        case 'unreachable':
-            return 'The cluster API server is unreachable.';
-        case 'timeout':
-            return `The cluster took too long to return ${noun}.`;
-        case 'notFound':
-            return `${noun} aren't available on this cluster.`;
-        default:
-            return `Failed to load ${noun}.`;
-    }
-}
 
 interface ResourceListPageProps<T> {
     icon: LucideIcon;
@@ -369,12 +348,14 @@ export function ResourceListPage<T>({
                                     <span className="font-medium text-foreground">{parsedError.title}</span>
                                 )}
                                 <span>
-                                    {parsedError ? listErrorBody(parsedError.kind, noun) : `Failed to load ${noun}.`}
+                                    {parsedError
+                                        ? readErrorSentence(parsedError.kind, { plural: noun })
+                                        : `Failed to load ${noun}.`}
                                 </span>
                                 {/* The classified reason, when it says more than the kind already did. */}
                                 {parsedError &&
                                     parsedError.detail !== parsedError.title &&
-                                    parsedError.detail !== listErrorBody(parsedError.kind, noun) && (
+                                    parsedError.detail !== readErrorSentence(parsedError.kind, { plural: noun }) && (
                                         <span className="max-w-xl text-meta text-text-dim">{parsedError.detail}</span>
                                     )}
                                 {parsedError && (

@@ -206,6 +206,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   groups (OBSERVE, INSPECT, CONNECT), built from the `overviewTab`, `labelsTab` and `eventsTab`
   factories plus bespoke tabs, with `fill` for panels that scroll themselves and `keepMounted` for
   panels holding live state.
+- A failed detail read says why the way a list does: both take the sentence from
+  `readErrorSentence` in `src/renderer/lib/k8s-error.ts` (a plural noun for a list, one object for a
+  detail) under `describeError`'s title, so the two never word one failure differently. A `notFound`
+  error is the not-found panel, not a failure, since the custom-resource and Helm readers throw it
+  where the others answer `null`.
 - Cards inside tabs use `DetailCard`, `PropertyGrid`, `KeyValueCard` and `DetailMetrics`.
 - Status always goes through `StatusBadge`/`StatusDot` with a `StatusTone` from the per-kind maps
   in `src/renderer/lib/status.ts`. Status vocabularies are per domain (`PodStatus`,

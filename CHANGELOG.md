@@ -13,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- A detail page that cannot be read says why — no permission to see the object, credentials the
+  cluster rejected, a cluster that did not answer or took too long — instead of only "Failed to
+  load", and a custom resource or Helm release that has been deleted reads as not found.
+
 ## [0.7.0] - 2026-09-25
 
 ### Added

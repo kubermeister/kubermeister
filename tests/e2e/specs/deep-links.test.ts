@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
-import { load as loadYaml } from 'js-yaml';
-import { readFileSync } from 'node:fs';
+import { dump as dumpYaml, load as loadYaml } from 'js-yaml';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { normalizeServer } from '../../../src/shared/deep-link';
 import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
 import { appEnv, closeApp, launchApp, type LaunchedApp } from '../harness/launch';
@@ -71,4 +73,27 @@ test('says so for a cluster no context reaches, and stays on its own', async () 
     launched = await launchApp({ args: [link('https://somebody-elses-cluster.example.com', '/workloads/pods')] });
     await expect(launched.window.getByText('No context for that cluster')).toBeVisible();
     await expect(launched.window.getByTestId('context-selector')).toHaveText(CONTEXT_NAME);
+});
+
+test('says a pod the reader may not see is denied, rather than only that it failed', async () => {
+    // A service account bound to nothing: it authenticates, and every read it makes is forbidden.
+    const account = 'km-e2e-denied';
+    // A kept cluster already has it from an earlier run.
+    if (!clusterKubectl(['-n', NAMESPACE, 'get', 'serviceaccount', '--ignore-not-found', '-o', 'name', account]))
+        clusterKubectl(['-n', NAMESPACE, 'create', 'serviceaccount', account]);
+    const token = clusterKubectl(['-n', NAMESPACE, 'create', 'token', account]).trim();
+    const seeded = loadYaml(readFileSync(KUBECONFIG_PATH, 'utf8')) as { users: { user: Record<string, string> }[] };
+    seeded.users[0]!.user = { token };
+    const denied = join(tmpdir(), `km-e2e-denied-${Date.now()}.yaml`);
+    writeFileSync(denied, dumpYaml(seeded));
+
+    launched = await launchApp({
+        kubeconfigPath: denied,
+        args: [link(testServer(), `/workloads/pods/${NAMESPACE}/web-denied`)],
+    });
+    const panel = launched.window.getByTestId('detail-error');
+    await expect(panel).toContainText('Access denied');
+    await expect(panel).toContainText("You don't have permission to view this Pod.");
+    await expect(panel).toContainText('Access denied (RBAC).');
+    await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible();
 });
