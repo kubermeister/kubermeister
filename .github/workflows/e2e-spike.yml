@@ -1,0 +1,185 @@
+# Throwaway feasibility spike for #198: which way can a disposable k3s cluster reach the
+# end-to-end suite on macOS and Windows runners. Removed before the pull request leaves draft.
+name: e2e spike
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-spike-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Option (a) on Apple silicon: expected to fail, since the M1 hosts expose no nested virtualization.
+  mac-arm-probe:
+    name: spike mac arm64 probe
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - run: |
+          uname -m; sw_vers
+          sysctl kern.hv_support || true
+          sysctl -a | grep -i -E 'hv_|vmm' || true
+      - run: brew install colima docker
+      - name: colima start
+        run: |
+          set +e
+          start=$(date +%s)
+          timeout 300 colima start --cpu 2 --memory 4
+          echo "colima exit $? after $(( $(date +%s) - start ))s"
+          colima status || true
+
+  # Option (a) on Intel macOS: colima's own CI runs here. Runs the real suite through Testcontainers.
+  mac-intel-colima:
+    name: spike mac intel colima e2e
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: npm
+      - run: sysctl kern.hv_support machdep.cpu.brand_string || true
+      - run: brew install colima docker
+      - name: colima start
+        run: |
+          start=$(date +%s)
+          colima start --cpu 3 --memory 8 || { colima delete -f; colima start --vm-type qemu --cpu 3 --memory 8; }
+          echo "colima up after $(( $(date +%s) - start ))s"
+          docker version
+      - run: npm ci
+      - run: npm run build
+      - name: e2e
+        run: |
+          export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+          export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+          start=$(date +%s)
+          set +e
+          npm run test:e2e
+          code=$?
+          echo "suite exit $code after $(( $(date +%s) - start ))s"
+          exit $code
+
+  # Option (a) on Windows: a Linux Docker daemon inside WSL2, reached from Windows over loopback TCP.
+  windows-wsl-docker:
+    name: spike windows wsl2 docker e2e
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: npm
+      - name: setup wsl
+        id: wsl
+        uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364 # v7.0.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+          additional-packages: docker.io
+      - run: wsl --status; wsl -l -v
+      - name: start dockerd in wsl
+        shell: wsl-bash {0}
+        run: |
+          uname -a
+          setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://127.0.0.1:2375 > /tmp/dockerd.log 2>&1 < /dev/null &
+          for _ in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done
+          docker version
+      - name: keep wsl alive
+        run: Start-Process -WindowStyle Hidden wsl -ArgumentList '-d','Ubuntu-24.04','--exec','sleep','infinity'
+      - name: docker from windows
+        run: |
+          $env:DOCKER_HOST = 'tcp://127.0.0.1:2375'
+          docker version
+          docker run --rm -p 18080:80 -d --name probe nginx:alpine
+          Start-Sleep 5
+          curl.exe -sS -o NUL -w "nginx via forwarded port: %{http_code}`n" http://127.0.0.1:18080/
+          docker rm -f probe
+      - run: npm ci
+      - run: npm run build
+      - name: e2e
+        env:
+          DOCKER_HOST: tcp://127.0.0.1:2375
+          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          npm run test:e2e
+          $code = $LASTEXITCODE
+          "suite exit $code after $([int]$sw.Elapsed.TotalSeconds)s"
+          exit $code
+
+  # Option (b): k3s on ubuntu published through a public TCP relay, probed from an arm64 Mac.
+  # Only reachability and latency are measured; no credential leaves the producer.
+  tunnel-producer:
+    name: spike tunnel producer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - run: |
+          docker run -d --privileged --name k3s -p 127.0.0.1:6443:6443 rancher/k3s:v1.36.4-k3s1 server --disable=traefik
+          curl -fsSL -o bore.tgz https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz
+          tar xzf bore.tgz
+          nohup ./bore local 6443 --to bore.pub > bore.log 2>&1 &
+          for _ in $(seq 30); do grep -q 'listening at' bore.log && break; sleep 1; done
+          cat bore.log
+          port=$(grep -o 'bore.pub:[0-9]*' bore.log | head -1 | cut -d: -f2)
+          echo "PORT=$port" >> "$GITHUB_ENV"
+          mkdir -p sig && touch sig/port
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tunnel-port-${{ env.PORT }}
+          path: sig/port
+      - name: wait for the consumer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          start=$(date +%s)
+          for _ in $(seq 120); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" --jq '.artifacts[].name' | grep -q tunnel-done && break
+            sleep 10
+          done
+          echo "waited $(( $(date +%s) - start ))s for the consumer"
+
+  tunnel-consumer:
+    name: spike tunnel consumer (mac arm64)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: find the tunnel and probe it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          start=$(date +%s)
+          for _ in $(seq 90); do
+            name=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" --jq '.artifacts[].name' | grep tunnel-port- || true)
+            [ -n "$name" ] && break
+            sleep 10
+          done
+          echo "found $name after $(( $(date +%s) - start ))s"
+          port=${name#tunnel-port-}
+          for _ in $(seq 20); do
+            curl -sk -o /dev/null -w "%{http_code} connect=%{time_connect} tls=%{time_appconnect} total=%{time_total}\n" "https://bore.pub:$port/version"
+          done
+          mkdir -p sig && touch sig/done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tunnel-done
+          path: sig/done
