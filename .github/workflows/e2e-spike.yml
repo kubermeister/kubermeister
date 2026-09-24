@@ -51,9 +51,19 @@ jobs:
       - run: brew install colima docker
       - name: colima start
         run: |
+          # macOS has no timeout(1); an alarm survives exec and kills a start that hangs.
+          limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+          logs() { tail -40 ~/.colima/_lima/colima/ha.stderr.log 2>/dev/null || true; }
           start=$(date +%s)
-          colima start --cpu 3 --memory 8 || { colima delete -f; colima start --vm-type qemu --cpu 3 --memory 8; }
-          echo "colima up after $(( $(date +%s) - start ))s"
+          if limit 600 colima start --cpu 3 --memory 8 --vm-type vz; then
+            echo "colima (vz) up after $(( $(date +%s) - start ))s"
+          else
+            echo "vz failed after $(( $(date +%s) - start ))s"; logs
+            colima delete -f || true
+            start=$(date +%s)
+            limit 900 colima start --cpu 3 --memory 8 --vm-type qemu || { echo "qemu failed after $(( $(date +%s) - start ))s"; logs; exit 1; }
+            echo "colima (qemu) up after $(( $(date +%s) - start ))s"
+          fi
           docker version
       - run: npm ci
       - run: npm run build
