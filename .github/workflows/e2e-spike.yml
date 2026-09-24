@@ -82,7 +82,7 @@ jobs:
           node-version-file: .nvmrc
           check-latest: true
           cache: npm
-      - run: wsl --version; wsl --status; wsl -l -v
+      - run: wsl --version; wsl --status; wsl -l -v; exit 0
       # Imported from Ubuntu's own WSL image rather than through a marketplace action (the
       # repository allows none outside its list) or `wsl --install`, whose first launch asks for a user.
       - name: import an ubuntu distribution as wsl2
