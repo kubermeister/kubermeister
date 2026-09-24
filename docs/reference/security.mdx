@@ -38,6 +38,10 @@ Nothing. No deployment, no service, no agent, no service account, no CRD.
 
 `kubectl debug` and `kubectl cp` are where those belong. The app is not a way around your RBAC.
 
+A `kubermeister://` link is somebody else's input, so it can only open a page. It never writes to
+the cluster, opens a shell, forwards a port or downloads anything, and it switches context only
+after you have said yes. See [links](/docs/browse/details/#links).
+
 ## Secrets
 
 A Secret's values never cross into the interface as a map:

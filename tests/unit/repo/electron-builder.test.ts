@@ -7,6 +7,7 @@ const config = load(readFileSync('electron-builder.yml', 'utf8')) as {
     mac?: { hardenedRuntime?: boolean };
     extraResources?: { from: string; to: string }[];
     toolsets?: { appimage?: string };
+    protocols?: { name: string; schemes: string[] }[];
 };
 
 describe('electron-builder fuses', () => {
@@ -63,5 +64,14 @@ describe('extra resources', () => {
             from: 'node_modules/electron/dist/LICENSES.chromium.html',
             to: 'LICENSES.chromium.html',
         });
+    });
+});
+
+describe('electron-builder protocols', () => {
+    it('registers the scheme links are written in, for every platform at once', async () => {
+        const { DEEP_LINK_SCHEME } = await import('../../../src/shared/deep-link');
+        // Top level rather than per platform, which is what also puts the scheme in the Linux
+        // desktop entry's MimeType.
+        expect(config.protocols).toEqual([{ name: 'Kubermeister link', schemes: [DEEP_LINK_SCHEME] }]);
     });
 });

@@ -19,6 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   going back and forward, focusing the screen's search box with `/`, and opening Settings with `⌘,`
   or `Ctrl+,` on every platform, with a cheat sheet on `?`, in **Help › Keyboard Shortcuts** and in
   the command palette.
+- **Copy link** on every detail page copies a `kubermeister://` link that opens the same page and
+  tab for anybody with the same context, asking before it switches to another context and never
+  doing more than opening the page.
 
 ### Changed
 

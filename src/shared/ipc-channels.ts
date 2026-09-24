@@ -11,6 +11,7 @@ export const IPC_CHANNELS = [
     'update.download',
     'update.install',
     'startupChecks',
+    'deepLink.take',
     'contexts.list',
     'context.current',
     'context.set',
@@ -101,7 +102,13 @@ export const IPC_CHANNELS = [
  */
 export const PRELOAD_CHANNELS = ['manifest.read'] as const;
 
-export const SUBSCRIPTION_CHANNELS = ['update.state', 'open-settings', 'shortcut', 'settings.changed'] as const;
+export const SUBSCRIPTION_CHANNELS = [
+    'update.state',
+    'open-settings',
+    'shortcut',
+    'settings.changed',
+    'deep-link',
+] as const;
 
 /** Stream channels the preload's `stream()` accepts. Schemas live in `streams.ts`; this file stays import-free. */
 export const STREAM_CHANNELS = [

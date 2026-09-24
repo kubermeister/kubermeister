@@ -21,6 +21,12 @@ export const subSchemas = {
      * connection was remade with it, so every cluster read the renderer holds is from before.
      */
     'settings.changed': z.object({ reconnected: z.boolean() }),
+    /**
+     * The OS handed the app a `kubermeister://` link. The push says only that one is waiting: the
+     * renderer takes it through `deepLink.take`, which is also how it reads one that arrived before
+     * it mounted, so there is one way in for a link and it is read once.
+     */
+    'deep-link': z.object({}),
 } as const satisfies Record<AllowedSubscription, z.ZodType>;
 
 export type SubChannel = AllowedSubscription;
