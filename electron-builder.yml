@@ -18,6 +18,13 @@ extraResources:
   # the notices above from the Linux builds.
   - from: resources/icon.png
     to: icon.png
+# `kubermeister://` links (src/shared/deep-link.ts). One top-level entry serves every platform: the
+# macOS Info.plist, the Windows registry keys the NSIS installer writes, and the Linux desktop
+# entry, which electron-builder gives `MimeType=x-scheme-handler/kubermeister` and a `%U` in `Exec`.
+# The scheme is load-bearing for every link anybody has copied, so it never changes.
+protocols:
+  - name: Kubermeister link
+    schemes: [kubermeister]
 # Deterministic asset names; the release workflows and any package manager templates depend on
 # this exact pattern.
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}

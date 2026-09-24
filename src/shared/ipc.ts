@@ -10,6 +10,7 @@ import {
     releaseWriteResultSchema,
 } from './k8s/addons.js';
 import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
+import { deepLinkSchema } from './deep-link.js';
 import { kubeContextSchema } from './k8s/contexts.js';
 import {
     manifestExportInputSchema,
@@ -176,6 +177,10 @@ export const ipcSchemas = {
     'update.download': { input: noInput, output: z.object({ ok: z.boolean() }) },
     'update.install': { input: noInput, output: z.object({ ok: z.boolean() }) },
     startupChecks: { input: noInput, output: startupReportSchema },
+    // A link the OS handed over, parsed in main, taken once: the renderer asks for it when it mounts
+    // and again on every `deep-link` push, so a link that arrived before any screen could hear it
+    // waits, and a reload never opens the same one twice.
+    'deepLink.take': { input: noInput, output: z.object({ link: deepLinkSchema.nullable() }) },
     'contexts.list': { input: noInput, output: z.array(kubeContextSchema) },
     'context.current': { input: noInput, output: kubeContextSchema.nullable() },
     'context.set': { input: z.object({ name: z.string().min(1) }), output: kubeContextSchema },

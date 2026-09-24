@@ -37,6 +37,8 @@ const data: Record<string, unknown> = {
     'cluster.active': null,
     'metrics.alerts': [],
     'manifest.pick': imported,
+    // The shell asks for a waiting link on mount, and main answers that none is.
+    'deepLink.take': { link: null },
 };
 
 /** A drop of one file on the window, as the browser delivers it: the File itself, never a path. */

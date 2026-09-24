@@ -18,7 +18,7 @@ export interface LaunchedApp {
  * code path that ignored settings could only reach the test cluster.
  */
 export async function launchApp(
-    options: { kubeconfigPath?: string; restoreContext?: boolean } = {},
+    options: { kubeconfigPath?: string; restoreContext?: boolean; args?: string[] } = {},
 ): Promise<LaunchedApp> {
     const kubeconfigPath = options.kubeconfigPath ?? KUBECONFIG_PATH;
     // A spec about the file's own current-context must not have the remembered one restored over it.
@@ -33,14 +33,9 @@ export async function launchApp(
         }),
     );
     const app = await electron.launch({
-        args: ['out/main/index.mjs'],
-        env: {
-            ...process.env,
-            KUBERMEISTER_USER_DATA: userData,
-            KUBECONFIG: kubeconfigPath,
-            // Never steal focus: a developer typing during a local run must not drive the app.
-            KUBERMEISTER_SHOW_INACTIVE: '1',
-        },
+        // Anything after the entry point is what the OS passes a launch, such as a link.
+        args: ['out/main/index.mjs', ...(options.args ?? [])],
+        env: appEnv(userData, kubeconfigPath),
     });
     if (traceMode() !== 'off') await app.context().tracing.start({ screenshots: true, snapshots: true });
     const window = await app.firstWindow();
@@ -50,6 +45,17 @@ export async function launchApp(
     // A spec that launches against its own kubeconfig decides for itself what to wait for.
     if (!options.kubeconfigPath) await window.getByTestId('app-shell').waitFor();
     return { app, window, userData };
+}
+
+/** The environment every launch of the app under test runs with, a second launch included. */
+export function appEnv(userData: string, kubeconfigPath = KUBECONFIG_PATH): NodeJS.ProcessEnv {
+    return {
+        ...process.env,
+        KUBERMEISTER_USER_DATA: userData,
+        KUBECONFIG: kubeconfigPath,
+        // Never steal focus: a developer typing during a local run must not drive the app.
+        KUBERMEISTER_SHOW_INACTIVE: '1',
+    };
 }
 
 /**

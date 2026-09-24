@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron';
+import { claimSingleInstance, showWindowsForDeepLinks, watchDeepLinks } from './deep-links.js';
 import { followSettingsFile, registerHandlers } from './ipc/index.js';
 import { setReadTimeoutSec } from './k8s/errors.js';
 import { registerStreamHandlers, stopAllStreams } from './ipc/streams.js';
@@ -19,13 +20,20 @@ if (process.env.KUBERMEISTER_USER_DATA) app.setPath('userData', process.env.KUBE
 // hand.
 if (!app.isPackaged) app.setName('Kubermeister');
 
+// A second launch hands its `kubermeister://` link to the running app and quits before doing
+// anything else. The lock is keyed on `userData`, settled above, and macOS can deliver a link
+// before the app is ready, so links are listened for from here on.
+const primary = claimSingleInstance();
+if (primary) watchDeepLinks();
+
 // A kubeconfig written by `aws eks update-kubeconfig` names its credential plugin by bare command,
 // which a Finder or Dock launch cannot find under launchd's PATH, and the same launch carries none
 // of the proxy variables the user's shell sets. Both are looked up while Electron starts and
 // awaited before any IPC handler can reach the cluster.
-const shellEnvReady = adoptLoginShellEnv();
+const shellEnvReady = primary ? adoptLoginShellEnv() : Promise.resolve();
 
 void app.whenReady().then(async () => {
+    if (!primary) return;
     await shellEnvReady;
     // The read ceiling is a setting; apply the saved one before the first cluster call can run.
     setReadTimeoutSec(getSettings().data.readTimeoutSec);
@@ -39,6 +47,9 @@ void app.whenReady().then(async () => {
     followSettingsFile();
     startUpdater();
     createMainWindow();
+    // From here a link that finds no window opens one; the first window takes any link that came
+    // with the launch once its renderer mounts.
+    showWindowsForDeepLinks(createMainWindow);
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

@@ -1,6 +1,6 @@
 ---
 title: Detail pages, events and describe
-description: The Kubermeister detail layout — the header and its actions, the tab rail, overview, events and the Events stream, labels and the Object card, describe for pods and nodes, and a pod's related objects.
+description: The Kubermeister detail layout — the header and its actions, copying and opening links, the tab rail, overview, events and the Events stream, labels and the Object card, describe for pods and nodes, and a pod's related objects.
 sidebar:
   order: 2
 ---
@@ -15,6 +15,8 @@ labelled groups.
 The kind, the name, a status badge and a line of facts such as the namespace and age. On the right
 are the actions:
 
+- **Copy link** copies a `kubermeister://` link to this page and tab under the current context.
+  See [links](#links).
 - **Refresh** re-reads what the page shows. `⌘R` or `Ctrl+R` does the same.
 - **Edit** opens the Manifest tab in edit mode. See [manifests](/docs/browse/manifests/#editing).
 - **Delete** asks first, naming the object, and takes you back to the list once it is gone. A
@@ -42,6 +44,44 @@ The page remembers its tab. A reload stays on it, and when you leave the object 
 pressing **Back** lands on **Logs** again. Moving between tabs adds nothing to the history: one
 **Back** leaves the object, however many tabs you looked at. The breadcrumb ends with the tab's
 name, and the first tab has none, so the object's plain address opens there.
+
+## Links
+
+**Copy link** in the header puts a link like this on the clipboard:
+
+```text
+kubermeister://open/prod-eu/workloads/pods/default/web-1/logs
+```
+
+It names the context you are on and the page and tab you are looking at. Anybody whose kubeconfig
+has a context of the same name can click it, in a chat or a browser's address bar, and land on the
+same page. A context name with `:` or `/` in it, such as an EKS ARN, is written escaped, so
+the link still reads back as one name. A link to the **Shell** tab is copied as a link to the pod's
+first tab, because opening a shell runs a command in the pod and a click on a link is not a
+decision to do that.
+
+Opening a link only ever opens a page:
+
+- Under the context you are on, the page opens straight away.
+- Under another context in your kubeconfig, Kubermeister asks first, naming both contexts, and
+  switches only when you choose **Switch and open**. Switching ends your port forwards, shells and
+  log follows, as any context switch does. **Stay** leaves everything as it was.
+- Under a context your kubeconfig does not have, Kubermeister says so and switches nothing.
+- A link naming a page this version does not have, or one that is not a Kubermeister link at all,
+  opens nothing and says why.
+
+The namespace in the link is the object's own, so the namespace selector keeps whatever you had
+chosen. A link never deletes, restarts, forwards a port or downloads anything, and a link to the
+**Shell** tab opens the pod's first tab instead.
+
+If Kubermeister is not running, the link starts it and opens the page once it is connected. If it
+is, the running window comes forward; a second copy never starts.
+
+:::note[Linux]
+The `.deb` registers Kubermeister for `kubermeister://` links when it installs. An AppImage
+registers nothing until you integrate it with your desktop (with AppImageLauncher or your
+desktop's own integration), so until then a link does not open it.
+:::
 
 ## Overview
 

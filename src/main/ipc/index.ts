@@ -77,6 +77,7 @@ import {
 import { getResource, listResources } from '../k8s/resources/index.js';
 import { getDrainPlan } from '../k8s/drain.js';
 import { cordonNode, getNode, listNodes } from '../k8s/resources/nodes.js';
+import { takeDeepLink } from '../deep-links.js';
 import { pickManifestFile, readManifestFile } from '../manifest-file.js';
 import type { ManifestExport, ManifestExportInput } from '../../shared/k8s/manifest.js';
 import type { Settings } from '../../shared/settings.js';
@@ -249,6 +250,7 @@ const handlers: Handlers = {
     'update.download': async () => ({ ok: downloadUpdate() }),
     'update.install': async () => ({ ok: installUpdate() }),
     startupChecks: () => runStartupChecks(),
+    'deepLink.take': async () => ({ link: takeDeepLink() }),
     'contexts.list': async () => listContexts(),
     'context.current': async () => getCurrentContext(),
     'context.set': async ({ name }) => {

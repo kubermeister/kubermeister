@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from '@tanstack/react-router';
 import { FileUpIcon } from 'lucide-react';
 import { CommandPalette } from './command-palette';
+import { DeepLinkHandler } from './deep-link-handler';
 import { useNavigateTo } from './nav-link';
 import { ShortcutsDialog } from './shortcuts-dialog';
 import { Sidebar } from './sidebar';
@@ -39,6 +40,7 @@ export function AppShell() {
                 onShowShortcuts={() => setShortcutsOpen(true)}
             />
             <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+            <DeepLinkHandler />
             {dragging && (
                 <div
                     className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-8"

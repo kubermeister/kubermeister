@@ -231,6 +231,28 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - The renderer closes a detail page back to its list before switching context (`useSwitchContext`
   in `src/renderer/lib/scope.ts`), since the object it names belongs to the cluster being left.
 
+### Deep links
+
+- **A `kubermeister://open/<context>/<route path>` link is outside input, so it only ever
+  navigates.** Main parses it (`parseDeepLink` in `src/shared/deep-link.ts`, by hand rather than
+  through `URL`, which would resolve `..`) and holds the latest one in `src/main/deep-links.ts`; the
+  `deep-link` push only says one is waiting, and the renderer takes it through `deepLink.take` on
+  mount and on every push, so a link that arrived before a screen could hear it waits and a reload
+  never opens it twice. The context is one percent-encoded segment, since EKS names hold `:` and
+  `/`.
+- The renderer checks the path against the route tree (`linkablePath` in
+  `src/renderer/lib/deep-link.ts`, which refuses the router's fuzzy `**` matches), opens a tab in
+  `UNLINKABLE_TABS` (the Shell, which execs on mount) as the object's first tab, and switches
+  context only through `DeepLinkHandler`'s confirm dialog and `useSwitchContext`; a context the
+  kubeconfig lacks switches nothing. Copy link sits on every detail header through
+  `ResourceDetail`.
+- **One instance per `userData`**: `claimSingleInstance` runs once the path is settled, which is
+  what keeps parallel end-to-end runs from quitting one another. macOS sends `open-url`, possibly
+  before ready; Windows and Linux put the link in `argv` of the first launch and of
+  `second-instance`. The installers register the scheme (`protocols` in `electron-builder.yml`, which
+  also writes the Linux desktop entry's `MimeType`); only `npm run dev` calls
+  `setAsDefaultProtocolClient`, so a test run never takes the scheme from an installed app.
+
 ### Lists
 
 - **No list screen lists the cluster's pods for a count**: the Namespaces and Nodes lists carry no
