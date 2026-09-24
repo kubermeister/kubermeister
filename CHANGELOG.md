@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-24
+
 ### Fixed
 
 - The manifest editor checks and completes against the cluster's schema on a real cluster. In 0.6.1
