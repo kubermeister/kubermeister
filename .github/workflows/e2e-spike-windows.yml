@@ -95,6 +95,26 @@ jobs:
           Start-Sleep 5
           curl.exe -sS -o NUL -w "nginx via forwarded port: %{http_code}`n" http://127.0.0.1:18080/
           docker rm -f probe
+      # Global setup seeds the cluster through `docker exec -i ... kubectl apply -f -`: does the
+      # Windows CLI deliver stdin, return output, and pass the exit code through, every time?
+      - name: docker exec round trips from windows
+        env:
+          DOCKER_HOST: tcp://127.0.0.1:2375
+        run: |
+          docker run -d --name exec-probe alpine:3 sleep 3600 | Out-Null
+          $payload = (1..200 | ForEach-Object { "line $_ of the payload" }) -join "`n"
+          $stdinOk = 0; $outOk = 0
+          foreach ($i in 1..20) {
+            $got = $payload | docker exec -i exec-probe wc -l
+            if ("$got".Trim() -eq '200') { $stdinOk++ } else { "stdin round trip $i answered '$got' exit $LASTEXITCODE" }
+            $out = docker exec exec-probe echo km-probe-out
+            if ("$out".Trim() -eq 'km-probe-out') { $outOk++ } else { "output read $i answered '$out' exit $LASTEXITCODE" }
+          }
+          docker exec exec-probe sh -c 'exit 3'
+          "exit code passed through: $LASTEXITCODE (expected 3)"
+          "stdin intact $stdinOk/20, output intact $outOk/20"
+          docker rm -f exec-probe | Out-Null
+          exit 0
       - run: npm ci
       - run: npm run build
       - name: e2e
