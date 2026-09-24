@@ -63,6 +63,24 @@ test('lists the k3s node as Ready and the seeded namespace', async () => {
     await expect(namespaces.locator('[data-namespace="kube-system"]')).toBeVisible();
 });
 
+test('keeps a detail screen on its tab through a reload and a return with Back', async () => {
+    const { window } = launched;
+    await window.getByTestId('sidebar').getByRole('link', { name: 'Nodes', exact: true }).click();
+    await window.getByTestId('nodes-table').locator('[data-node]').first().getByRole('link').click();
+    await window.getByRole('tab', { name: 'System info' }).click();
+    await expect(window).toHaveURL(/#\/overview\/nodes\/[^/]+\/system$/);
+    await expect(window.getByTestId('breadcrumbs')).toContainText('System info');
+
+    await window.reload();
+    await expect(window.getByRole('tab', { name: 'System info' })).toHaveAttribute('aria-selected', 'true');
+    await expect(window.getByTestId('node-page').getByTestId('system-info')).toBeVisible();
+
+    await window.getByTestId('sidebar').getByRole('link', { name: 'Namespaces', exact: true }).click();
+    await expect(window.getByTestId('namespaces-table')).toBeVisible();
+    await window.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(window.getByRole('tab', { name: 'System info' })).toHaveAttribute('aria-selected', 'true');
+});
+
 test('keeps all per-user state inside the throwaway data directory', async () => {
     const { app, userData } = launched;
     const actual = await app.evaluate(({ app: electronApp }) => electronApp.getPath('userData'));

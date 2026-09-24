@@ -20,49 +20,32 @@ import { Route as OverviewNodesRouteImport } from './routes/overview/nodes';
 import { Route as OverviewQuotasRouteImport } from './routes/overview/quotas';
 import { Route as OverviewSummaryRouteImport } from './routes/overview/summary';
 import { Route as AccessClusterrolebindingsIndexRouteImport } from './routes/access/clusterrolebindings/index';
-import { Route as AccessClusterrolebindingsNameRouteImport } from './routes/access/clusterrolebindings_.$name';
 import { Route as AccessClusterrolesIndexRouteImport } from './routes/access/clusterroles/index';
-import { Route as AccessClusterrolesNameRouteImport } from './routes/access/clusterroles_.$name';
 import { Route as AccessRolebindingsIndexRouteImport } from './routes/access/rolebindings/index';
 import { Route as AccessRolesIndexRouteImport } from './routes/access/roles/index';
 import { Route as AccessServiceaccountsIndexRouteImport } from './routes/access/serviceaccounts/index';
 import { Route as AddonsAdmissionpoliciesIndexRouteImport } from './routes/addons/admissionpolicies/index';
-import { Route as AddonsAdmissionpoliciesNameRouteImport } from './routes/addons/admissionpolicies_.$name';
 import { Route as AddonsApiservicesIndexRouteImport } from './routes/addons/apiservices/index';
-import { Route as AddonsApiservicesNameRouteImport } from './routes/addons/apiservices_.$name';
 import { Route as AddonsCrdsIndexRouteImport } from './routes/addons/crds/index';
-import { Route as AddonsCrdsNameRouteImport } from './routes/addons/crds_.$name';
 import { Route as AddonsFlowschemasIndexRouteImport } from './routes/addons/flowschemas/index';
-import { Route as AddonsFlowschemasNameRouteImport } from './routes/addons/flowschemas_.$name';
 import { Route as AddonsMutatingwebhooksIndexRouteImport } from './routes/addons/mutatingwebhooks/index';
-import { Route as AddonsMutatingwebhooksNameRouteImport } from './routes/addons/mutatingwebhooks_.$name';
 import { Route as AddonsReleasesIndexRouteImport } from './routes/addons/releases/index';
 import { Route as AddonsValidatingwebhooksIndexRouteImport } from './routes/addons/validatingwebhooks/index';
-import { Route as AddonsValidatingwebhooksNameRouteImport } from './routes/addons/validatingwebhooks_.$name';
 import { Route as NetworkEndpointsIndexRouteImport } from './routes/network/endpoints/index';
 import { Route as NetworkIngressclassesIndexRouteImport } from './routes/network/ingressclasses/index';
-import { Route as NetworkIngressclassesNameRouteImport } from './routes/network/ingressclasses_.$name';
 import { Route as NetworkIngressesIndexRouteImport } from './routes/network/ingresses/index';
 import { Route as NetworkNetworkpoliciesIndexRouteImport } from './routes/network/networkpolicies/index';
 import { Route as NetworkServicesIndexRouteImport } from './routes/network/services/index';
 import { Route as OverviewLeasesIndexRouteImport } from './routes/overview/leases/index';
-import { Route as OverviewNamespacesNameRouteImport } from './routes/overview/namespaces_.$name';
-import { Route as OverviewNodesNameRouteImport } from './routes/overview/nodes_.$name';
 import { Route as OverviewPriorityclassesIndexRouteImport } from './routes/overview/priorityclasses/index';
-import { Route as OverviewPriorityclassesNameRouteImport } from './routes/overview/priorityclasses_.$name';
 import { Route as OverviewRuntimeclassesIndexRouteImport } from './routes/overview/runtimeclasses/index';
-import { Route as OverviewRuntimeclassesNameRouteImport } from './routes/overview/runtimeclasses_.$name';
 import { Route as StorageCapacityIndexRouteImport } from './routes/storage/capacity/index';
 import { Route as StorageClaimsIndexRouteImport } from './routes/storage/claims/index';
 import { Route as StorageCsidriversIndexRouteImport } from './routes/storage/csidrivers/index';
-import { Route as StorageCsidriversNameRouteImport } from './routes/storage/csidrivers_.$name';
 import { Route as StorageCsinodesIndexRouteImport } from './routes/storage/csinodes/index';
-import { Route as StorageCsinodesNameRouteImport } from './routes/storage/csinodes_.$name';
 import { Route as StorageSnapshotsIndexRouteImport } from './routes/storage/snapshots/index';
 import { Route as StorageStorageclassesIndexRouteImport } from './routes/storage/storageclasses/index';
-import { Route as StorageStorageclassesNameRouteImport } from './routes/storage/storageclasses_.$name';
 import { Route as StorageVolumesIndexRouteImport } from './routes/storage/volumes/index';
-import { Route as StorageVolumesNameRouteImport } from './routes/storage/volumes_.$name';
 import { Route as WorkloadsAutoscalersIndexRouteImport } from './routes/workloads/autoscalers/index';
 import { Route as WorkloadsConfigmapsIndexRouteImport } from './routes/workloads/configmaps/index';
 import { Route as WorkloadsCronjobsIndexRouteImport } from './routes/workloads/cronjobs/index';
@@ -75,32 +58,49 @@ import { Route as WorkloadsReplicasetsIndexRouteImport } from './routes/workload
 import { Route as WorkloadsReplicationcontrollersIndexRouteImport } from './routes/workloads/replicationcontrollers/index';
 import { Route as WorkloadsSecretsIndexRouteImport } from './routes/workloads/secrets/index';
 import { Route as WorkloadsStatefulsetsIndexRouteImport } from './routes/workloads/statefulsets/index';
-import { Route as AccessRolebindingsNamespaceNameRouteImport } from './routes/access/rolebindings/$namespace.$name';
-import { Route as AccessRolesNamespaceNameRouteImport } from './routes/access/roles/$namespace.$name';
-import { Route as AccessServiceaccountsNamespaceNameRouteImport } from './routes/access/serviceaccounts/$namespace.$name';
+import { Route as AccessClusterrolebindingsNameChar123TabChar125RouteImport } from './routes/access/clusterrolebindings_.$name.{-$tab}';
+import { Route as AccessClusterrolesNameChar123TabChar125RouteImport } from './routes/access/clusterroles_.$name.{-$tab}';
+import { Route as AddonsAdmissionpoliciesNameChar123TabChar125RouteImport } from './routes/addons/admissionpolicies_.$name.{-$tab}';
+import { Route as AddonsApiservicesNameChar123TabChar125RouteImport } from './routes/addons/apiservices_.$name.{-$tab}';
+import { Route as AddonsCrdsNameChar123TabChar125RouteImport } from './routes/addons/crds_.$name.{-$tab}';
+import { Route as AddonsFlowschemasNameChar123TabChar125RouteImport } from './routes/addons/flowschemas_.$name.{-$tab}';
 import { Route as AddonsInstancesCrdIndexRouteImport } from './routes/addons/instances/$crd/index';
-import { Route as AddonsReleasesNamespaceNameRouteImport } from './routes/addons/releases/$namespace.$name';
-import { Route as NetworkEndpointsNamespaceNameRouteImport } from './routes/network/endpoints/$namespace.$name';
-import { Route as NetworkIngressesNamespaceNameRouteImport } from './routes/network/ingresses/$namespace.$name';
-import { Route as NetworkNetworkpoliciesNamespaceNameRouteImport } from './routes/network/networkpolicies/$namespace.$name';
-import { Route as NetworkServicesNamespaceNameRouteImport } from './routes/network/services/$namespace.$name';
-import { Route as OverviewLeasesNamespaceNameRouteImport } from './routes/overview/leases/$namespace.$name';
-import { Route as StorageCapacityNamespaceNameRouteImport } from './routes/storage/capacity/$namespace.$name';
-import { Route as StorageClaimsNamespaceNameRouteImport } from './routes/storage/claims/$namespace.$name';
-import { Route as StorageSnapshotsNamespaceNameRouteImport } from './routes/storage/snapshots/$namespace.$name';
-import { Route as WorkloadsAutoscalersNamespaceNameRouteImport } from './routes/workloads/autoscalers/$namespace.$name';
-import { Route as WorkloadsConfigmapsNamespaceNameRouteImport } from './routes/workloads/configmaps/$namespace.$name';
-import { Route as WorkloadsCronjobsNamespaceNameRouteImport } from './routes/workloads/cronjobs/$namespace.$name';
-import { Route as WorkloadsDaemonsetsNamespaceNameRouteImport } from './routes/workloads/daemonsets/$namespace.$name';
-import { Route as WorkloadsDeploymentsNamespaceNameRouteImport } from './routes/workloads/deployments/$namespace.$name';
-import { Route as WorkloadsDisruptionbudgetsNamespaceNameRouteImport } from './routes/workloads/disruptionbudgets/$namespace.$name';
-import { Route as WorkloadsJobsNamespaceNameRouteImport } from './routes/workloads/jobs/$namespace.$name';
-import { Route as WorkloadsPodsNamespaceNameRouteImport } from './routes/workloads/pods/$namespace.$name';
-import { Route as WorkloadsReplicasetsNamespaceNameRouteImport } from './routes/workloads/replicasets/$namespace.$name';
-import { Route as WorkloadsReplicationcontrollersNamespaceNameRouteImport } from './routes/workloads/replicationcontrollers/$namespace.$name';
-import { Route as WorkloadsSecretsNamespaceNameRouteImport } from './routes/workloads/secrets/$namespace.$name';
-import { Route as WorkloadsStatefulsetsNamespaceNameRouteImport } from './routes/workloads/statefulsets/$namespace.$name';
-import { Route as AddonsInstancesCrdNamespaceNameRouteImport } from './routes/addons/instances/$crd/$namespace.$name';
+import { Route as AddonsMutatingwebhooksNameChar123TabChar125RouteImport } from './routes/addons/mutatingwebhooks_.$name.{-$tab}';
+import { Route as AddonsValidatingwebhooksNameChar123TabChar125RouteImport } from './routes/addons/validatingwebhooks_.$name.{-$tab}';
+import { Route as NetworkIngressclassesNameChar123TabChar125RouteImport } from './routes/network/ingressclasses_.$name.{-$tab}';
+import { Route as OverviewNamespacesNameChar123TabChar125RouteImport } from './routes/overview/namespaces_.$name.{-$tab}';
+import { Route as OverviewNodesNameChar123TabChar125RouteImport } from './routes/overview/nodes_.$name.{-$tab}';
+import { Route as OverviewPriorityclassesNameChar123TabChar125RouteImport } from './routes/overview/priorityclasses_.$name.{-$tab}';
+import { Route as OverviewRuntimeclassesNameChar123TabChar125RouteImport } from './routes/overview/runtimeclasses_.$name.{-$tab}';
+import { Route as StorageCsidriversNameChar123TabChar125RouteImport } from './routes/storage/csidrivers_.$name.{-$tab}';
+import { Route as StorageCsinodesNameChar123TabChar125RouteImport } from './routes/storage/csinodes_.$name.{-$tab}';
+import { Route as StorageStorageclassesNameChar123TabChar125RouteImport } from './routes/storage/storageclasses_.$name.{-$tab}';
+import { Route as StorageVolumesNameChar123TabChar125RouteImport } from './routes/storage/volumes_.$name.{-$tab}';
+import { Route as AccessRolebindingsNamespaceNameChar123TabChar125RouteImport } from './routes/access/rolebindings/$namespace.$name.{-$tab}';
+import { Route as AccessRolesNamespaceNameChar123TabChar125RouteImport } from './routes/access/roles/$namespace.$name.{-$tab}';
+import { Route as AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport } from './routes/access/serviceaccounts/$namespace.$name.{-$tab}';
+import { Route as AddonsReleasesNamespaceNameChar123TabChar125RouteImport } from './routes/addons/releases/$namespace.$name.{-$tab}';
+import { Route as NetworkEndpointsNamespaceNameChar123TabChar125RouteImport } from './routes/network/endpoints/$namespace.$name.{-$tab}';
+import { Route as NetworkIngressesNamespaceNameChar123TabChar125RouteImport } from './routes/network/ingresses/$namespace.$name.{-$tab}';
+import { Route as NetworkNetworkpoliciesNamespaceNameChar123TabChar125RouteImport } from './routes/network/networkpolicies/$namespace.$name.{-$tab}';
+import { Route as NetworkServicesNamespaceNameChar123TabChar125RouteImport } from './routes/network/services/$namespace.$name.{-$tab}';
+import { Route as OverviewLeasesNamespaceNameChar123TabChar125RouteImport } from './routes/overview/leases/$namespace.$name.{-$tab}';
+import { Route as StorageCapacityNamespaceNameChar123TabChar125RouteImport } from './routes/storage/capacity/$namespace.$name.{-$tab}';
+import { Route as StorageClaimsNamespaceNameChar123TabChar125RouteImport } from './routes/storage/claims/$namespace.$name.{-$tab}';
+import { Route as StorageSnapshotsNamespaceNameChar123TabChar125RouteImport } from './routes/storage/snapshots/$namespace.$name.{-$tab}';
+import { Route as WorkloadsAutoscalersNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/autoscalers/$namespace.$name.{-$tab}';
+import { Route as WorkloadsConfigmapsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/configmaps/$namespace.$name.{-$tab}';
+import { Route as WorkloadsCronjobsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/cronjobs/$namespace.$name.{-$tab}';
+import { Route as WorkloadsDaemonsetsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/daemonsets/$namespace.$name.{-$tab}';
+import { Route as WorkloadsDeploymentsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/deployments/$namespace.$name.{-$tab}';
+import { Route as WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/disruptionbudgets/$namespace.$name.{-$tab}';
+import { Route as WorkloadsJobsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/jobs/$namespace.$name.{-$tab}';
+import { Route as WorkloadsPodsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/pods/$namespace.$name.{-$tab}';
+import { Route as WorkloadsReplicasetsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/replicasets/$namespace.$name.{-$tab}';
+import { Route as WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/replicationcontrollers/$namespace.$name.{-$tab}';
+import { Route as WorkloadsSecretsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/secrets/$namespace.$name.{-$tab}';
+import { Route as WorkloadsStatefulsetsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/statefulsets/$namespace.$name.{-$tab}';
+import { Route as AddonsInstancesCrdNamespaceNameChar123TabChar125RouteImport } from './routes/addons/instances/$crd/$namespace.$name.{-$tab}';
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -158,20 +158,9 @@ const AccessClusterrolebindingsIndexRoute =
     path: '/access/clusterrolebindings/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AccessClusterrolebindingsNameRoute =
-  AccessClusterrolebindingsNameRouteImport.update({
-    id: '/access/clusterrolebindings_/$name',
-    path: '/access/clusterrolebindings/$name',
-    getParentRoute: () => rootRouteImport,
-  } as any);
 const AccessClusterrolesIndexRoute = AccessClusterrolesIndexRouteImport.update({
   id: '/access/clusterroles/',
   path: '/access/clusterroles/',
-  getParentRoute: () => rootRouteImport,
-} as any);
-const AccessClusterrolesNameRoute = AccessClusterrolesNameRouteImport.update({
-  id: '/access/clusterroles_/$name',
-  path: '/access/clusterroles/$name',
   getParentRoute: () => rootRouteImport,
 } as any);
 const AccessRolebindingsIndexRoute = AccessRolebindingsIndexRouteImport.update({
@@ -196,20 +185,9 @@ const AddonsAdmissionpoliciesIndexRoute =
     path: '/addons/admissionpolicies/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AddonsAdmissionpoliciesNameRoute =
-  AddonsAdmissionpoliciesNameRouteImport.update({
-    id: '/addons/admissionpolicies_/$name',
-    path: '/addons/admissionpolicies/$name',
-    getParentRoute: () => rootRouteImport,
-  } as any);
 const AddonsApiservicesIndexRoute = AddonsApiservicesIndexRouteImport.update({
   id: '/addons/apiservices/',
   path: '/addons/apiservices/',
-  getParentRoute: () => rootRouteImport,
-} as any);
-const AddonsApiservicesNameRoute = AddonsApiservicesNameRouteImport.update({
-  id: '/addons/apiservices_/$name',
-  path: '/addons/apiservices/$name',
   getParentRoute: () => rootRouteImport,
 } as any);
 const AddonsCrdsIndexRoute = AddonsCrdsIndexRouteImport.update({
@@ -217,31 +195,15 @@ const AddonsCrdsIndexRoute = AddonsCrdsIndexRouteImport.update({
   path: '/addons/crds/',
   getParentRoute: () => rootRouteImport,
 } as any);
-const AddonsCrdsNameRoute = AddonsCrdsNameRouteImport.update({
-  id: '/addons/crds_/$name',
-  path: '/addons/crds/$name',
-  getParentRoute: () => rootRouteImport,
-} as any);
 const AddonsFlowschemasIndexRoute = AddonsFlowschemasIndexRouteImport.update({
   id: '/addons/flowschemas/',
   path: '/addons/flowschemas/',
-  getParentRoute: () => rootRouteImport,
-} as any);
-const AddonsFlowschemasNameRoute = AddonsFlowschemasNameRouteImport.update({
-  id: '/addons/flowschemas_/$name',
-  path: '/addons/flowschemas/$name',
   getParentRoute: () => rootRouteImport,
 } as any);
 const AddonsMutatingwebhooksIndexRoute =
   AddonsMutatingwebhooksIndexRouteImport.update({
     id: '/addons/mutatingwebhooks/',
     path: '/addons/mutatingwebhooks/',
-    getParentRoute: () => rootRouteImport,
-  } as any);
-const AddonsMutatingwebhooksNameRoute =
-  AddonsMutatingwebhooksNameRouteImport.update({
-    id: '/addons/mutatingwebhooks_/$name',
-    path: '/addons/mutatingwebhooks/$name',
     getParentRoute: () => rootRouteImport,
   } as any);
 const AddonsReleasesIndexRoute = AddonsReleasesIndexRouteImport.update({
@@ -255,12 +217,6 @@ const AddonsValidatingwebhooksIndexRoute =
     path: '/addons/validatingwebhooks/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AddonsValidatingwebhooksNameRoute =
-  AddonsValidatingwebhooksNameRouteImport.update({
-    id: '/addons/validatingwebhooks_/$name',
-    path: '/addons/validatingwebhooks/$name',
-    getParentRoute: () => rootRouteImport,
-  } as any);
 const NetworkEndpointsIndexRoute = NetworkEndpointsIndexRouteImport.update({
   id: '/network/endpoints/',
   path: '/network/endpoints/',
@@ -270,12 +226,6 @@ const NetworkIngressclassesIndexRoute =
   NetworkIngressclassesIndexRouteImport.update({
     id: '/network/ingressclasses/',
     path: '/network/ingressclasses/',
-    getParentRoute: () => rootRouteImport,
-  } as any);
-const NetworkIngressclassesNameRoute =
-  NetworkIngressclassesNameRouteImport.update({
-    id: '/network/ingressclasses_/$name',
-    path: '/network/ingressclasses/$name',
     getParentRoute: () => rootRouteImport,
   } as any);
 const NetworkIngressesIndexRoute = NetworkIngressesIndexRouteImport.update({
@@ -299,38 +249,16 @@ const OverviewLeasesIndexRoute = OverviewLeasesIndexRouteImport.update({
   path: '/overview/leases/',
   getParentRoute: () => rootRouteImport,
 } as any);
-const OverviewNamespacesNameRoute = OverviewNamespacesNameRouteImport.update({
-  id: '/overview/namespaces_/$name',
-  path: '/overview/namespaces/$name',
-  getParentRoute: () => rootRouteImport,
-} as any);
-const OverviewNodesNameRoute = OverviewNodesNameRouteImport.update({
-  id: '/overview/nodes_/$name',
-  path: '/overview/nodes/$name',
-  getParentRoute: () => rootRouteImport,
-} as any);
 const OverviewPriorityclassesIndexRoute =
   OverviewPriorityclassesIndexRouteImport.update({
     id: '/overview/priorityclasses/',
     path: '/overview/priorityclasses/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const OverviewPriorityclassesNameRoute =
-  OverviewPriorityclassesNameRouteImport.update({
-    id: '/overview/priorityclasses_/$name',
-    path: '/overview/priorityclasses/$name',
-    getParentRoute: () => rootRouteImport,
-  } as any);
 const OverviewRuntimeclassesIndexRoute =
   OverviewRuntimeclassesIndexRouteImport.update({
     id: '/overview/runtimeclasses/',
     path: '/overview/runtimeclasses/',
-    getParentRoute: () => rootRouteImport,
-  } as any);
-const OverviewRuntimeclassesNameRoute =
-  OverviewRuntimeclassesNameRouteImport.update({
-    id: '/overview/runtimeclasses_/$name',
-    path: '/overview/runtimeclasses/$name',
     getParentRoute: () => rootRouteImport,
   } as any);
 const StorageCapacityIndexRoute = StorageCapacityIndexRouteImport.update({
@@ -348,19 +276,9 @@ const StorageCsidriversIndexRoute = StorageCsidriversIndexRouteImport.update({
   path: '/storage/csidrivers/',
   getParentRoute: () => rootRouteImport,
 } as any);
-const StorageCsidriversNameRoute = StorageCsidriversNameRouteImport.update({
-  id: '/storage/csidrivers_/$name',
-  path: '/storage/csidrivers/$name',
-  getParentRoute: () => rootRouteImport,
-} as any);
 const StorageCsinodesIndexRoute = StorageCsinodesIndexRouteImport.update({
   id: '/storage/csinodes/',
   path: '/storage/csinodes/',
-  getParentRoute: () => rootRouteImport,
-} as any);
-const StorageCsinodesNameRoute = StorageCsinodesNameRouteImport.update({
-  id: '/storage/csinodes_/$name',
-  path: '/storage/csinodes/$name',
   getParentRoute: () => rootRouteImport,
 } as any);
 const StorageSnapshotsIndexRoute = StorageSnapshotsIndexRouteImport.update({
@@ -374,20 +292,9 @@ const StorageStorageclassesIndexRoute =
     path: '/storage/storageclasses/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const StorageStorageclassesNameRoute =
-  StorageStorageclassesNameRouteImport.update({
-    id: '/storage/storageclasses_/$name',
-    path: '/storage/storageclasses/$name',
-    getParentRoute: () => rootRouteImport,
-  } as any);
 const StorageVolumesIndexRoute = StorageVolumesIndexRouteImport.update({
   id: '/storage/volumes/',
   path: '/storage/volumes/',
-  getParentRoute: () => rootRouteImport,
-} as any);
-const StorageVolumesNameRoute = StorageVolumesNameRouteImport.update({
-  id: '/storage/volumes_/$name',
-  path: '/storage/volumes/$name',
   getParentRoute: () => rootRouteImport,
 } as any);
 const WorkloadsAutoscalersIndexRoute =
@@ -458,22 +365,40 @@ const WorkloadsStatefulsetsIndexRoute =
     path: '/workloads/statefulsets/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AccessRolebindingsNamespaceNameRoute =
-  AccessRolebindingsNamespaceNameRouteImport.update({
-    id: '/access/rolebindings/$namespace/$name',
-    path: '/access/rolebindings/$namespace/$name',
+const AccessClusterrolebindingsNameChar123TabChar125Route =
+  AccessClusterrolebindingsNameChar123TabChar125RouteImport.update({
+    id: '/access/clusterrolebindings_/$name/{-$tab}',
+    path: '/access/clusterrolebindings/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AccessRolesNamespaceNameRoute =
-  AccessRolesNamespaceNameRouteImport.update({
-    id: '/access/roles/$namespace/$name',
-    path: '/access/roles/$namespace/$name',
+const AccessClusterrolesNameChar123TabChar125Route =
+  AccessClusterrolesNameChar123TabChar125RouteImport.update({
+    id: '/access/clusterroles_/$name/{-$tab}',
+    path: '/access/clusterroles/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AccessServiceaccountsNamespaceNameRoute =
-  AccessServiceaccountsNamespaceNameRouteImport.update({
-    id: '/access/serviceaccounts/$namespace/$name',
-    path: '/access/serviceaccounts/$namespace/$name',
+const AddonsAdmissionpoliciesNameChar123TabChar125Route =
+  AddonsAdmissionpoliciesNameChar123TabChar125RouteImport.update({
+    id: '/addons/admissionpolicies_/$name/{-$tab}',
+    path: '/addons/admissionpolicies/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const AddonsApiservicesNameChar123TabChar125Route =
+  AddonsApiservicesNameChar123TabChar125RouteImport.update({
+    id: '/addons/apiservices_/$name/{-$tab}',
+    path: '/addons/apiservices/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const AddonsCrdsNameChar123TabChar125Route =
+  AddonsCrdsNameChar123TabChar125RouteImport.update({
+    id: '/addons/crds_/$name/{-$tab}',
+    path: '/addons/crds/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const AddonsFlowschemasNameChar123TabChar125Route =
+  AddonsFlowschemasNameChar123TabChar125RouteImport.update({
+    id: '/addons/flowschemas_/$name/{-$tab}',
+    path: '/addons/flowschemas/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
 const AddonsInstancesCrdIndexRoute = AddonsInstancesCrdIndexRouteImport.update({
@@ -481,136 +406,222 @@ const AddonsInstancesCrdIndexRoute = AddonsInstancesCrdIndexRouteImport.update({
   path: '/addons/instances/$crd/',
   getParentRoute: () => rootRouteImport,
 } as any);
-const AddonsReleasesNamespaceNameRoute =
-  AddonsReleasesNamespaceNameRouteImport.update({
-    id: '/addons/releases/$namespace/$name',
-    path: '/addons/releases/$namespace/$name',
+const AddonsMutatingwebhooksNameChar123TabChar125Route =
+  AddonsMutatingwebhooksNameChar123TabChar125RouteImport.update({
+    id: '/addons/mutatingwebhooks_/$name/{-$tab}',
+    path: '/addons/mutatingwebhooks/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const NetworkEndpointsNamespaceNameRoute =
-  NetworkEndpointsNamespaceNameRouteImport.update({
-    id: '/network/endpoints/$namespace/$name',
-    path: '/network/endpoints/$namespace/$name',
+const AddonsValidatingwebhooksNameChar123TabChar125Route =
+  AddonsValidatingwebhooksNameChar123TabChar125RouteImport.update({
+    id: '/addons/validatingwebhooks_/$name/{-$tab}',
+    path: '/addons/validatingwebhooks/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const NetworkIngressesNamespaceNameRoute =
-  NetworkIngressesNamespaceNameRouteImport.update({
-    id: '/network/ingresses/$namespace/$name',
-    path: '/network/ingresses/$namespace/$name',
+const NetworkIngressclassesNameChar123TabChar125Route =
+  NetworkIngressclassesNameChar123TabChar125RouteImport.update({
+    id: '/network/ingressclasses_/$name/{-$tab}',
+    path: '/network/ingressclasses/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const NetworkNetworkpoliciesNamespaceNameRoute =
-  NetworkNetworkpoliciesNamespaceNameRouteImport.update({
-    id: '/network/networkpolicies/$namespace/$name',
-    path: '/network/networkpolicies/$namespace/$name',
+const OverviewNamespacesNameChar123TabChar125Route =
+  OverviewNamespacesNameChar123TabChar125RouteImport.update({
+    id: '/overview/namespaces_/$name/{-$tab}',
+    path: '/overview/namespaces/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const NetworkServicesNamespaceNameRoute =
-  NetworkServicesNamespaceNameRouteImport.update({
-    id: '/network/services/$namespace/$name',
-    path: '/network/services/$namespace/$name',
+const OverviewNodesNameChar123TabChar125Route =
+  OverviewNodesNameChar123TabChar125RouteImport.update({
+    id: '/overview/nodes_/$name/{-$tab}',
+    path: '/overview/nodes/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const OverviewLeasesNamespaceNameRoute =
-  OverviewLeasesNamespaceNameRouteImport.update({
-    id: '/overview/leases/$namespace/$name',
-    path: '/overview/leases/$namespace/$name',
+const OverviewPriorityclassesNameChar123TabChar125Route =
+  OverviewPriorityclassesNameChar123TabChar125RouteImport.update({
+    id: '/overview/priorityclasses_/$name/{-$tab}',
+    path: '/overview/priorityclasses/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const StorageCapacityNamespaceNameRoute =
-  StorageCapacityNamespaceNameRouteImport.update({
-    id: '/storage/capacity/$namespace/$name',
-    path: '/storage/capacity/$namespace/$name',
+const OverviewRuntimeclassesNameChar123TabChar125Route =
+  OverviewRuntimeclassesNameChar123TabChar125RouteImport.update({
+    id: '/overview/runtimeclasses_/$name/{-$tab}',
+    path: '/overview/runtimeclasses/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const StorageClaimsNamespaceNameRoute =
-  StorageClaimsNamespaceNameRouteImport.update({
-    id: '/storage/claims/$namespace/$name',
-    path: '/storage/claims/$namespace/$name',
+const StorageCsidriversNameChar123TabChar125Route =
+  StorageCsidriversNameChar123TabChar125RouteImport.update({
+    id: '/storage/csidrivers_/$name/{-$tab}',
+    path: '/storage/csidrivers/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const StorageSnapshotsNamespaceNameRoute =
-  StorageSnapshotsNamespaceNameRouteImport.update({
-    id: '/storage/snapshots/$namespace/$name',
-    path: '/storage/snapshots/$namespace/$name',
+const StorageCsinodesNameChar123TabChar125Route =
+  StorageCsinodesNameChar123TabChar125RouteImport.update({
+    id: '/storage/csinodes_/$name/{-$tab}',
+    path: '/storage/csinodes/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsAutoscalersNamespaceNameRoute =
-  WorkloadsAutoscalersNamespaceNameRouteImport.update({
-    id: '/workloads/autoscalers/$namespace/$name',
-    path: '/workloads/autoscalers/$namespace/$name',
+const StorageStorageclassesNameChar123TabChar125Route =
+  StorageStorageclassesNameChar123TabChar125RouteImport.update({
+    id: '/storage/storageclasses_/$name/{-$tab}',
+    path: '/storage/storageclasses/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsConfigmapsNamespaceNameRoute =
-  WorkloadsConfigmapsNamespaceNameRouteImport.update({
-    id: '/workloads/configmaps/$namespace/$name',
-    path: '/workloads/configmaps/$namespace/$name',
+const StorageVolumesNameChar123TabChar125Route =
+  StorageVolumesNameChar123TabChar125RouteImport.update({
+    id: '/storage/volumes_/$name/{-$tab}',
+    path: '/storage/volumes/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsCronjobsNamespaceNameRoute =
-  WorkloadsCronjobsNamespaceNameRouteImport.update({
-    id: '/workloads/cronjobs/$namespace/$name',
-    path: '/workloads/cronjobs/$namespace/$name',
+const AccessRolebindingsNamespaceNameChar123TabChar125Route =
+  AccessRolebindingsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/access/rolebindings/$namespace/$name/{-$tab}',
+    path: '/access/rolebindings/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsDaemonsetsNamespaceNameRoute =
-  WorkloadsDaemonsetsNamespaceNameRouteImport.update({
-    id: '/workloads/daemonsets/$namespace/$name',
-    path: '/workloads/daemonsets/$namespace/$name',
+const AccessRolesNamespaceNameChar123TabChar125Route =
+  AccessRolesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/access/roles/$namespace/$name/{-$tab}',
+    path: '/access/roles/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsDeploymentsNamespaceNameRoute =
-  WorkloadsDeploymentsNamespaceNameRouteImport.update({
-    id: '/workloads/deployments/$namespace/$name',
-    path: '/workloads/deployments/$namespace/$name',
+const AccessServiceaccountsNamespaceNameChar123TabChar125Route =
+  AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/access/serviceaccounts/$namespace/$name/{-$tab}',
+    path: '/access/serviceaccounts/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsDisruptionbudgetsNamespaceNameRoute =
-  WorkloadsDisruptionbudgetsNamespaceNameRouteImport.update({
-    id: '/workloads/disruptionbudgets/$namespace/$name',
-    path: '/workloads/disruptionbudgets/$namespace/$name',
+const AddonsReleasesNamespaceNameChar123TabChar125Route =
+  AddonsReleasesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/addons/releases/$namespace/$name/{-$tab}',
+    path: '/addons/releases/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsJobsNamespaceNameRoute =
-  WorkloadsJobsNamespaceNameRouteImport.update({
-    id: '/workloads/jobs/$namespace/$name',
-    path: '/workloads/jobs/$namespace/$name',
+const NetworkEndpointsNamespaceNameChar123TabChar125Route =
+  NetworkEndpointsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/network/endpoints/$namespace/$name/{-$tab}',
+    path: '/network/endpoints/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsPodsNamespaceNameRoute =
-  WorkloadsPodsNamespaceNameRouteImport.update({
-    id: '/workloads/pods/$namespace/$name',
-    path: '/workloads/pods/$namespace/$name',
+const NetworkIngressesNamespaceNameChar123TabChar125Route =
+  NetworkIngressesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/network/ingresses/$namespace/$name/{-$tab}',
+    path: '/network/ingresses/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsReplicasetsNamespaceNameRoute =
-  WorkloadsReplicasetsNamespaceNameRouteImport.update({
-    id: '/workloads/replicasets/$namespace/$name',
-    path: '/workloads/replicasets/$namespace/$name',
+const NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route =
+  NetworkNetworkpoliciesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/network/networkpolicies/$namespace/$name/{-$tab}',
+    path: '/network/networkpolicies/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsReplicationcontrollersNamespaceNameRoute =
-  WorkloadsReplicationcontrollersNamespaceNameRouteImport.update({
-    id: '/workloads/replicationcontrollers/$namespace/$name',
-    path: '/workloads/replicationcontrollers/$namespace/$name',
+const NetworkServicesNamespaceNameChar123TabChar125Route =
+  NetworkServicesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/network/services/$namespace/$name/{-$tab}',
+    path: '/network/services/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsSecretsNamespaceNameRoute =
-  WorkloadsSecretsNamespaceNameRouteImport.update({
-    id: '/workloads/secrets/$namespace/$name',
-    path: '/workloads/secrets/$namespace/$name',
+const OverviewLeasesNamespaceNameChar123TabChar125Route =
+  OverviewLeasesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/overview/leases/$namespace/$name/{-$tab}',
+    path: '/overview/leases/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const WorkloadsStatefulsetsNamespaceNameRoute =
-  WorkloadsStatefulsetsNamespaceNameRouteImport.update({
-    id: '/workloads/statefulsets/$namespace/$name',
-    path: '/workloads/statefulsets/$namespace/$name',
+const StorageCapacityNamespaceNameChar123TabChar125Route =
+  StorageCapacityNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/storage/capacity/$namespace/$name/{-$tab}',
+    path: '/storage/capacity/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AddonsInstancesCrdNamespaceNameRoute =
-  AddonsInstancesCrdNamespaceNameRouteImport.update({
-    id: '/addons/instances/$crd/$namespace/$name',
-    path: '/addons/instances/$crd/$namespace/$name',
+const StorageClaimsNamespaceNameChar123TabChar125Route =
+  StorageClaimsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/storage/claims/$namespace/$name/{-$tab}',
+    path: '/storage/claims/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const StorageSnapshotsNamespaceNameChar123TabChar125Route =
+  StorageSnapshotsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/storage/snapshots/$namespace/$name/{-$tab}',
+    path: '/storage/snapshots/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsAutoscalersNamespaceNameChar123TabChar125Route =
+  WorkloadsAutoscalersNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/autoscalers/$namespace/$name/{-$tab}',
+    path: '/workloads/autoscalers/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsConfigmapsNamespaceNameChar123TabChar125Route =
+  WorkloadsConfigmapsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/configmaps/$namespace/$name/{-$tab}',
+    path: '/workloads/configmaps/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsCronjobsNamespaceNameChar123TabChar125Route =
+  WorkloadsCronjobsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/cronjobs/$namespace/$name/{-$tab}',
+    path: '/workloads/cronjobs/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route =
+  WorkloadsDaemonsetsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/daemonsets/$namespace/$name/{-$tab}',
+    path: '/workloads/daemonsets/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsDeploymentsNamespaceNameChar123TabChar125Route =
+  WorkloadsDeploymentsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/deployments/$namespace/$name/{-$tab}',
+    path: '/workloads/deployments/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route =
+  WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/disruptionbudgets/$namespace/$name/{-$tab}',
+    path: '/workloads/disruptionbudgets/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsJobsNamespaceNameChar123TabChar125Route =
+  WorkloadsJobsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/jobs/$namespace/$name/{-$tab}',
+    path: '/workloads/jobs/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsPodsNamespaceNameChar123TabChar125Route =
+  WorkloadsPodsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/pods/$namespace/$name/{-$tab}',
+    path: '/workloads/pods/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsReplicasetsNamespaceNameChar123TabChar125Route =
+  WorkloadsReplicasetsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/replicasets/$namespace/$name/{-$tab}',
+    path: '/workloads/replicasets/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route =
+  WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125RouteImport.update(
+    {
+      id: '/workloads/replicationcontrollers/$namespace/$name/{-$tab}',
+      path: '/workloads/replicationcontrollers/$namespace/$name/{-$tab}',
+      getParentRoute: () => rootRouteImport,
+    } as any,
+  );
+const WorkloadsSecretsNamespaceNameChar123TabChar125Route =
+  WorkloadsSecretsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/secrets/$namespace/$name/{-$tab}',
+    path: '/workloads/secrets/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route =
+  WorkloadsStatefulsetsNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/workloads/statefulsets/$namespace/$name/{-$tab}',
+    path: '/workloads/statefulsets/$namespace/$name/{-$tab}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
+const AddonsInstancesCrdNamespaceNameChar123TabChar125Route =
+  AddonsInstancesCrdNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/addons/instances/$crd/$namespace/$name/{-$tab}',
+    path: '/addons/instances/$crd/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
 
@@ -625,23 +636,6 @@ export interface FileRoutesByFullPath {
   '/overview/nodes': typeof OverviewNodesRoute;
   '/overview/quotas': typeof OverviewQuotasRoute;
   '/overview/summary': typeof OverviewSummaryRoute;
-  '/access/clusterrolebindings/$name': typeof AccessClusterrolebindingsNameRoute;
-  '/access/clusterroles/$name': typeof AccessClusterrolesNameRoute;
-  '/addons/admissionpolicies/$name': typeof AddonsAdmissionpoliciesNameRoute;
-  '/addons/apiservices/$name': typeof AddonsApiservicesNameRoute;
-  '/addons/crds/$name': typeof AddonsCrdsNameRoute;
-  '/addons/flowschemas/$name': typeof AddonsFlowschemasNameRoute;
-  '/addons/mutatingwebhooks/$name': typeof AddonsMutatingwebhooksNameRoute;
-  '/addons/validatingwebhooks/$name': typeof AddonsValidatingwebhooksNameRoute;
-  '/network/ingressclasses/$name': typeof NetworkIngressclassesNameRoute;
-  '/overview/namespaces/$name': typeof OverviewNamespacesNameRoute;
-  '/overview/nodes/$name': typeof OverviewNodesNameRoute;
-  '/overview/priorityclasses/$name': typeof OverviewPriorityclassesNameRoute;
-  '/overview/runtimeclasses/$name': typeof OverviewRuntimeclassesNameRoute;
-  '/storage/csidrivers/$name': typeof StorageCsidriversNameRoute;
-  '/storage/csinodes/$name': typeof StorageCsinodesNameRoute;
-  '/storage/storageclasses/$name': typeof StorageStorageclassesNameRoute;
-  '/storage/volumes/$name': typeof StorageVolumesNameRoute;
   '/access/clusterrolebindings/': typeof AccessClusterrolebindingsIndexRoute;
   '/access/clusterroles/': typeof AccessClusterrolesIndexRoute;
   '/access/rolebindings/': typeof AccessRolebindingsIndexRoute;
@@ -681,32 +675,49 @@ export interface FileRoutesByFullPath {
   '/workloads/replicationcontrollers/': typeof WorkloadsReplicationcontrollersIndexRoute;
   '/workloads/secrets/': typeof WorkloadsSecretsIndexRoute;
   '/workloads/statefulsets/': typeof WorkloadsStatefulsetsIndexRoute;
-  '/access/rolebindings/$namespace/$name': typeof AccessRolebindingsNamespaceNameRoute;
-  '/access/roles/$namespace/$name': typeof AccessRolesNamespaceNameRoute;
-  '/access/serviceaccounts/$namespace/$name': typeof AccessServiceaccountsNamespaceNameRoute;
-  '/addons/releases/$namespace/$name': typeof AddonsReleasesNamespaceNameRoute;
-  '/network/endpoints/$namespace/$name': typeof NetworkEndpointsNamespaceNameRoute;
-  '/network/ingresses/$namespace/$name': typeof NetworkIngressesNamespaceNameRoute;
-  '/network/networkpolicies/$namespace/$name': typeof NetworkNetworkpoliciesNamespaceNameRoute;
-  '/network/services/$namespace/$name': typeof NetworkServicesNamespaceNameRoute;
-  '/overview/leases/$namespace/$name': typeof OverviewLeasesNamespaceNameRoute;
-  '/storage/capacity/$namespace/$name': typeof StorageCapacityNamespaceNameRoute;
-  '/storage/claims/$namespace/$name': typeof StorageClaimsNamespaceNameRoute;
-  '/storage/snapshots/$namespace/$name': typeof StorageSnapshotsNamespaceNameRoute;
-  '/workloads/autoscalers/$namespace/$name': typeof WorkloadsAutoscalersNamespaceNameRoute;
-  '/workloads/configmaps/$namespace/$name': typeof WorkloadsConfigmapsNamespaceNameRoute;
-  '/workloads/cronjobs/$namespace/$name': typeof WorkloadsCronjobsNamespaceNameRoute;
-  '/workloads/daemonsets/$namespace/$name': typeof WorkloadsDaemonsetsNamespaceNameRoute;
-  '/workloads/deployments/$namespace/$name': typeof WorkloadsDeploymentsNamespaceNameRoute;
-  '/workloads/disruptionbudgets/$namespace/$name': typeof WorkloadsDisruptionbudgetsNamespaceNameRoute;
-  '/workloads/jobs/$namespace/$name': typeof WorkloadsJobsNamespaceNameRoute;
-  '/workloads/pods/$namespace/$name': typeof WorkloadsPodsNamespaceNameRoute;
-  '/workloads/replicasets/$namespace/$name': typeof WorkloadsReplicasetsNamespaceNameRoute;
-  '/workloads/replicationcontrollers/$namespace/$name': typeof WorkloadsReplicationcontrollersNamespaceNameRoute;
-  '/workloads/secrets/$namespace/$name': typeof WorkloadsSecretsNamespaceNameRoute;
-  '/workloads/statefulsets/$namespace/$name': typeof WorkloadsStatefulsetsNamespaceNameRoute;
+  '/access/clusterrolebindings/$name/{-$tab}': typeof AccessClusterrolebindingsNameChar123TabChar125Route;
+  '/access/clusterroles/$name/{-$tab}': typeof AccessClusterrolesNameChar123TabChar125Route;
+  '/addons/admissionpolicies/$name/{-$tab}': typeof AddonsAdmissionpoliciesNameChar123TabChar125Route;
+  '/addons/apiservices/$name/{-$tab}': typeof AddonsApiservicesNameChar123TabChar125Route;
+  '/addons/crds/$name/{-$tab}': typeof AddonsCrdsNameChar123TabChar125Route;
+  '/addons/flowschemas/$name/{-$tab}': typeof AddonsFlowschemasNameChar123TabChar125Route;
+  '/addons/mutatingwebhooks/$name/{-$tab}': typeof AddonsMutatingwebhooksNameChar123TabChar125Route;
+  '/addons/validatingwebhooks/$name/{-$tab}': typeof AddonsValidatingwebhooksNameChar123TabChar125Route;
+  '/network/ingressclasses/$name/{-$tab}': typeof NetworkIngressclassesNameChar123TabChar125Route;
+  '/overview/namespaces/$name/{-$tab}': typeof OverviewNamespacesNameChar123TabChar125Route;
+  '/overview/nodes/$name/{-$tab}': typeof OverviewNodesNameChar123TabChar125Route;
+  '/overview/priorityclasses/$name/{-$tab}': typeof OverviewPriorityclassesNameChar123TabChar125Route;
+  '/overview/runtimeclasses/$name/{-$tab}': typeof OverviewRuntimeclassesNameChar123TabChar125Route;
+  '/storage/csidrivers/$name/{-$tab}': typeof StorageCsidriversNameChar123TabChar125Route;
+  '/storage/csinodes/$name/{-$tab}': typeof StorageCsinodesNameChar123TabChar125Route;
+  '/storage/storageclasses/$name/{-$tab}': typeof StorageStorageclassesNameChar123TabChar125Route;
+  '/storage/volumes/$name/{-$tab}': typeof StorageVolumesNameChar123TabChar125Route;
   '/addons/instances/$crd/': typeof AddonsInstancesCrdIndexRoute;
-  '/addons/instances/$crd/$namespace/$name': typeof AddonsInstancesCrdNamespaceNameRoute;
+  '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
+  '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
+  '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  '/addons/releases/$namespace/$name/{-$tab}': typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
+  '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
+  '/network/networkpolicies/$namespace/$name/{-$tab}': typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
+  '/network/services/$namespace/$name/{-$tab}': typeof NetworkServicesNamespaceNameChar123TabChar125Route;
+  '/overview/leases/$namespace/$name/{-$tab}': typeof OverviewLeasesNamespaceNameChar123TabChar125Route;
+  '/storage/capacity/$namespace/$name/{-$tab}': typeof StorageCapacityNamespaceNameChar123TabChar125Route;
+  '/storage/claims/$namespace/$name/{-$tab}': typeof StorageClaimsNamespaceNameChar123TabChar125Route;
+  '/storage/snapshots/$namespace/$name/{-$tab}': typeof StorageSnapshotsNamespaceNameChar123TabChar125Route;
+  '/workloads/autoscalers/$namespace/$name/{-$tab}': typeof WorkloadsAutoscalersNamespaceNameChar123TabChar125Route;
+  '/workloads/configmaps/$namespace/$name/{-$tab}': typeof WorkloadsConfigmapsNamespaceNameChar123TabChar125Route;
+  '/workloads/cronjobs/$namespace/$name/{-$tab}': typeof WorkloadsCronjobsNamespaceNameChar123TabChar125Route;
+  '/workloads/daemonsets/$namespace/$name/{-$tab}': typeof WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route;
+  '/workloads/deployments/$namespace/$name/{-$tab}': typeof WorkloadsDeploymentsNamespaceNameChar123TabChar125Route;
+  '/workloads/disruptionbudgets/$namespace/$name/{-$tab}': typeof WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route;
+  '/workloads/jobs/$namespace/$name/{-$tab}': typeof WorkloadsJobsNamespaceNameChar123TabChar125Route;
+  '/workloads/pods/$namespace/$name/{-$tab}': typeof WorkloadsPodsNamespaceNameChar123TabChar125Route;
+  '/workloads/replicasets/$namespace/$name/{-$tab}': typeof WorkloadsReplicasetsNamespaceNameChar123TabChar125Route;
+  '/workloads/replicationcontrollers/$namespace/$name/{-$tab}': typeof WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route;
+  '/workloads/secrets/$namespace/$name/{-$tab}': typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
+  '/workloads/statefulsets/$namespace/$name/{-$tab}': typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
+  '/addons/instances/$crd/$namespace/$name/{-$tab}': typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -719,23 +730,6 @@ export interface FileRoutesByTo {
   '/overview/nodes': typeof OverviewNodesRoute;
   '/overview/quotas': typeof OverviewQuotasRoute;
   '/overview/summary': typeof OverviewSummaryRoute;
-  '/access/clusterrolebindings/$name': typeof AccessClusterrolebindingsNameRoute;
-  '/access/clusterroles/$name': typeof AccessClusterrolesNameRoute;
-  '/addons/admissionpolicies/$name': typeof AddonsAdmissionpoliciesNameRoute;
-  '/addons/apiservices/$name': typeof AddonsApiservicesNameRoute;
-  '/addons/crds/$name': typeof AddonsCrdsNameRoute;
-  '/addons/flowschemas/$name': typeof AddonsFlowschemasNameRoute;
-  '/addons/mutatingwebhooks/$name': typeof AddonsMutatingwebhooksNameRoute;
-  '/addons/validatingwebhooks/$name': typeof AddonsValidatingwebhooksNameRoute;
-  '/network/ingressclasses/$name': typeof NetworkIngressclassesNameRoute;
-  '/overview/namespaces/$name': typeof OverviewNamespacesNameRoute;
-  '/overview/nodes/$name': typeof OverviewNodesNameRoute;
-  '/overview/priorityclasses/$name': typeof OverviewPriorityclassesNameRoute;
-  '/overview/runtimeclasses/$name': typeof OverviewRuntimeclassesNameRoute;
-  '/storage/csidrivers/$name': typeof StorageCsidriversNameRoute;
-  '/storage/csinodes/$name': typeof StorageCsinodesNameRoute;
-  '/storage/storageclasses/$name': typeof StorageStorageclassesNameRoute;
-  '/storage/volumes/$name': typeof StorageVolumesNameRoute;
   '/access/clusterrolebindings': typeof AccessClusterrolebindingsIndexRoute;
   '/access/clusterroles': typeof AccessClusterrolesIndexRoute;
   '/access/rolebindings': typeof AccessRolebindingsIndexRoute;
@@ -775,32 +769,49 @@ export interface FileRoutesByTo {
   '/workloads/replicationcontrollers': typeof WorkloadsReplicationcontrollersIndexRoute;
   '/workloads/secrets': typeof WorkloadsSecretsIndexRoute;
   '/workloads/statefulsets': typeof WorkloadsStatefulsetsIndexRoute;
-  '/access/rolebindings/$namespace/$name': typeof AccessRolebindingsNamespaceNameRoute;
-  '/access/roles/$namespace/$name': typeof AccessRolesNamespaceNameRoute;
-  '/access/serviceaccounts/$namespace/$name': typeof AccessServiceaccountsNamespaceNameRoute;
-  '/addons/releases/$namespace/$name': typeof AddonsReleasesNamespaceNameRoute;
-  '/network/endpoints/$namespace/$name': typeof NetworkEndpointsNamespaceNameRoute;
-  '/network/ingresses/$namespace/$name': typeof NetworkIngressesNamespaceNameRoute;
-  '/network/networkpolicies/$namespace/$name': typeof NetworkNetworkpoliciesNamespaceNameRoute;
-  '/network/services/$namespace/$name': typeof NetworkServicesNamespaceNameRoute;
-  '/overview/leases/$namespace/$name': typeof OverviewLeasesNamespaceNameRoute;
-  '/storage/capacity/$namespace/$name': typeof StorageCapacityNamespaceNameRoute;
-  '/storage/claims/$namespace/$name': typeof StorageClaimsNamespaceNameRoute;
-  '/storage/snapshots/$namespace/$name': typeof StorageSnapshotsNamespaceNameRoute;
-  '/workloads/autoscalers/$namespace/$name': typeof WorkloadsAutoscalersNamespaceNameRoute;
-  '/workloads/configmaps/$namespace/$name': typeof WorkloadsConfigmapsNamespaceNameRoute;
-  '/workloads/cronjobs/$namespace/$name': typeof WorkloadsCronjobsNamespaceNameRoute;
-  '/workloads/daemonsets/$namespace/$name': typeof WorkloadsDaemonsetsNamespaceNameRoute;
-  '/workloads/deployments/$namespace/$name': typeof WorkloadsDeploymentsNamespaceNameRoute;
-  '/workloads/disruptionbudgets/$namespace/$name': typeof WorkloadsDisruptionbudgetsNamespaceNameRoute;
-  '/workloads/jobs/$namespace/$name': typeof WorkloadsJobsNamespaceNameRoute;
-  '/workloads/pods/$namespace/$name': typeof WorkloadsPodsNamespaceNameRoute;
-  '/workloads/replicasets/$namespace/$name': typeof WorkloadsReplicasetsNamespaceNameRoute;
-  '/workloads/replicationcontrollers/$namespace/$name': typeof WorkloadsReplicationcontrollersNamespaceNameRoute;
-  '/workloads/secrets/$namespace/$name': typeof WorkloadsSecretsNamespaceNameRoute;
-  '/workloads/statefulsets/$namespace/$name': typeof WorkloadsStatefulsetsNamespaceNameRoute;
+  '/access/clusterrolebindings/$name/{-$tab}': typeof AccessClusterrolebindingsNameChar123TabChar125Route;
+  '/access/clusterroles/$name/{-$tab}': typeof AccessClusterrolesNameChar123TabChar125Route;
+  '/addons/admissionpolicies/$name/{-$tab}': typeof AddonsAdmissionpoliciesNameChar123TabChar125Route;
+  '/addons/apiservices/$name/{-$tab}': typeof AddonsApiservicesNameChar123TabChar125Route;
+  '/addons/crds/$name/{-$tab}': typeof AddonsCrdsNameChar123TabChar125Route;
+  '/addons/flowschemas/$name/{-$tab}': typeof AddonsFlowschemasNameChar123TabChar125Route;
+  '/addons/mutatingwebhooks/$name/{-$tab}': typeof AddonsMutatingwebhooksNameChar123TabChar125Route;
+  '/addons/validatingwebhooks/$name/{-$tab}': typeof AddonsValidatingwebhooksNameChar123TabChar125Route;
+  '/network/ingressclasses/$name/{-$tab}': typeof NetworkIngressclassesNameChar123TabChar125Route;
+  '/overview/namespaces/$name/{-$tab}': typeof OverviewNamespacesNameChar123TabChar125Route;
+  '/overview/nodes/$name/{-$tab}': typeof OverviewNodesNameChar123TabChar125Route;
+  '/overview/priorityclasses/$name/{-$tab}': typeof OverviewPriorityclassesNameChar123TabChar125Route;
+  '/overview/runtimeclasses/$name/{-$tab}': typeof OverviewRuntimeclassesNameChar123TabChar125Route;
+  '/storage/csidrivers/$name/{-$tab}': typeof StorageCsidriversNameChar123TabChar125Route;
+  '/storage/csinodes/$name/{-$tab}': typeof StorageCsinodesNameChar123TabChar125Route;
+  '/storage/storageclasses/$name/{-$tab}': typeof StorageStorageclassesNameChar123TabChar125Route;
+  '/storage/volumes/$name/{-$tab}': typeof StorageVolumesNameChar123TabChar125Route;
   '/addons/instances/$crd': typeof AddonsInstancesCrdIndexRoute;
-  '/addons/instances/$crd/$namespace/$name': typeof AddonsInstancesCrdNamespaceNameRoute;
+  '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
+  '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
+  '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  '/addons/releases/$namespace/$name/{-$tab}': typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
+  '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
+  '/network/networkpolicies/$namespace/$name/{-$tab}': typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
+  '/network/services/$namespace/$name/{-$tab}': typeof NetworkServicesNamespaceNameChar123TabChar125Route;
+  '/overview/leases/$namespace/$name/{-$tab}': typeof OverviewLeasesNamespaceNameChar123TabChar125Route;
+  '/storage/capacity/$namespace/$name/{-$tab}': typeof StorageCapacityNamespaceNameChar123TabChar125Route;
+  '/storage/claims/$namespace/$name/{-$tab}': typeof StorageClaimsNamespaceNameChar123TabChar125Route;
+  '/storage/snapshots/$namespace/$name/{-$tab}': typeof StorageSnapshotsNamespaceNameChar123TabChar125Route;
+  '/workloads/autoscalers/$namespace/$name/{-$tab}': typeof WorkloadsAutoscalersNamespaceNameChar123TabChar125Route;
+  '/workloads/configmaps/$namespace/$name/{-$tab}': typeof WorkloadsConfigmapsNamespaceNameChar123TabChar125Route;
+  '/workloads/cronjobs/$namespace/$name/{-$tab}': typeof WorkloadsCronjobsNamespaceNameChar123TabChar125Route;
+  '/workloads/daemonsets/$namespace/$name/{-$tab}': typeof WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route;
+  '/workloads/deployments/$namespace/$name/{-$tab}': typeof WorkloadsDeploymentsNamespaceNameChar123TabChar125Route;
+  '/workloads/disruptionbudgets/$namespace/$name/{-$tab}': typeof WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route;
+  '/workloads/jobs/$namespace/$name/{-$tab}': typeof WorkloadsJobsNamespaceNameChar123TabChar125Route;
+  '/workloads/pods/$namespace/$name/{-$tab}': typeof WorkloadsPodsNamespaceNameChar123TabChar125Route;
+  '/workloads/replicasets/$namespace/$name/{-$tab}': typeof WorkloadsReplicasetsNamespaceNameChar123TabChar125Route;
+  '/workloads/replicationcontrollers/$namespace/$name/{-$tab}': typeof WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route;
+  '/workloads/secrets/$namespace/$name/{-$tab}': typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
+  '/workloads/statefulsets/$namespace/$name/{-$tab}': typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
+  '/addons/instances/$crd/$namespace/$name/{-$tab}': typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -814,23 +825,6 @@ export interface FileRoutesById {
   '/overview/nodes': typeof OverviewNodesRoute;
   '/overview/quotas': typeof OverviewQuotasRoute;
   '/overview/summary': typeof OverviewSummaryRoute;
-  '/access/clusterrolebindings_/$name': typeof AccessClusterrolebindingsNameRoute;
-  '/access/clusterroles_/$name': typeof AccessClusterrolesNameRoute;
-  '/addons/admissionpolicies_/$name': typeof AddonsAdmissionpoliciesNameRoute;
-  '/addons/apiservices_/$name': typeof AddonsApiservicesNameRoute;
-  '/addons/crds_/$name': typeof AddonsCrdsNameRoute;
-  '/addons/flowschemas_/$name': typeof AddonsFlowschemasNameRoute;
-  '/addons/mutatingwebhooks_/$name': typeof AddonsMutatingwebhooksNameRoute;
-  '/addons/validatingwebhooks_/$name': typeof AddonsValidatingwebhooksNameRoute;
-  '/network/ingressclasses_/$name': typeof NetworkIngressclassesNameRoute;
-  '/overview/namespaces_/$name': typeof OverviewNamespacesNameRoute;
-  '/overview/nodes_/$name': typeof OverviewNodesNameRoute;
-  '/overview/priorityclasses_/$name': typeof OverviewPriorityclassesNameRoute;
-  '/overview/runtimeclasses_/$name': typeof OverviewRuntimeclassesNameRoute;
-  '/storage/csidrivers_/$name': typeof StorageCsidriversNameRoute;
-  '/storage/csinodes_/$name': typeof StorageCsinodesNameRoute;
-  '/storage/storageclasses_/$name': typeof StorageStorageclassesNameRoute;
-  '/storage/volumes_/$name': typeof StorageVolumesNameRoute;
   '/access/clusterrolebindings/': typeof AccessClusterrolebindingsIndexRoute;
   '/access/clusterroles/': typeof AccessClusterrolesIndexRoute;
   '/access/rolebindings/': typeof AccessRolebindingsIndexRoute;
@@ -870,32 +864,49 @@ export interface FileRoutesById {
   '/workloads/replicationcontrollers/': typeof WorkloadsReplicationcontrollersIndexRoute;
   '/workloads/secrets/': typeof WorkloadsSecretsIndexRoute;
   '/workloads/statefulsets/': typeof WorkloadsStatefulsetsIndexRoute;
-  '/access/rolebindings/$namespace/$name': typeof AccessRolebindingsNamespaceNameRoute;
-  '/access/roles/$namespace/$name': typeof AccessRolesNamespaceNameRoute;
-  '/access/serviceaccounts/$namespace/$name': typeof AccessServiceaccountsNamespaceNameRoute;
-  '/addons/releases/$namespace/$name': typeof AddonsReleasesNamespaceNameRoute;
-  '/network/endpoints/$namespace/$name': typeof NetworkEndpointsNamespaceNameRoute;
-  '/network/ingresses/$namespace/$name': typeof NetworkIngressesNamespaceNameRoute;
-  '/network/networkpolicies/$namespace/$name': typeof NetworkNetworkpoliciesNamespaceNameRoute;
-  '/network/services/$namespace/$name': typeof NetworkServicesNamespaceNameRoute;
-  '/overview/leases/$namespace/$name': typeof OverviewLeasesNamespaceNameRoute;
-  '/storage/capacity/$namespace/$name': typeof StorageCapacityNamespaceNameRoute;
-  '/storage/claims/$namespace/$name': typeof StorageClaimsNamespaceNameRoute;
-  '/storage/snapshots/$namespace/$name': typeof StorageSnapshotsNamespaceNameRoute;
-  '/workloads/autoscalers/$namespace/$name': typeof WorkloadsAutoscalersNamespaceNameRoute;
-  '/workloads/configmaps/$namespace/$name': typeof WorkloadsConfigmapsNamespaceNameRoute;
-  '/workloads/cronjobs/$namespace/$name': typeof WorkloadsCronjobsNamespaceNameRoute;
-  '/workloads/daemonsets/$namespace/$name': typeof WorkloadsDaemonsetsNamespaceNameRoute;
-  '/workloads/deployments/$namespace/$name': typeof WorkloadsDeploymentsNamespaceNameRoute;
-  '/workloads/disruptionbudgets/$namespace/$name': typeof WorkloadsDisruptionbudgetsNamespaceNameRoute;
-  '/workloads/jobs/$namespace/$name': typeof WorkloadsJobsNamespaceNameRoute;
-  '/workloads/pods/$namespace/$name': typeof WorkloadsPodsNamespaceNameRoute;
-  '/workloads/replicasets/$namespace/$name': typeof WorkloadsReplicasetsNamespaceNameRoute;
-  '/workloads/replicationcontrollers/$namespace/$name': typeof WorkloadsReplicationcontrollersNamespaceNameRoute;
-  '/workloads/secrets/$namespace/$name': typeof WorkloadsSecretsNamespaceNameRoute;
-  '/workloads/statefulsets/$namespace/$name': typeof WorkloadsStatefulsetsNamespaceNameRoute;
+  '/access/clusterrolebindings_/$name/{-$tab}': typeof AccessClusterrolebindingsNameChar123TabChar125Route;
+  '/access/clusterroles_/$name/{-$tab}': typeof AccessClusterrolesNameChar123TabChar125Route;
+  '/addons/admissionpolicies_/$name/{-$tab}': typeof AddonsAdmissionpoliciesNameChar123TabChar125Route;
+  '/addons/apiservices_/$name/{-$tab}': typeof AddonsApiservicesNameChar123TabChar125Route;
+  '/addons/crds_/$name/{-$tab}': typeof AddonsCrdsNameChar123TabChar125Route;
+  '/addons/flowschemas_/$name/{-$tab}': typeof AddonsFlowschemasNameChar123TabChar125Route;
+  '/addons/mutatingwebhooks_/$name/{-$tab}': typeof AddonsMutatingwebhooksNameChar123TabChar125Route;
+  '/addons/validatingwebhooks_/$name/{-$tab}': typeof AddonsValidatingwebhooksNameChar123TabChar125Route;
+  '/network/ingressclasses_/$name/{-$tab}': typeof NetworkIngressclassesNameChar123TabChar125Route;
+  '/overview/namespaces_/$name/{-$tab}': typeof OverviewNamespacesNameChar123TabChar125Route;
+  '/overview/nodes_/$name/{-$tab}': typeof OverviewNodesNameChar123TabChar125Route;
+  '/overview/priorityclasses_/$name/{-$tab}': typeof OverviewPriorityclassesNameChar123TabChar125Route;
+  '/overview/runtimeclasses_/$name/{-$tab}': typeof OverviewRuntimeclassesNameChar123TabChar125Route;
+  '/storage/csidrivers_/$name/{-$tab}': typeof StorageCsidriversNameChar123TabChar125Route;
+  '/storage/csinodes_/$name/{-$tab}': typeof StorageCsinodesNameChar123TabChar125Route;
+  '/storage/storageclasses_/$name/{-$tab}': typeof StorageStorageclassesNameChar123TabChar125Route;
+  '/storage/volumes_/$name/{-$tab}': typeof StorageVolumesNameChar123TabChar125Route;
   '/addons/instances/$crd/': typeof AddonsInstancesCrdIndexRoute;
-  '/addons/instances/$crd/$namespace/$name': typeof AddonsInstancesCrdNamespaceNameRoute;
+  '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
+  '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
+  '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  '/addons/releases/$namespace/$name/{-$tab}': typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
+  '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
+  '/network/networkpolicies/$namespace/$name/{-$tab}': typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
+  '/network/services/$namespace/$name/{-$tab}': typeof NetworkServicesNamespaceNameChar123TabChar125Route;
+  '/overview/leases/$namespace/$name/{-$tab}': typeof OverviewLeasesNamespaceNameChar123TabChar125Route;
+  '/storage/capacity/$namespace/$name/{-$tab}': typeof StorageCapacityNamespaceNameChar123TabChar125Route;
+  '/storage/claims/$namespace/$name/{-$tab}': typeof StorageClaimsNamespaceNameChar123TabChar125Route;
+  '/storage/snapshots/$namespace/$name/{-$tab}': typeof StorageSnapshotsNamespaceNameChar123TabChar125Route;
+  '/workloads/autoscalers/$namespace/$name/{-$tab}': typeof WorkloadsAutoscalersNamespaceNameChar123TabChar125Route;
+  '/workloads/configmaps/$namespace/$name/{-$tab}': typeof WorkloadsConfigmapsNamespaceNameChar123TabChar125Route;
+  '/workloads/cronjobs/$namespace/$name/{-$tab}': typeof WorkloadsCronjobsNamespaceNameChar123TabChar125Route;
+  '/workloads/daemonsets/$namespace/$name/{-$tab}': typeof WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route;
+  '/workloads/deployments/$namespace/$name/{-$tab}': typeof WorkloadsDeploymentsNamespaceNameChar123TabChar125Route;
+  '/workloads/disruptionbudgets/$namespace/$name/{-$tab}': typeof WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route;
+  '/workloads/jobs/$namespace/$name/{-$tab}': typeof WorkloadsJobsNamespaceNameChar123TabChar125Route;
+  '/workloads/pods/$namespace/$name/{-$tab}': typeof WorkloadsPodsNamespaceNameChar123TabChar125Route;
+  '/workloads/replicasets/$namespace/$name/{-$tab}': typeof WorkloadsReplicasetsNamespaceNameChar123TabChar125Route;
+  '/workloads/replicationcontrollers/$namespace/$name/{-$tab}': typeof WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route;
+  '/workloads/secrets/$namespace/$name/{-$tab}': typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
+  '/workloads/statefulsets/$namespace/$name/{-$tab}': typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
+  '/addons/instances/$crd/$namespace/$name/{-$tab}': typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
@@ -910,23 +921,6 @@ export interface FileRouteTypes {
     | '/overview/nodes'
     | '/overview/quotas'
     | '/overview/summary'
-    | '/access/clusterrolebindings/$name'
-    | '/access/clusterroles/$name'
-    | '/addons/admissionpolicies/$name'
-    | '/addons/apiservices/$name'
-    | '/addons/crds/$name'
-    | '/addons/flowschemas/$name'
-    | '/addons/mutatingwebhooks/$name'
-    | '/addons/validatingwebhooks/$name'
-    | '/network/ingressclasses/$name'
-    | '/overview/namespaces/$name'
-    | '/overview/nodes/$name'
-    | '/overview/priorityclasses/$name'
-    | '/overview/runtimeclasses/$name'
-    | '/storage/csidrivers/$name'
-    | '/storage/csinodes/$name'
-    | '/storage/storageclasses/$name'
-    | '/storage/volumes/$name'
     | '/access/clusterrolebindings/'
     | '/access/clusterroles/'
     | '/access/rolebindings/'
@@ -966,32 +960,49 @@ export interface FileRouteTypes {
     | '/workloads/replicationcontrollers/'
     | '/workloads/secrets/'
     | '/workloads/statefulsets/'
-    | '/access/rolebindings/$namespace/$name'
-    | '/access/roles/$namespace/$name'
-    | '/access/serviceaccounts/$namespace/$name'
-    | '/addons/releases/$namespace/$name'
-    | '/network/endpoints/$namespace/$name'
-    | '/network/ingresses/$namespace/$name'
-    | '/network/networkpolicies/$namespace/$name'
-    | '/network/services/$namespace/$name'
-    | '/overview/leases/$namespace/$name'
-    | '/storage/capacity/$namespace/$name'
-    | '/storage/claims/$namespace/$name'
-    | '/storage/snapshots/$namespace/$name'
-    | '/workloads/autoscalers/$namespace/$name'
-    | '/workloads/configmaps/$namespace/$name'
-    | '/workloads/cronjobs/$namespace/$name'
-    | '/workloads/daemonsets/$namespace/$name'
-    | '/workloads/deployments/$namespace/$name'
-    | '/workloads/disruptionbudgets/$namespace/$name'
-    | '/workloads/jobs/$namespace/$name'
-    | '/workloads/pods/$namespace/$name'
-    | '/workloads/replicasets/$namespace/$name'
-    | '/workloads/replicationcontrollers/$namespace/$name'
-    | '/workloads/secrets/$namespace/$name'
-    | '/workloads/statefulsets/$namespace/$name'
+    | '/access/clusterrolebindings/$name/{-$tab}'
+    | '/access/clusterroles/$name/{-$tab}'
+    | '/addons/admissionpolicies/$name/{-$tab}'
+    | '/addons/apiservices/$name/{-$tab}'
+    | '/addons/crds/$name/{-$tab}'
+    | '/addons/flowschemas/$name/{-$tab}'
+    | '/addons/mutatingwebhooks/$name/{-$tab}'
+    | '/addons/validatingwebhooks/$name/{-$tab}'
+    | '/network/ingressclasses/$name/{-$tab}'
+    | '/overview/namespaces/$name/{-$tab}'
+    | '/overview/nodes/$name/{-$tab}'
+    | '/overview/priorityclasses/$name/{-$tab}'
+    | '/overview/runtimeclasses/$name/{-$tab}'
+    | '/storage/csidrivers/$name/{-$tab}'
+    | '/storage/csinodes/$name/{-$tab}'
+    | '/storage/storageclasses/$name/{-$tab}'
+    | '/storage/volumes/$name/{-$tab}'
     | '/addons/instances/$crd/'
-    | '/addons/instances/$crd/$namespace/$name';
+    | '/access/rolebindings/$namespace/$name/{-$tab}'
+    | '/access/roles/$namespace/$name/{-$tab}'
+    | '/access/serviceaccounts/$namespace/$name/{-$tab}'
+    | '/addons/releases/$namespace/$name/{-$tab}'
+    | '/network/endpoints/$namespace/$name/{-$tab}'
+    | '/network/ingresses/$namespace/$name/{-$tab}'
+    | '/network/networkpolicies/$namespace/$name/{-$tab}'
+    | '/network/services/$namespace/$name/{-$tab}'
+    | '/overview/leases/$namespace/$name/{-$tab}'
+    | '/storage/capacity/$namespace/$name/{-$tab}'
+    | '/storage/claims/$namespace/$name/{-$tab}'
+    | '/storage/snapshots/$namespace/$name/{-$tab}'
+    | '/workloads/autoscalers/$namespace/$name/{-$tab}'
+    | '/workloads/configmaps/$namespace/$name/{-$tab}'
+    | '/workloads/cronjobs/$namespace/$name/{-$tab}'
+    | '/workloads/daemonsets/$namespace/$name/{-$tab}'
+    | '/workloads/deployments/$namespace/$name/{-$tab}'
+    | '/workloads/disruptionbudgets/$namespace/$name/{-$tab}'
+    | '/workloads/jobs/$namespace/$name/{-$tab}'
+    | '/workloads/pods/$namespace/$name/{-$tab}'
+    | '/workloads/replicasets/$namespace/$name/{-$tab}'
+    | '/workloads/replicationcontrollers/$namespace/$name/{-$tab}'
+    | '/workloads/secrets/$namespace/$name/{-$tab}'
+    | '/workloads/statefulsets/$namespace/$name/{-$tab}'
+    | '/addons/instances/$crd/$namespace/$name/{-$tab}';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -1004,23 +1015,6 @@ export interface FileRouteTypes {
     | '/overview/nodes'
     | '/overview/quotas'
     | '/overview/summary'
-    | '/access/clusterrolebindings/$name'
-    | '/access/clusterroles/$name'
-    | '/addons/admissionpolicies/$name'
-    | '/addons/apiservices/$name'
-    | '/addons/crds/$name'
-    | '/addons/flowschemas/$name'
-    | '/addons/mutatingwebhooks/$name'
-    | '/addons/validatingwebhooks/$name'
-    | '/network/ingressclasses/$name'
-    | '/overview/namespaces/$name'
-    | '/overview/nodes/$name'
-    | '/overview/priorityclasses/$name'
-    | '/overview/runtimeclasses/$name'
-    | '/storage/csidrivers/$name'
-    | '/storage/csinodes/$name'
-    | '/storage/storageclasses/$name'
-    | '/storage/volumes/$name'
     | '/access/clusterrolebindings'
     | '/access/clusterroles'
     | '/access/rolebindings'
@@ -1060,32 +1054,49 @@ export interface FileRouteTypes {
     | '/workloads/replicationcontrollers'
     | '/workloads/secrets'
     | '/workloads/statefulsets'
-    | '/access/rolebindings/$namespace/$name'
-    | '/access/roles/$namespace/$name'
-    | '/access/serviceaccounts/$namespace/$name'
-    | '/addons/releases/$namespace/$name'
-    | '/network/endpoints/$namespace/$name'
-    | '/network/ingresses/$namespace/$name'
-    | '/network/networkpolicies/$namespace/$name'
-    | '/network/services/$namespace/$name'
-    | '/overview/leases/$namespace/$name'
-    | '/storage/capacity/$namespace/$name'
-    | '/storage/claims/$namespace/$name'
-    | '/storage/snapshots/$namespace/$name'
-    | '/workloads/autoscalers/$namespace/$name'
-    | '/workloads/configmaps/$namespace/$name'
-    | '/workloads/cronjobs/$namespace/$name'
-    | '/workloads/daemonsets/$namespace/$name'
-    | '/workloads/deployments/$namespace/$name'
-    | '/workloads/disruptionbudgets/$namespace/$name'
-    | '/workloads/jobs/$namespace/$name'
-    | '/workloads/pods/$namespace/$name'
-    | '/workloads/replicasets/$namespace/$name'
-    | '/workloads/replicationcontrollers/$namespace/$name'
-    | '/workloads/secrets/$namespace/$name'
-    | '/workloads/statefulsets/$namespace/$name'
+    | '/access/clusterrolebindings/$name/{-$tab}'
+    | '/access/clusterroles/$name/{-$tab}'
+    | '/addons/admissionpolicies/$name/{-$tab}'
+    | '/addons/apiservices/$name/{-$tab}'
+    | '/addons/crds/$name/{-$tab}'
+    | '/addons/flowschemas/$name/{-$tab}'
+    | '/addons/mutatingwebhooks/$name/{-$tab}'
+    | '/addons/validatingwebhooks/$name/{-$tab}'
+    | '/network/ingressclasses/$name/{-$tab}'
+    | '/overview/namespaces/$name/{-$tab}'
+    | '/overview/nodes/$name/{-$tab}'
+    | '/overview/priorityclasses/$name/{-$tab}'
+    | '/overview/runtimeclasses/$name/{-$tab}'
+    | '/storage/csidrivers/$name/{-$tab}'
+    | '/storage/csinodes/$name/{-$tab}'
+    | '/storage/storageclasses/$name/{-$tab}'
+    | '/storage/volumes/$name/{-$tab}'
     | '/addons/instances/$crd'
-    | '/addons/instances/$crd/$namespace/$name';
+    | '/access/rolebindings/$namespace/$name/{-$tab}'
+    | '/access/roles/$namespace/$name/{-$tab}'
+    | '/access/serviceaccounts/$namespace/$name/{-$tab}'
+    | '/addons/releases/$namespace/$name/{-$tab}'
+    | '/network/endpoints/$namespace/$name/{-$tab}'
+    | '/network/ingresses/$namespace/$name/{-$tab}'
+    | '/network/networkpolicies/$namespace/$name/{-$tab}'
+    | '/network/services/$namespace/$name/{-$tab}'
+    | '/overview/leases/$namespace/$name/{-$tab}'
+    | '/storage/capacity/$namespace/$name/{-$tab}'
+    | '/storage/claims/$namespace/$name/{-$tab}'
+    | '/storage/snapshots/$namespace/$name/{-$tab}'
+    | '/workloads/autoscalers/$namespace/$name/{-$tab}'
+    | '/workloads/configmaps/$namespace/$name/{-$tab}'
+    | '/workloads/cronjobs/$namespace/$name/{-$tab}'
+    | '/workloads/daemonsets/$namespace/$name/{-$tab}'
+    | '/workloads/deployments/$namespace/$name/{-$tab}'
+    | '/workloads/disruptionbudgets/$namespace/$name/{-$tab}'
+    | '/workloads/jobs/$namespace/$name/{-$tab}'
+    | '/workloads/pods/$namespace/$name/{-$tab}'
+    | '/workloads/replicasets/$namespace/$name/{-$tab}'
+    | '/workloads/replicationcontrollers/$namespace/$name/{-$tab}'
+    | '/workloads/secrets/$namespace/$name/{-$tab}'
+    | '/workloads/statefulsets/$namespace/$name/{-$tab}'
+    | '/addons/instances/$crd/$namespace/$name/{-$tab}';
   id:
     | '__root__'
     | '/'
@@ -1098,23 +1109,6 @@ export interface FileRouteTypes {
     | '/overview/nodes'
     | '/overview/quotas'
     | '/overview/summary'
-    | '/access/clusterrolebindings_/$name'
-    | '/access/clusterroles_/$name'
-    | '/addons/admissionpolicies_/$name'
-    | '/addons/apiservices_/$name'
-    | '/addons/crds_/$name'
-    | '/addons/flowschemas_/$name'
-    | '/addons/mutatingwebhooks_/$name'
-    | '/addons/validatingwebhooks_/$name'
-    | '/network/ingressclasses_/$name'
-    | '/overview/namespaces_/$name'
-    | '/overview/nodes_/$name'
-    | '/overview/priorityclasses_/$name'
-    | '/overview/runtimeclasses_/$name'
-    | '/storage/csidrivers_/$name'
-    | '/storage/csinodes_/$name'
-    | '/storage/storageclasses_/$name'
-    | '/storage/volumes_/$name'
     | '/access/clusterrolebindings/'
     | '/access/clusterroles/'
     | '/access/rolebindings/'
@@ -1154,32 +1148,49 @@ export interface FileRouteTypes {
     | '/workloads/replicationcontrollers/'
     | '/workloads/secrets/'
     | '/workloads/statefulsets/'
-    | '/access/rolebindings/$namespace/$name'
-    | '/access/roles/$namespace/$name'
-    | '/access/serviceaccounts/$namespace/$name'
-    | '/addons/releases/$namespace/$name'
-    | '/network/endpoints/$namespace/$name'
-    | '/network/ingresses/$namespace/$name'
-    | '/network/networkpolicies/$namespace/$name'
-    | '/network/services/$namespace/$name'
-    | '/overview/leases/$namespace/$name'
-    | '/storage/capacity/$namespace/$name'
-    | '/storage/claims/$namespace/$name'
-    | '/storage/snapshots/$namespace/$name'
-    | '/workloads/autoscalers/$namespace/$name'
-    | '/workloads/configmaps/$namespace/$name'
-    | '/workloads/cronjobs/$namespace/$name'
-    | '/workloads/daemonsets/$namespace/$name'
-    | '/workloads/deployments/$namespace/$name'
-    | '/workloads/disruptionbudgets/$namespace/$name'
-    | '/workloads/jobs/$namespace/$name'
-    | '/workloads/pods/$namespace/$name'
-    | '/workloads/replicasets/$namespace/$name'
-    | '/workloads/replicationcontrollers/$namespace/$name'
-    | '/workloads/secrets/$namespace/$name'
-    | '/workloads/statefulsets/$namespace/$name'
+    | '/access/clusterrolebindings_/$name/{-$tab}'
+    | '/access/clusterroles_/$name/{-$tab}'
+    | '/addons/admissionpolicies_/$name/{-$tab}'
+    | '/addons/apiservices_/$name/{-$tab}'
+    | '/addons/crds_/$name/{-$tab}'
+    | '/addons/flowschemas_/$name/{-$tab}'
+    | '/addons/mutatingwebhooks_/$name/{-$tab}'
+    | '/addons/validatingwebhooks_/$name/{-$tab}'
+    | '/network/ingressclasses_/$name/{-$tab}'
+    | '/overview/namespaces_/$name/{-$tab}'
+    | '/overview/nodes_/$name/{-$tab}'
+    | '/overview/priorityclasses_/$name/{-$tab}'
+    | '/overview/runtimeclasses_/$name/{-$tab}'
+    | '/storage/csidrivers_/$name/{-$tab}'
+    | '/storage/csinodes_/$name/{-$tab}'
+    | '/storage/storageclasses_/$name/{-$tab}'
+    | '/storage/volumes_/$name/{-$tab}'
     | '/addons/instances/$crd/'
-    | '/addons/instances/$crd/$namespace/$name';
+    | '/access/rolebindings/$namespace/$name/{-$tab}'
+    | '/access/roles/$namespace/$name/{-$tab}'
+    | '/access/serviceaccounts/$namespace/$name/{-$tab}'
+    | '/addons/releases/$namespace/$name/{-$tab}'
+    | '/network/endpoints/$namespace/$name/{-$tab}'
+    | '/network/ingresses/$namespace/$name/{-$tab}'
+    | '/network/networkpolicies/$namespace/$name/{-$tab}'
+    | '/network/services/$namespace/$name/{-$tab}'
+    | '/overview/leases/$namespace/$name/{-$tab}'
+    | '/storage/capacity/$namespace/$name/{-$tab}'
+    | '/storage/claims/$namespace/$name/{-$tab}'
+    | '/storage/snapshots/$namespace/$name/{-$tab}'
+    | '/workloads/autoscalers/$namespace/$name/{-$tab}'
+    | '/workloads/configmaps/$namespace/$name/{-$tab}'
+    | '/workloads/cronjobs/$namespace/$name/{-$tab}'
+    | '/workloads/daemonsets/$namespace/$name/{-$tab}'
+    | '/workloads/deployments/$namespace/$name/{-$tab}'
+    | '/workloads/disruptionbudgets/$namespace/$name/{-$tab}'
+    | '/workloads/jobs/$namespace/$name/{-$tab}'
+    | '/workloads/pods/$namespace/$name/{-$tab}'
+    | '/workloads/replicasets/$namespace/$name/{-$tab}'
+    | '/workloads/replicationcontrollers/$namespace/$name/{-$tab}'
+    | '/workloads/secrets/$namespace/$name/{-$tab}'
+    | '/workloads/statefulsets/$namespace/$name/{-$tab}'
+    | '/addons/instances/$crd/$namespace/$name/{-$tab}';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -1193,23 +1204,6 @@ export interface RootRouteChildren {
   OverviewNodesRoute: typeof OverviewNodesRoute;
   OverviewQuotasRoute: typeof OverviewQuotasRoute;
   OverviewSummaryRoute: typeof OverviewSummaryRoute;
-  AccessClusterrolebindingsNameRoute: typeof AccessClusterrolebindingsNameRoute;
-  AccessClusterrolesNameRoute: typeof AccessClusterrolesNameRoute;
-  AddonsAdmissionpoliciesNameRoute: typeof AddonsAdmissionpoliciesNameRoute;
-  AddonsApiservicesNameRoute: typeof AddonsApiservicesNameRoute;
-  AddonsCrdsNameRoute: typeof AddonsCrdsNameRoute;
-  AddonsFlowschemasNameRoute: typeof AddonsFlowschemasNameRoute;
-  AddonsMutatingwebhooksNameRoute: typeof AddonsMutatingwebhooksNameRoute;
-  AddonsValidatingwebhooksNameRoute: typeof AddonsValidatingwebhooksNameRoute;
-  NetworkIngressclassesNameRoute: typeof NetworkIngressclassesNameRoute;
-  OverviewNamespacesNameRoute: typeof OverviewNamespacesNameRoute;
-  OverviewNodesNameRoute: typeof OverviewNodesNameRoute;
-  OverviewPriorityclassesNameRoute: typeof OverviewPriorityclassesNameRoute;
-  OverviewRuntimeclassesNameRoute: typeof OverviewRuntimeclassesNameRoute;
-  StorageCsidriversNameRoute: typeof StorageCsidriversNameRoute;
-  StorageCsinodesNameRoute: typeof StorageCsinodesNameRoute;
-  StorageStorageclassesNameRoute: typeof StorageStorageclassesNameRoute;
-  StorageVolumesNameRoute: typeof StorageVolumesNameRoute;
   AccessClusterrolebindingsIndexRoute: typeof AccessClusterrolebindingsIndexRoute;
   AccessClusterrolesIndexRoute: typeof AccessClusterrolesIndexRoute;
   AccessRolebindingsIndexRoute: typeof AccessRolebindingsIndexRoute;
@@ -1249,32 +1243,49 @@ export interface RootRouteChildren {
   WorkloadsReplicationcontrollersIndexRoute: typeof WorkloadsReplicationcontrollersIndexRoute;
   WorkloadsSecretsIndexRoute: typeof WorkloadsSecretsIndexRoute;
   WorkloadsStatefulsetsIndexRoute: typeof WorkloadsStatefulsetsIndexRoute;
-  AccessRolebindingsNamespaceNameRoute: typeof AccessRolebindingsNamespaceNameRoute;
-  AccessRolesNamespaceNameRoute: typeof AccessRolesNamespaceNameRoute;
-  AccessServiceaccountsNamespaceNameRoute: typeof AccessServiceaccountsNamespaceNameRoute;
-  AddonsReleasesNamespaceNameRoute: typeof AddonsReleasesNamespaceNameRoute;
-  NetworkEndpointsNamespaceNameRoute: typeof NetworkEndpointsNamespaceNameRoute;
-  NetworkIngressesNamespaceNameRoute: typeof NetworkIngressesNamespaceNameRoute;
-  NetworkNetworkpoliciesNamespaceNameRoute: typeof NetworkNetworkpoliciesNamespaceNameRoute;
-  NetworkServicesNamespaceNameRoute: typeof NetworkServicesNamespaceNameRoute;
-  OverviewLeasesNamespaceNameRoute: typeof OverviewLeasesNamespaceNameRoute;
-  StorageCapacityNamespaceNameRoute: typeof StorageCapacityNamespaceNameRoute;
-  StorageClaimsNamespaceNameRoute: typeof StorageClaimsNamespaceNameRoute;
-  StorageSnapshotsNamespaceNameRoute: typeof StorageSnapshotsNamespaceNameRoute;
-  WorkloadsAutoscalersNamespaceNameRoute: typeof WorkloadsAutoscalersNamespaceNameRoute;
-  WorkloadsConfigmapsNamespaceNameRoute: typeof WorkloadsConfigmapsNamespaceNameRoute;
-  WorkloadsCronjobsNamespaceNameRoute: typeof WorkloadsCronjobsNamespaceNameRoute;
-  WorkloadsDaemonsetsNamespaceNameRoute: typeof WorkloadsDaemonsetsNamespaceNameRoute;
-  WorkloadsDeploymentsNamespaceNameRoute: typeof WorkloadsDeploymentsNamespaceNameRoute;
-  WorkloadsDisruptionbudgetsNamespaceNameRoute: typeof WorkloadsDisruptionbudgetsNamespaceNameRoute;
-  WorkloadsJobsNamespaceNameRoute: typeof WorkloadsJobsNamespaceNameRoute;
-  WorkloadsPodsNamespaceNameRoute: typeof WorkloadsPodsNamespaceNameRoute;
-  WorkloadsReplicasetsNamespaceNameRoute: typeof WorkloadsReplicasetsNamespaceNameRoute;
-  WorkloadsReplicationcontrollersNamespaceNameRoute: typeof WorkloadsReplicationcontrollersNamespaceNameRoute;
-  WorkloadsSecretsNamespaceNameRoute: typeof WorkloadsSecretsNamespaceNameRoute;
-  WorkloadsStatefulsetsNamespaceNameRoute: typeof WorkloadsStatefulsetsNamespaceNameRoute;
+  AccessClusterrolebindingsNameChar123TabChar125Route: typeof AccessClusterrolebindingsNameChar123TabChar125Route;
+  AccessClusterrolesNameChar123TabChar125Route: typeof AccessClusterrolesNameChar123TabChar125Route;
+  AddonsAdmissionpoliciesNameChar123TabChar125Route: typeof AddonsAdmissionpoliciesNameChar123TabChar125Route;
+  AddonsApiservicesNameChar123TabChar125Route: typeof AddonsApiservicesNameChar123TabChar125Route;
+  AddonsCrdsNameChar123TabChar125Route: typeof AddonsCrdsNameChar123TabChar125Route;
+  AddonsFlowschemasNameChar123TabChar125Route: typeof AddonsFlowschemasNameChar123TabChar125Route;
+  AddonsMutatingwebhooksNameChar123TabChar125Route: typeof AddonsMutatingwebhooksNameChar123TabChar125Route;
+  AddonsValidatingwebhooksNameChar123TabChar125Route: typeof AddonsValidatingwebhooksNameChar123TabChar125Route;
+  NetworkIngressclassesNameChar123TabChar125Route: typeof NetworkIngressclassesNameChar123TabChar125Route;
+  OverviewNamespacesNameChar123TabChar125Route: typeof OverviewNamespacesNameChar123TabChar125Route;
+  OverviewNodesNameChar123TabChar125Route: typeof OverviewNodesNameChar123TabChar125Route;
+  OverviewPriorityclassesNameChar123TabChar125Route: typeof OverviewPriorityclassesNameChar123TabChar125Route;
+  OverviewRuntimeclassesNameChar123TabChar125Route: typeof OverviewRuntimeclassesNameChar123TabChar125Route;
+  StorageCsidriversNameChar123TabChar125Route: typeof StorageCsidriversNameChar123TabChar125Route;
+  StorageCsinodesNameChar123TabChar125Route: typeof StorageCsinodesNameChar123TabChar125Route;
+  StorageStorageclassesNameChar123TabChar125Route: typeof StorageStorageclassesNameChar123TabChar125Route;
+  StorageVolumesNameChar123TabChar125Route: typeof StorageVolumesNameChar123TabChar125Route;
   AddonsInstancesCrdIndexRoute: typeof AddonsInstancesCrdIndexRoute;
-  AddonsInstancesCrdNamespaceNameRoute: typeof AddonsInstancesCrdNamespaceNameRoute;
+  AccessRolebindingsNamespaceNameChar123TabChar125Route: typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
+  AccessRolesNamespaceNameChar123TabChar125Route: typeof AccessRolesNamespaceNameChar123TabChar125Route;
+  AccessServiceaccountsNamespaceNameChar123TabChar125Route: typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  AddonsReleasesNamespaceNameChar123TabChar125Route: typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  NetworkEndpointsNamespaceNameChar123TabChar125Route: typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
+  NetworkIngressesNamespaceNameChar123TabChar125Route: typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
+  NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route: typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
+  NetworkServicesNamespaceNameChar123TabChar125Route: typeof NetworkServicesNamespaceNameChar123TabChar125Route;
+  OverviewLeasesNamespaceNameChar123TabChar125Route: typeof OverviewLeasesNamespaceNameChar123TabChar125Route;
+  StorageCapacityNamespaceNameChar123TabChar125Route: typeof StorageCapacityNamespaceNameChar123TabChar125Route;
+  StorageClaimsNamespaceNameChar123TabChar125Route: typeof StorageClaimsNamespaceNameChar123TabChar125Route;
+  StorageSnapshotsNamespaceNameChar123TabChar125Route: typeof StorageSnapshotsNamespaceNameChar123TabChar125Route;
+  WorkloadsAutoscalersNamespaceNameChar123TabChar125Route: typeof WorkloadsAutoscalersNamespaceNameChar123TabChar125Route;
+  WorkloadsConfigmapsNamespaceNameChar123TabChar125Route: typeof WorkloadsConfigmapsNamespaceNameChar123TabChar125Route;
+  WorkloadsCronjobsNamespaceNameChar123TabChar125Route: typeof WorkloadsCronjobsNamespaceNameChar123TabChar125Route;
+  WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route: typeof WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route;
+  WorkloadsDeploymentsNamespaceNameChar123TabChar125Route: typeof WorkloadsDeploymentsNamespaceNameChar123TabChar125Route;
+  WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route: typeof WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route;
+  WorkloadsJobsNamespaceNameChar123TabChar125Route: typeof WorkloadsJobsNamespaceNameChar123TabChar125Route;
+  WorkloadsPodsNamespaceNameChar123TabChar125Route: typeof WorkloadsPodsNamespaceNameChar123TabChar125Route;
+  WorkloadsReplicasetsNamespaceNameChar123TabChar125Route: typeof WorkloadsReplicasetsNamespaceNameChar123TabChar125Route;
+  WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route: typeof WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route;
+  WorkloadsSecretsNamespaceNameChar123TabChar125Route: typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
+  WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route: typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
+  AddonsInstancesCrdNamespaceNameChar123TabChar125Route: typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
 }
 
 declare module '@tanstack/react-router' {
@@ -1356,25 +1367,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccessClusterrolebindingsIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/access/clusterrolebindings_/$name': {
-      id: '/access/clusterrolebindings_/$name';
-      path: '/access/clusterrolebindings/$name';
-      fullPath: '/access/clusterrolebindings/$name';
-      preLoaderRoute: typeof AccessClusterrolebindingsNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/access/clusterroles/': {
       id: '/access/clusterroles/';
       path: '/access/clusterroles';
       fullPath: '/access/clusterroles/';
       preLoaderRoute: typeof AccessClusterrolesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/access/clusterroles_/$name': {
-      id: '/access/clusterroles_/$name';
-      path: '/access/clusterroles/$name';
-      fullPath: '/access/clusterroles/$name';
-      preLoaderRoute: typeof AccessClusterrolesNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/access/rolebindings/': {
@@ -1405,25 +1402,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsAdmissionpoliciesIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/admissionpolicies_/$name': {
-      id: '/addons/admissionpolicies_/$name';
-      path: '/addons/admissionpolicies/$name';
-      fullPath: '/addons/admissionpolicies/$name';
-      preLoaderRoute: typeof AddonsAdmissionpoliciesNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/addons/apiservices/': {
       id: '/addons/apiservices/';
       path: '/addons/apiservices';
       fullPath: '/addons/apiservices/';
       preLoaderRoute: typeof AddonsApiservicesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/addons/apiservices_/$name': {
-      id: '/addons/apiservices_/$name';
-      path: '/addons/apiservices/$name';
-      fullPath: '/addons/apiservices/$name';
-      preLoaderRoute: typeof AddonsApiservicesNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/addons/crds/': {
@@ -1433,13 +1416,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsCrdsIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/crds_/$name': {
-      id: '/addons/crds_/$name';
-      path: '/addons/crds/$name';
-      fullPath: '/addons/crds/$name';
-      preLoaderRoute: typeof AddonsCrdsNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/addons/flowschemas/': {
       id: '/addons/flowschemas/';
       path: '/addons/flowschemas';
@@ -1447,25 +1423,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsFlowschemasIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/flowschemas_/$name': {
-      id: '/addons/flowschemas_/$name';
-      path: '/addons/flowschemas/$name';
-      fullPath: '/addons/flowschemas/$name';
-      preLoaderRoute: typeof AddonsFlowschemasNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/addons/mutatingwebhooks/': {
       id: '/addons/mutatingwebhooks/';
       path: '/addons/mutatingwebhooks';
       fullPath: '/addons/mutatingwebhooks/';
       preLoaderRoute: typeof AddonsMutatingwebhooksIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/addons/mutatingwebhooks_/$name': {
-      id: '/addons/mutatingwebhooks_/$name';
-      path: '/addons/mutatingwebhooks/$name';
-      fullPath: '/addons/mutatingwebhooks/$name';
-      preLoaderRoute: typeof AddonsMutatingwebhooksNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/addons/releases/': {
@@ -1482,13 +1444,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsValidatingwebhooksIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/validatingwebhooks_/$name': {
-      id: '/addons/validatingwebhooks_/$name';
-      path: '/addons/validatingwebhooks/$name';
-      fullPath: '/addons/validatingwebhooks/$name';
-      preLoaderRoute: typeof AddonsValidatingwebhooksNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/network/endpoints/': {
       id: '/network/endpoints/';
       path: '/network/endpoints';
@@ -1501,13 +1456,6 @@ declare module '@tanstack/react-router' {
       path: '/network/ingressclasses';
       fullPath: '/network/ingressclasses/';
       preLoaderRoute: typeof NetworkIngressclassesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/network/ingressclasses_/$name': {
-      id: '/network/ingressclasses_/$name';
-      path: '/network/ingressclasses/$name';
-      fullPath: '/network/ingressclasses/$name';
-      preLoaderRoute: typeof NetworkIngressclassesNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/network/ingresses/': {
@@ -1538,20 +1486,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OverviewLeasesIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/overview/namespaces_/$name': {
-      id: '/overview/namespaces_/$name';
-      path: '/overview/namespaces/$name';
-      fullPath: '/overview/namespaces/$name';
-      preLoaderRoute: typeof OverviewNamespacesNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/overview/nodes_/$name': {
-      id: '/overview/nodes_/$name';
-      path: '/overview/nodes/$name';
-      fullPath: '/overview/nodes/$name';
-      preLoaderRoute: typeof OverviewNodesNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/overview/priorityclasses/': {
       id: '/overview/priorityclasses/';
       path: '/overview/priorityclasses';
@@ -1559,25 +1493,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OverviewPriorityclassesIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/overview/priorityclasses_/$name': {
-      id: '/overview/priorityclasses_/$name';
-      path: '/overview/priorityclasses/$name';
-      fullPath: '/overview/priorityclasses/$name';
-      preLoaderRoute: typeof OverviewPriorityclassesNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/overview/runtimeclasses/': {
       id: '/overview/runtimeclasses/';
       path: '/overview/runtimeclasses';
       fullPath: '/overview/runtimeclasses/';
       preLoaderRoute: typeof OverviewRuntimeclassesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/overview/runtimeclasses_/$name': {
-      id: '/overview/runtimeclasses_/$name';
-      path: '/overview/runtimeclasses/$name';
-      fullPath: '/overview/runtimeclasses/$name';
-      preLoaderRoute: typeof OverviewRuntimeclassesNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/storage/capacity/': {
@@ -1601,25 +1521,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StorageCsidriversIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/storage/csidrivers_/$name': {
-      id: '/storage/csidrivers_/$name';
-      path: '/storage/csidrivers/$name';
-      fullPath: '/storage/csidrivers/$name';
-      preLoaderRoute: typeof StorageCsidriversNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/storage/csinodes/': {
       id: '/storage/csinodes/';
       path: '/storage/csinodes';
       fullPath: '/storage/csinodes/';
       preLoaderRoute: typeof StorageCsinodesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/storage/csinodes_/$name': {
-      id: '/storage/csinodes_/$name';
-      path: '/storage/csinodes/$name';
-      fullPath: '/storage/csinodes/$name';
-      preLoaderRoute: typeof StorageCsinodesNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/storage/snapshots/': {
@@ -1636,25 +1542,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StorageStorageclassesIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/storage/storageclasses_/$name': {
-      id: '/storage/storageclasses_/$name';
-      path: '/storage/storageclasses/$name';
-      fullPath: '/storage/storageclasses/$name';
-      preLoaderRoute: typeof StorageStorageclassesNameRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/storage/volumes/': {
       id: '/storage/volumes/';
       path: '/storage/volumes';
       fullPath: '/storage/volumes/';
       preLoaderRoute: typeof StorageVolumesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    '/storage/volumes_/$name': {
-      id: '/storage/volumes_/$name';
-      path: '/storage/volumes/$name';
-      fullPath: '/storage/volumes/$name';
-      preLoaderRoute: typeof StorageVolumesNameRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/workloads/autoscalers/': {
@@ -1741,25 +1633,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkloadsStatefulsetsIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/access/rolebindings/$namespace/$name': {
-      id: '/access/rolebindings/$namespace/$name';
-      path: '/access/rolebindings/$namespace/$name';
-      fullPath: '/access/rolebindings/$namespace/$name';
-      preLoaderRoute: typeof AccessRolebindingsNamespaceNameRouteImport;
+    '/access/clusterrolebindings_/$name/{-$tab}': {
+      id: '/access/clusterrolebindings_/$name/{-$tab}';
+      path: '/access/clusterrolebindings/$name/{-$tab}';
+      fullPath: '/access/clusterrolebindings/$name/{-$tab}';
+      preLoaderRoute: typeof AccessClusterrolebindingsNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/access/roles/$namespace/$name': {
-      id: '/access/roles/$namespace/$name';
-      path: '/access/roles/$namespace/$name';
-      fullPath: '/access/roles/$namespace/$name';
-      preLoaderRoute: typeof AccessRolesNamespaceNameRouteImport;
+    '/access/clusterroles_/$name/{-$tab}': {
+      id: '/access/clusterroles_/$name/{-$tab}';
+      path: '/access/clusterroles/$name/{-$tab}';
+      fullPath: '/access/clusterroles/$name/{-$tab}';
+      preLoaderRoute: typeof AccessClusterrolesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/access/serviceaccounts/$namespace/$name': {
-      id: '/access/serviceaccounts/$namespace/$name';
-      path: '/access/serviceaccounts/$namespace/$name';
-      fullPath: '/access/serviceaccounts/$namespace/$name';
-      preLoaderRoute: typeof AccessServiceaccountsNamespaceNameRouteImport;
+    '/addons/admissionpolicies_/$name/{-$tab}': {
+      id: '/addons/admissionpolicies_/$name/{-$tab}';
+      path: '/addons/admissionpolicies/$name/{-$tab}';
+      fullPath: '/addons/admissionpolicies/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsAdmissionpoliciesNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/addons/apiservices_/$name/{-$tab}': {
+      id: '/addons/apiservices_/$name/{-$tab}';
+      path: '/addons/apiservices/$name/{-$tab}';
+      fullPath: '/addons/apiservices/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsApiservicesNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/addons/crds_/$name/{-$tab}': {
+      id: '/addons/crds_/$name/{-$tab}';
+      path: '/addons/crds/$name/{-$tab}';
+      fullPath: '/addons/crds/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsCrdsNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/addons/flowschemas_/$name/{-$tab}': {
+      id: '/addons/flowschemas_/$name/{-$tab}';
+      path: '/addons/flowschemas/$name/{-$tab}';
+      fullPath: '/addons/flowschemas/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsFlowschemasNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/addons/instances/$crd/': {
@@ -1769,158 +1682,256 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsInstancesCrdIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/releases/$namespace/$name': {
-      id: '/addons/releases/$namespace/$name';
-      path: '/addons/releases/$namespace/$name';
-      fullPath: '/addons/releases/$namespace/$name';
-      preLoaderRoute: typeof AddonsReleasesNamespaceNameRouteImport;
+    '/addons/mutatingwebhooks_/$name/{-$tab}': {
+      id: '/addons/mutatingwebhooks_/$name/{-$tab}';
+      path: '/addons/mutatingwebhooks/$name/{-$tab}';
+      fullPath: '/addons/mutatingwebhooks/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsMutatingwebhooksNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/network/endpoints/$namespace/$name': {
-      id: '/network/endpoints/$namespace/$name';
-      path: '/network/endpoints/$namespace/$name';
-      fullPath: '/network/endpoints/$namespace/$name';
-      preLoaderRoute: typeof NetworkEndpointsNamespaceNameRouteImport;
+    '/addons/validatingwebhooks_/$name/{-$tab}': {
+      id: '/addons/validatingwebhooks_/$name/{-$tab}';
+      path: '/addons/validatingwebhooks/$name/{-$tab}';
+      fullPath: '/addons/validatingwebhooks/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsValidatingwebhooksNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/network/ingresses/$namespace/$name': {
-      id: '/network/ingresses/$namespace/$name';
-      path: '/network/ingresses/$namespace/$name';
-      fullPath: '/network/ingresses/$namespace/$name';
-      preLoaderRoute: typeof NetworkIngressesNamespaceNameRouteImport;
+    '/network/ingressclasses_/$name/{-$tab}': {
+      id: '/network/ingressclasses_/$name/{-$tab}';
+      path: '/network/ingressclasses/$name/{-$tab}';
+      fullPath: '/network/ingressclasses/$name/{-$tab}';
+      preLoaderRoute: typeof NetworkIngressclassesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/network/networkpolicies/$namespace/$name': {
-      id: '/network/networkpolicies/$namespace/$name';
-      path: '/network/networkpolicies/$namespace/$name';
-      fullPath: '/network/networkpolicies/$namespace/$name';
-      preLoaderRoute: typeof NetworkNetworkpoliciesNamespaceNameRouteImport;
+    '/overview/namespaces_/$name/{-$tab}': {
+      id: '/overview/namespaces_/$name/{-$tab}';
+      path: '/overview/namespaces/$name/{-$tab}';
+      fullPath: '/overview/namespaces/$name/{-$tab}';
+      preLoaderRoute: typeof OverviewNamespacesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/network/services/$namespace/$name': {
-      id: '/network/services/$namespace/$name';
-      path: '/network/services/$namespace/$name';
-      fullPath: '/network/services/$namespace/$name';
-      preLoaderRoute: typeof NetworkServicesNamespaceNameRouteImport;
+    '/overview/nodes_/$name/{-$tab}': {
+      id: '/overview/nodes_/$name/{-$tab}';
+      path: '/overview/nodes/$name/{-$tab}';
+      fullPath: '/overview/nodes/$name/{-$tab}';
+      preLoaderRoute: typeof OverviewNodesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/overview/leases/$namespace/$name': {
-      id: '/overview/leases/$namespace/$name';
-      path: '/overview/leases/$namespace/$name';
-      fullPath: '/overview/leases/$namespace/$name';
-      preLoaderRoute: typeof OverviewLeasesNamespaceNameRouteImport;
+    '/overview/priorityclasses_/$name/{-$tab}': {
+      id: '/overview/priorityclasses_/$name/{-$tab}';
+      path: '/overview/priorityclasses/$name/{-$tab}';
+      fullPath: '/overview/priorityclasses/$name/{-$tab}';
+      preLoaderRoute: typeof OverviewPriorityclassesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/storage/capacity/$namespace/$name': {
-      id: '/storage/capacity/$namespace/$name';
-      path: '/storage/capacity/$namespace/$name';
-      fullPath: '/storage/capacity/$namespace/$name';
-      preLoaderRoute: typeof StorageCapacityNamespaceNameRouteImport;
+    '/overview/runtimeclasses_/$name/{-$tab}': {
+      id: '/overview/runtimeclasses_/$name/{-$tab}';
+      path: '/overview/runtimeclasses/$name/{-$tab}';
+      fullPath: '/overview/runtimeclasses/$name/{-$tab}';
+      preLoaderRoute: typeof OverviewRuntimeclassesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/storage/claims/$namespace/$name': {
-      id: '/storage/claims/$namespace/$name';
-      path: '/storage/claims/$namespace/$name';
-      fullPath: '/storage/claims/$namespace/$name';
-      preLoaderRoute: typeof StorageClaimsNamespaceNameRouteImport;
+    '/storage/csidrivers_/$name/{-$tab}': {
+      id: '/storage/csidrivers_/$name/{-$tab}';
+      path: '/storage/csidrivers/$name/{-$tab}';
+      fullPath: '/storage/csidrivers/$name/{-$tab}';
+      preLoaderRoute: typeof StorageCsidriversNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/storage/snapshots/$namespace/$name': {
-      id: '/storage/snapshots/$namespace/$name';
-      path: '/storage/snapshots/$namespace/$name';
-      fullPath: '/storage/snapshots/$namespace/$name';
-      preLoaderRoute: typeof StorageSnapshotsNamespaceNameRouteImport;
+    '/storage/csinodes_/$name/{-$tab}': {
+      id: '/storage/csinodes_/$name/{-$tab}';
+      path: '/storage/csinodes/$name/{-$tab}';
+      fullPath: '/storage/csinodes/$name/{-$tab}';
+      preLoaderRoute: typeof StorageCsinodesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/autoscalers/$namespace/$name': {
-      id: '/workloads/autoscalers/$namespace/$name';
-      path: '/workloads/autoscalers/$namespace/$name';
-      fullPath: '/workloads/autoscalers/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsAutoscalersNamespaceNameRouteImport;
+    '/storage/storageclasses_/$name/{-$tab}': {
+      id: '/storage/storageclasses_/$name/{-$tab}';
+      path: '/storage/storageclasses/$name/{-$tab}';
+      fullPath: '/storage/storageclasses/$name/{-$tab}';
+      preLoaderRoute: typeof StorageStorageclassesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/configmaps/$namespace/$name': {
-      id: '/workloads/configmaps/$namespace/$name';
-      path: '/workloads/configmaps/$namespace/$name';
-      fullPath: '/workloads/configmaps/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsConfigmapsNamespaceNameRouteImport;
+    '/storage/volumes_/$name/{-$tab}': {
+      id: '/storage/volumes_/$name/{-$tab}';
+      path: '/storage/volumes/$name/{-$tab}';
+      fullPath: '/storage/volumes/$name/{-$tab}';
+      preLoaderRoute: typeof StorageVolumesNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/cronjobs/$namespace/$name': {
-      id: '/workloads/cronjobs/$namespace/$name';
-      path: '/workloads/cronjobs/$namespace/$name';
-      fullPath: '/workloads/cronjobs/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsCronjobsNamespaceNameRouteImport;
+    '/access/rolebindings/$namespace/$name/{-$tab}': {
+      id: '/access/rolebindings/$namespace/$name/{-$tab}';
+      path: '/access/rolebindings/$namespace/$name/{-$tab}';
+      fullPath: '/access/rolebindings/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof AccessRolebindingsNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/daemonsets/$namespace/$name': {
-      id: '/workloads/daemonsets/$namespace/$name';
-      path: '/workloads/daemonsets/$namespace/$name';
-      fullPath: '/workloads/daemonsets/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsDaemonsetsNamespaceNameRouteImport;
+    '/access/roles/$namespace/$name/{-$tab}': {
+      id: '/access/roles/$namespace/$name/{-$tab}';
+      path: '/access/roles/$namespace/$name/{-$tab}';
+      fullPath: '/access/roles/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof AccessRolesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/deployments/$namespace/$name': {
-      id: '/workloads/deployments/$namespace/$name';
-      path: '/workloads/deployments/$namespace/$name';
-      fullPath: '/workloads/deployments/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsDeploymentsNamespaceNameRouteImport;
+    '/access/serviceaccounts/$namespace/$name/{-$tab}': {
+      id: '/access/serviceaccounts/$namespace/$name/{-$tab}';
+      path: '/access/serviceaccounts/$namespace/$name/{-$tab}';
+      fullPath: '/access/serviceaccounts/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/disruptionbudgets/$namespace/$name': {
-      id: '/workloads/disruptionbudgets/$namespace/$name';
-      path: '/workloads/disruptionbudgets/$namespace/$name';
-      fullPath: '/workloads/disruptionbudgets/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsDisruptionbudgetsNamespaceNameRouteImport;
+    '/addons/releases/$namespace/$name/{-$tab}': {
+      id: '/addons/releases/$namespace/$name/{-$tab}';
+      path: '/addons/releases/$namespace/$name/{-$tab}';
+      fullPath: '/addons/releases/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsReleasesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/jobs/$namespace/$name': {
-      id: '/workloads/jobs/$namespace/$name';
-      path: '/workloads/jobs/$namespace/$name';
-      fullPath: '/workloads/jobs/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsJobsNamespaceNameRouteImport;
+    '/network/endpoints/$namespace/$name/{-$tab}': {
+      id: '/network/endpoints/$namespace/$name/{-$tab}';
+      path: '/network/endpoints/$namespace/$name/{-$tab}';
+      fullPath: '/network/endpoints/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof NetworkEndpointsNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/pods/$namespace/$name': {
-      id: '/workloads/pods/$namespace/$name';
-      path: '/workloads/pods/$namespace/$name';
-      fullPath: '/workloads/pods/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsPodsNamespaceNameRouteImport;
+    '/network/ingresses/$namespace/$name/{-$tab}': {
+      id: '/network/ingresses/$namespace/$name/{-$tab}';
+      path: '/network/ingresses/$namespace/$name/{-$tab}';
+      fullPath: '/network/ingresses/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof NetworkIngressesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/replicasets/$namespace/$name': {
-      id: '/workloads/replicasets/$namespace/$name';
-      path: '/workloads/replicasets/$namespace/$name';
-      fullPath: '/workloads/replicasets/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsReplicasetsNamespaceNameRouteImport;
+    '/network/networkpolicies/$namespace/$name/{-$tab}': {
+      id: '/network/networkpolicies/$namespace/$name/{-$tab}';
+      path: '/network/networkpolicies/$namespace/$name/{-$tab}';
+      fullPath: '/network/networkpolicies/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/replicationcontrollers/$namespace/$name': {
-      id: '/workloads/replicationcontrollers/$namespace/$name';
-      path: '/workloads/replicationcontrollers/$namespace/$name';
-      fullPath: '/workloads/replicationcontrollers/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsReplicationcontrollersNamespaceNameRouteImport;
+    '/network/services/$namespace/$name/{-$tab}': {
+      id: '/network/services/$namespace/$name/{-$tab}';
+      path: '/network/services/$namespace/$name/{-$tab}';
+      fullPath: '/network/services/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof NetworkServicesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/secrets/$namespace/$name': {
-      id: '/workloads/secrets/$namespace/$name';
-      path: '/workloads/secrets/$namespace/$name';
-      fullPath: '/workloads/secrets/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsSecretsNamespaceNameRouteImport;
+    '/overview/leases/$namespace/$name/{-$tab}': {
+      id: '/overview/leases/$namespace/$name/{-$tab}';
+      path: '/overview/leases/$namespace/$name/{-$tab}';
+      fullPath: '/overview/leases/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof OverviewLeasesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/workloads/statefulsets/$namespace/$name': {
-      id: '/workloads/statefulsets/$namespace/$name';
-      path: '/workloads/statefulsets/$namespace/$name';
-      fullPath: '/workloads/statefulsets/$namespace/$name';
-      preLoaderRoute: typeof WorkloadsStatefulsetsNamespaceNameRouteImport;
+    '/storage/capacity/$namespace/$name/{-$tab}': {
+      id: '/storage/capacity/$namespace/$name/{-$tab}';
+      path: '/storage/capacity/$namespace/$name/{-$tab}';
+      fullPath: '/storage/capacity/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof StorageCapacityNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/instances/$crd/$namespace/$name': {
-      id: '/addons/instances/$crd/$namespace/$name';
-      path: '/addons/instances/$crd/$namespace/$name';
-      fullPath: '/addons/instances/$crd/$namespace/$name';
-      preLoaderRoute: typeof AddonsInstancesCrdNamespaceNameRouteImport;
+    '/storage/claims/$namespace/$name/{-$tab}': {
+      id: '/storage/claims/$namespace/$name/{-$tab}';
+      path: '/storage/claims/$namespace/$name/{-$tab}';
+      fullPath: '/storage/claims/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof StorageClaimsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/storage/snapshots/$namespace/$name/{-$tab}': {
+      id: '/storage/snapshots/$namespace/$name/{-$tab}';
+      path: '/storage/snapshots/$namespace/$name/{-$tab}';
+      fullPath: '/storage/snapshots/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof StorageSnapshotsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/autoscalers/$namespace/$name/{-$tab}': {
+      id: '/workloads/autoscalers/$namespace/$name/{-$tab}';
+      path: '/workloads/autoscalers/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/autoscalers/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsAutoscalersNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/configmaps/$namespace/$name/{-$tab}': {
+      id: '/workloads/configmaps/$namespace/$name/{-$tab}';
+      path: '/workloads/configmaps/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/configmaps/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsConfigmapsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/cronjobs/$namespace/$name/{-$tab}': {
+      id: '/workloads/cronjobs/$namespace/$name/{-$tab}';
+      path: '/workloads/cronjobs/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/cronjobs/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsCronjobsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/daemonsets/$namespace/$name/{-$tab}': {
+      id: '/workloads/daemonsets/$namespace/$name/{-$tab}';
+      path: '/workloads/daemonsets/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/daemonsets/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsDaemonsetsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/deployments/$namespace/$name/{-$tab}': {
+      id: '/workloads/deployments/$namespace/$name/{-$tab}';
+      path: '/workloads/deployments/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/deployments/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsDeploymentsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/disruptionbudgets/$namespace/$name/{-$tab}': {
+      id: '/workloads/disruptionbudgets/$namespace/$name/{-$tab}';
+      path: '/workloads/disruptionbudgets/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/disruptionbudgets/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/jobs/$namespace/$name/{-$tab}': {
+      id: '/workloads/jobs/$namespace/$name/{-$tab}';
+      path: '/workloads/jobs/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/jobs/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsJobsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/pods/$namespace/$name/{-$tab}': {
+      id: '/workloads/pods/$namespace/$name/{-$tab}';
+      path: '/workloads/pods/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/pods/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsPodsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/replicasets/$namespace/$name/{-$tab}': {
+      id: '/workloads/replicasets/$namespace/$name/{-$tab}';
+      path: '/workloads/replicasets/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/replicasets/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsReplicasetsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/replicationcontrollers/$namespace/$name/{-$tab}': {
+      id: '/workloads/replicationcontrollers/$namespace/$name/{-$tab}';
+      path: '/workloads/replicationcontrollers/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/replicationcontrollers/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/secrets/$namespace/$name/{-$tab}': {
+      id: '/workloads/secrets/$namespace/$name/{-$tab}';
+      path: '/workloads/secrets/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/secrets/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsSecretsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/workloads/statefulsets/$namespace/$name/{-$tab}': {
+      id: '/workloads/statefulsets/$namespace/$name/{-$tab}';
+      path: '/workloads/statefulsets/$namespace/$name/{-$tab}';
+      fullPath: '/workloads/statefulsets/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/addons/instances/$crd/$namespace/$name/{-$tab}': {
+      id: '/addons/instances/$crd/$namespace/$name/{-$tab}';
+      path: '/addons/instances/$crd/$namespace/$name/{-$tab}';
+      fullPath: '/addons/instances/$crd/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof AddonsInstancesCrdNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
   }
@@ -1937,23 +1948,6 @@ const rootRouteChildren: RootRouteChildren = {
   OverviewNodesRoute: OverviewNodesRoute,
   OverviewQuotasRoute: OverviewQuotasRoute,
   OverviewSummaryRoute: OverviewSummaryRoute,
-  AccessClusterrolebindingsNameRoute: AccessClusterrolebindingsNameRoute,
-  AccessClusterrolesNameRoute: AccessClusterrolesNameRoute,
-  AddonsAdmissionpoliciesNameRoute: AddonsAdmissionpoliciesNameRoute,
-  AddonsApiservicesNameRoute: AddonsApiservicesNameRoute,
-  AddonsCrdsNameRoute: AddonsCrdsNameRoute,
-  AddonsFlowschemasNameRoute: AddonsFlowschemasNameRoute,
-  AddonsMutatingwebhooksNameRoute: AddonsMutatingwebhooksNameRoute,
-  AddonsValidatingwebhooksNameRoute: AddonsValidatingwebhooksNameRoute,
-  NetworkIngressclassesNameRoute: NetworkIngressclassesNameRoute,
-  OverviewNamespacesNameRoute: OverviewNamespacesNameRoute,
-  OverviewNodesNameRoute: OverviewNodesNameRoute,
-  OverviewPriorityclassesNameRoute: OverviewPriorityclassesNameRoute,
-  OverviewRuntimeclassesNameRoute: OverviewRuntimeclassesNameRoute,
-  StorageCsidriversNameRoute: StorageCsidriversNameRoute,
-  StorageCsinodesNameRoute: StorageCsinodesNameRoute,
-  StorageStorageclassesNameRoute: StorageStorageclassesNameRoute,
-  StorageVolumesNameRoute: StorageVolumesNameRoute,
   AccessClusterrolebindingsIndexRoute: AccessClusterrolebindingsIndexRoute,
   AccessClusterrolesIndexRoute: AccessClusterrolesIndexRoute,
   AccessRolebindingsIndexRoute: AccessRolebindingsIndexRoute,
@@ -1994,40 +1988,90 @@ const rootRouteChildren: RootRouteChildren = {
     WorkloadsReplicationcontrollersIndexRoute,
   WorkloadsSecretsIndexRoute: WorkloadsSecretsIndexRoute,
   WorkloadsStatefulsetsIndexRoute: WorkloadsStatefulsetsIndexRoute,
-  AccessRolebindingsNamespaceNameRoute: AccessRolebindingsNamespaceNameRoute,
-  AccessRolesNamespaceNameRoute: AccessRolesNamespaceNameRoute,
-  AccessServiceaccountsNamespaceNameRoute:
-    AccessServiceaccountsNamespaceNameRoute,
-  AddonsReleasesNamespaceNameRoute: AddonsReleasesNamespaceNameRoute,
-  NetworkEndpointsNamespaceNameRoute: NetworkEndpointsNamespaceNameRoute,
-  NetworkIngressesNamespaceNameRoute: NetworkIngressesNamespaceNameRoute,
-  NetworkNetworkpoliciesNamespaceNameRoute:
-    NetworkNetworkpoliciesNamespaceNameRoute,
-  NetworkServicesNamespaceNameRoute: NetworkServicesNamespaceNameRoute,
-  OverviewLeasesNamespaceNameRoute: OverviewLeasesNamespaceNameRoute,
-  StorageCapacityNamespaceNameRoute: StorageCapacityNamespaceNameRoute,
-  StorageClaimsNamespaceNameRoute: StorageClaimsNamespaceNameRoute,
-  StorageSnapshotsNamespaceNameRoute: StorageSnapshotsNamespaceNameRoute,
-  WorkloadsAutoscalersNamespaceNameRoute:
-    WorkloadsAutoscalersNamespaceNameRoute,
-  WorkloadsConfigmapsNamespaceNameRoute: WorkloadsConfigmapsNamespaceNameRoute,
-  WorkloadsCronjobsNamespaceNameRoute: WorkloadsCronjobsNamespaceNameRoute,
-  WorkloadsDaemonsetsNamespaceNameRoute: WorkloadsDaemonsetsNamespaceNameRoute,
-  WorkloadsDeploymentsNamespaceNameRoute:
-    WorkloadsDeploymentsNamespaceNameRoute,
-  WorkloadsDisruptionbudgetsNamespaceNameRoute:
-    WorkloadsDisruptionbudgetsNamespaceNameRoute,
-  WorkloadsJobsNamespaceNameRoute: WorkloadsJobsNamespaceNameRoute,
-  WorkloadsPodsNamespaceNameRoute: WorkloadsPodsNamespaceNameRoute,
-  WorkloadsReplicasetsNamespaceNameRoute:
-    WorkloadsReplicasetsNamespaceNameRoute,
-  WorkloadsReplicationcontrollersNamespaceNameRoute:
-    WorkloadsReplicationcontrollersNamespaceNameRoute,
-  WorkloadsSecretsNamespaceNameRoute: WorkloadsSecretsNamespaceNameRoute,
-  WorkloadsStatefulsetsNamespaceNameRoute:
-    WorkloadsStatefulsetsNamespaceNameRoute,
+  AccessClusterrolebindingsNameChar123TabChar125Route:
+    AccessClusterrolebindingsNameChar123TabChar125Route,
+  AccessClusterrolesNameChar123TabChar125Route:
+    AccessClusterrolesNameChar123TabChar125Route,
+  AddonsAdmissionpoliciesNameChar123TabChar125Route:
+    AddonsAdmissionpoliciesNameChar123TabChar125Route,
+  AddonsApiservicesNameChar123TabChar125Route:
+    AddonsApiservicesNameChar123TabChar125Route,
+  AddonsCrdsNameChar123TabChar125Route: AddonsCrdsNameChar123TabChar125Route,
+  AddonsFlowschemasNameChar123TabChar125Route:
+    AddonsFlowschemasNameChar123TabChar125Route,
+  AddonsMutatingwebhooksNameChar123TabChar125Route:
+    AddonsMutatingwebhooksNameChar123TabChar125Route,
+  AddonsValidatingwebhooksNameChar123TabChar125Route:
+    AddonsValidatingwebhooksNameChar123TabChar125Route,
+  NetworkIngressclassesNameChar123TabChar125Route:
+    NetworkIngressclassesNameChar123TabChar125Route,
+  OverviewNamespacesNameChar123TabChar125Route:
+    OverviewNamespacesNameChar123TabChar125Route,
+  OverviewNodesNameChar123TabChar125Route:
+    OverviewNodesNameChar123TabChar125Route,
+  OverviewPriorityclassesNameChar123TabChar125Route:
+    OverviewPriorityclassesNameChar123TabChar125Route,
+  OverviewRuntimeclassesNameChar123TabChar125Route:
+    OverviewRuntimeclassesNameChar123TabChar125Route,
+  StorageCsidriversNameChar123TabChar125Route:
+    StorageCsidriversNameChar123TabChar125Route,
+  StorageCsinodesNameChar123TabChar125Route:
+    StorageCsinodesNameChar123TabChar125Route,
+  StorageStorageclassesNameChar123TabChar125Route:
+    StorageStorageclassesNameChar123TabChar125Route,
+  StorageVolumesNameChar123TabChar125Route:
+    StorageVolumesNameChar123TabChar125Route,
   AddonsInstancesCrdIndexRoute: AddonsInstancesCrdIndexRoute,
-  AddonsInstancesCrdNamespaceNameRoute: AddonsInstancesCrdNamespaceNameRoute,
+  AccessRolebindingsNamespaceNameChar123TabChar125Route:
+    AccessRolebindingsNamespaceNameChar123TabChar125Route,
+  AccessRolesNamespaceNameChar123TabChar125Route:
+    AccessRolesNamespaceNameChar123TabChar125Route,
+  AccessServiceaccountsNamespaceNameChar123TabChar125Route:
+    AccessServiceaccountsNamespaceNameChar123TabChar125Route,
+  AddonsReleasesNamespaceNameChar123TabChar125Route:
+    AddonsReleasesNamespaceNameChar123TabChar125Route,
+  NetworkEndpointsNamespaceNameChar123TabChar125Route:
+    NetworkEndpointsNamespaceNameChar123TabChar125Route,
+  NetworkIngressesNamespaceNameChar123TabChar125Route:
+    NetworkIngressesNamespaceNameChar123TabChar125Route,
+  NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route:
+    NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route,
+  NetworkServicesNamespaceNameChar123TabChar125Route:
+    NetworkServicesNamespaceNameChar123TabChar125Route,
+  OverviewLeasesNamespaceNameChar123TabChar125Route:
+    OverviewLeasesNamespaceNameChar123TabChar125Route,
+  StorageCapacityNamespaceNameChar123TabChar125Route:
+    StorageCapacityNamespaceNameChar123TabChar125Route,
+  StorageClaimsNamespaceNameChar123TabChar125Route:
+    StorageClaimsNamespaceNameChar123TabChar125Route,
+  StorageSnapshotsNamespaceNameChar123TabChar125Route:
+    StorageSnapshotsNamespaceNameChar123TabChar125Route,
+  WorkloadsAutoscalersNamespaceNameChar123TabChar125Route:
+    WorkloadsAutoscalersNamespaceNameChar123TabChar125Route,
+  WorkloadsConfigmapsNamespaceNameChar123TabChar125Route:
+    WorkloadsConfigmapsNamespaceNameChar123TabChar125Route,
+  WorkloadsCronjobsNamespaceNameChar123TabChar125Route:
+    WorkloadsCronjobsNamespaceNameChar123TabChar125Route,
+  WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route:
+    WorkloadsDaemonsetsNamespaceNameChar123TabChar125Route,
+  WorkloadsDeploymentsNamespaceNameChar123TabChar125Route:
+    WorkloadsDeploymentsNamespaceNameChar123TabChar125Route,
+  WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route:
+    WorkloadsDisruptionbudgetsNamespaceNameChar123TabChar125Route,
+  WorkloadsJobsNamespaceNameChar123TabChar125Route:
+    WorkloadsJobsNamespaceNameChar123TabChar125Route,
+  WorkloadsPodsNamespaceNameChar123TabChar125Route:
+    WorkloadsPodsNamespaceNameChar123TabChar125Route,
+  WorkloadsReplicasetsNamespaceNameChar123TabChar125Route:
+    WorkloadsReplicasetsNamespaceNameChar123TabChar125Route,
+  WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route:
+    WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125Route,
+  WorkloadsSecretsNamespaceNameChar123TabChar125Route:
+    WorkloadsSecretsNamespaceNameChar123TabChar125Route,
+  WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route:
+    WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route,
+  AddonsInstancesCrdNamespaceNameChar123TabChar125Route:
+    AddonsInstancesCrdNamespaceNameChar123TabChar125Route,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

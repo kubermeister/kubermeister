@@ -9,8 +9,11 @@ import {
 } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BoxIcon, HeartIcon, ScrollIcon, TerminalIcon } from 'lucide-react';
+import { BoxIcon, CalendarClockIcon, FileCodeIcon, HeartIcon, ScrollIcon, TerminalIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { EditResourceButton } from '@/components/templates/edit-resource-button';
+import { useRegisterManifestEdit } from '@/components/templates/manifest-edit';
 import { KeyValueCard, labelsTab, overviewTab, ResourceDetail } from '@/components/templates/resource-detail';
 
 vi.mock('@/lib/ipc', async () => ({
@@ -26,28 +29,55 @@ const groups = [
         label: 'OBSERVE',
         items: [
             { id: 'overview', label: 'Overview', icon: HeartIcon, content: <p>overview body</p> },
+            { id: 'events', label: 'Events', icon: CalendarClockIcon, content: <p>events body</p> },
             {
                 id: 'logs',
                 label: 'Logs',
                 icon: ScrollIcon,
                 fill: true,
                 keepMounted: true,
-                content: <p>logs body</p>,
+                content: <FollowStub />,
                 hint: 'live',
             },
         ],
     },
     {
         label: 'CONNECT',
-        items: [{ id: 'shell', label: 'Shell', icon: TerminalIcon, count: 2, content: <p>shell body</p> }],
+        items: [
+            { id: 'manifest', label: 'Manifest', icon: FileCodeIcon, content: <ManifestStub /> },
+            { id: 'shell', label: 'Shell', icon: TerminalIcon, count: 2, content: <p>shell body</p> },
+        ],
     },
 ];
 
-function renderDetail(props: Props) {
+/** A panel with live state, as the Logs tab has, counting how often it mounts and unmounts. */
+const follow = { mounts: 0, unmounts: 0 };
+function FollowStub() {
+    useEffect(() => {
+        follow.mounts++;
+        return () => {
+            follow.unmounts++;
+        };
+    }, []);
+    return <p>logs body</p>;
+}
+
+/** The Manifest tab's side of the Edit handshake, standing in for the real panel. */
+function ManifestStub() {
+    const [editing, setEditing] = useState(false);
+    useRegisterManifestEdit(() => setEditing(true));
+    return <p>{editing ? 'manifest editing' : 'manifest reading'}</p>;
+}
+
+/**
+ * Mount the detail where a screen does, on a route whose optional last segment is the tab, with a
+ * list and another object to leave it for.
+ */
+function renderDetail(props: Props, path = '/pods/web-1') {
     const root = createRootRoute({ component: Outlet });
-    const index = createRoute({
+    const detail = createRoute({
         getParentRoute: () => root,
-        path: '/',
+        path: '/pods/$name/{-$tab}',
         component: () => (
             <ResourceDetail
                 icon={BoxIcon}
@@ -64,9 +94,10 @@ function renderDetail(props: Props) {
         ),
     });
     const list = createRoute({ getParentRoute: () => root, path: '/list', component: () => <p>the list</p> });
+    const node = createRoute({ getParentRoute: () => root, path: '/node', component: () => <p>the node</p> });
     const router = createRouter({
-        routeTree: root.addChildren([index, list]),
-        history: createMemoryHistory({ initialEntries: ['/'] }),
+        routeTree: root.addChildren([detail, list, node]),
+        history: createMemoryHistory({ initialEntries: ['/list', path] }),
     });
     render(
         <QueryClientProvider client={new QueryClient()}>
@@ -76,6 +107,8 @@ function renderDetail(props: Props) {
     return router;
 }
 
+const selected = (name: RegExp) => expect(screen.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true');
+
 describe('ResourceDetail', () => {
     it('renders the header, grouped rail with counts and hints, and the first tab', async () => {
         renderDetail({});
@@ -84,7 +117,7 @@ describe('ResourceDetail', () => {
         expect(rail).toHaveAttribute('aria-orientation', 'vertical');
         expect(rail).toHaveTextContent('OBSERVE');
         expect(rail).toHaveTextContent('CONNECT');
-        expect(within(rail).getAllByRole('tab')).toHaveLength(3);
+        expect(within(rail).getAllByRole('tab')).toHaveLength(5);
         expect(within(rail).getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
         expect(within(rail).getByRole('tab', { name: /Shell/ })).toHaveTextContent('2');
         expect(within(rail).getByRole('tab', { name: /Logs/ })).toHaveTextContent('live');
@@ -98,11 +131,11 @@ describe('ResourceDetail', () => {
     it('switches tabs on click, keeps mounted panels hidden, and unmounts the rest', async () => {
         renderDetail({});
         await userEvent.click(await screen.findByRole('tab', { name: /Shell/ }));
-        expect(screen.getByText('shell body')).toBeVisible();
+        expect(await screen.findByText('shell body')).toBeVisible();
         expect(screen.queryByText('overview body')).not.toBeInTheDocument();
         expect(screen.getByText('logs body')).not.toBeVisible();
         await userEvent.click(screen.getByRole('tab', { name: /Logs/ }));
-        expect(screen.getByText('logs body')).toBeVisible();
+        await waitFor(() => expect(screen.getByText('logs body')).toBeVisible());
         expect(screen.getByRole('tabpanel')).toHaveClass('overflow-hidden');
     });
 
@@ -110,15 +143,85 @@ describe('ResourceDetail', () => {
         renderDetail({});
         const overview = await screen.findByRole('tab', { name: /Overview/ });
         overview.focus();
-        await userEvent.keyboard('{ArrowDown}');
-        expect(screen.getByRole('tab', { name: /Logs/ })).toHaveAttribute('aria-selected', 'true');
+        await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+        await waitFor(() => selected(/Logs/));
         expect(screen.getByRole('tab', { name: /Logs/ })).toHaveFocus();
-        await userEvent.keyboard('{ArrowUp}{ArrowUp}');
-        expect(screen.getByRole('tab', { name: /Shell/ })).toHaveAttribute('aria-selected', 'true');
+        await userEvent.keyboard('{ArrowUp}{ArrowUp}{ArrowUp}');
+        await waitFor(() => selected(/Shell/));
         await userEvent.keyboard('{ArrowRight}');
-        expect(screen.getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
+        await waitFor(() => selected(/Overview/));
         await userEvent.keyboard('{Enter}');
-        expect(screen.getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
+        selected(/Overview/);
+    });
+
+    it('shows the tab the route names, and the first tab for the bare path or an unknown id', async () => {
+        renderDetail({}, '/pods/web-1/shell');
+        expect(await screen.findByText('shell body')).toBeVisible();
+        selected(/Shell/);
+    });
+
+    it.each(['/pods/web-1', '/pods/web-1/overview', '/pods/web-1/renamed-since'])(
+        'opens %s on the first tab',
+        async (path) => {
+            renderDetail({}, path);
+            expect(await screen.findByText('overview body')).toBeVisible();
+            selected(/Overview/);
+        },
+    );
+
+    it('writes a tab into the route with replace, and the first tab as the bare path', async () => {
+        const router = renderDetail({});
+        await userEvent.click(await screen.findByRole('tab', { name: /Shell/ }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/pods/web-1/shell'));
+        await userEvent.click(screen.getByRole('tab', { name: /Events/ }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/pods/web-1/events'));
+        screen.getByRole('tab', { name: /Events/ }).focus();
+        await userEvent.keyboard('{ArrowUp}');
+        await waitFor(() => expect(router.state.location.pathname).toBe('/pods/web-1'));
+        // The list and the object: three switches added nothing to the history.
+        expect(router.history.length).toBe(2);
+    });
+
+    it('leaves the object in one Back after several switches', async () => {
+        const router = renderDetail({});
+        await userEvent.click(await screen.findByRole('tab', { name: /Shell/ }));
+        await userEvent.click(screen.getByRole('tab', { name: /Events/ }));
+        await userEvent.click(screen.getByRole('tab', { name: /Logs/ }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/pods/web-1/logs'));
+        router.history.back();
+        expect(await screen.findByText('the list')).toBeInTheDocument();
+    });
+
+    it('returns to the tab it was left on', async () => {
+        const router = renderDetail({});
+        await userEvent.click(await screen.findByRole('tab', { name: /Logs/ }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/pods/web-1/logs'));
+        await router.navigate({ to: '/node' });
+        expect(await screen.findByText('the node')).toBeInTheDocument();
+        router.history.back();
+        await waitFor(() => selected(/Logs/));
+        expect(screen.getByText('logs body')).toBeVisible();
+    });
+
+    it('keeps a live panel mounted through a switch to Events and back', async () => {
+        follow.mounts = 0;
+        follow.unmounts = 0;
+        renderDetail({}, '/pods/web-1/logs');
+        expect(await screen.findByText('logs body')).toBeVisible();
+        await userEvent.click(screen.getByRole('tab', { name: /Events/ }));
+        expect(await screen.findByText('events body')).toBeVisible();
+        await userEvent.click(screen.getByRole('tab', { name: /Logs/ }));
+        await waitFor(() => expect(screen.getByText('logs body')).toBeVisible());
+        expect(follow).toEqual({ mounts: 1, unmounts: 0 });
+    });
+
+    it('opens the Manifest tab in edit mode from the header, pushing a history entry', async () => {
+        const router = renderDetail({ actions: <EditResourceButton /> });
+        await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+        expect(await screen.findByText('manifest editing')).toBeVisible();
+        expect(router.state.location.pathname).toBe('/pods/web-1/manifest');
+        router.history.back();
+        await waitFor(() => selected(/Overview/));
     });
 
     it('shows skeletons while loading', async () => {
