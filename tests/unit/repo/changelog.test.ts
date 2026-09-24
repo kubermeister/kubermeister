@@ -34,6 +34,23 @@ describe('changelog', () => {
         for (const entry of entries) expect(entry, entry).not.toMatch(/#\d+/);
     });
 
+    it('links every version to what changed in it, oldest to its own tag', () => {
+        const base = 'https://github.com/kubermeister/kubermeister';
+        const released = versionHeadings.map(([, version]) => version).filter((v) => v !== 'Unreleased');
+        const links = new Map(
+            [...changelog.matchAll(/^\[([^\]]+)\]: (\S+)$/gm)].map(([, version, url]) => [version, url]),
+        );
+        expect(links.get('Unreleased')).toBe(`${base}/compare/v${released[0]}...HEAD`);
+        released.forEach((version, index) => {
+            const previous = released[index + 1];
+            const expected = previous
+                ? `${base}/compare/v${previous}...v${version}`
+                : `${base}/releases/tag/v${version}`;
+            expect(links.get(version), version).toBe(expected);
+        });
+        expect(links.size).toBe(released.length + 1);
+    });
+
     it('is a rule a contributor can read before it is one an agent follows', () => {
         expect(contributing).toContain('CHANGELOG.md');
         expect(contributing).toContain('## [Unreleased]');
