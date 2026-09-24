@@ -56,6 +56,25 @@ refused rather than applied somewhere unexpected. To make a new object from an e
 Unsaved edits are not lost by accident. **Cancel**, or leaving the page, asks "Discard unsaved
 changes?" with **Keep editing** and **Discard**.
 
+## Checking as you type
+
+While you edit, and on the Create screen, the manifest is checked against the schema the cluster
+publishes for the kind it names, custom resources included, so a mistake is marked where it is
+rather than reported by the API server after **Save**. A mark in the gutter and a wavy underline
+show each one; hovering either says what is wrong.
+
+- **Errors** are what applying would refuse: YAML that does not parse, more than one document, no
+  `apiVersion`, `kind` or `metadata.name`, a value of the wrong type (`replicas: two`, or a number
+  where a string belongs, which is fixed by quoting it), a value outside the ones a field allows,
+  and a required field left out.
+- **Warnings** are fields the kind does not have, which the API server ignores rather than refuses.
+  A near miss names the field it was probably meant to be: "Did you mean `replicas`?".
+
+The schema comes from the cluster, so it is the one for the version it runs, and it is read once
+per kind and cached. A cluster that publishes no schema for a kind, or that cannot be reached, still
+gets the first four checks. The Manifest tab checks nothing until **Edit**: the object as the cluster
+holds it is not yours to fix.
+
 ## Creating
 
 **Create resource**, in the top bar or the command palette, opens a blank editor. Its heading says

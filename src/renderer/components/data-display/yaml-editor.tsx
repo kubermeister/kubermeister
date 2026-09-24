@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react';
 import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { basicSetup } from 'codemirror';
+import type { EditorDiagnostics } from '@/lib/manifest-diagnostics';
 import { cn } from '@/lib/utils';
 
 /**
@@ -33,6 +35,9 @@ const editorTheme = EditorView.theme({
     '.cm-panels': { backgroundColor: 'var(--elev-2)', color: 'var(--foreground)' },
     '.cm-panels input, .cm-panels button': { color: 'var(--foreground)' },
     '.cm-tooltip': { backgroundColor: 'var(--elev-2)', color: 'var(--foreground)', border: '1px solid var(--border)' },
+    '.cm-diagnostic': { fontFamily: 'var(--font-sans)', padding: '4px 8px' },
+    '.cm-diagnostic-error': { borderLeftColor: 'var(--danger)' },
+    '.cm-diagnostic-warning': { borderLeftColor: 'var(--warn)' },
 });
 
 const editorHighlight = HighlightStyle.define([
@@ -42,6 +47,14 @@ const editorHighlight = HighlightStyle.define([
     { tag: t.comment, color: 'var(--text-dim)', fontStyle: 'italic' },
     { tag: [t.punctuation, t.separator, t.bracket, t.meta], color: 'var(--text-muted)' },
 ]);
+
+/** Marks past the end of the document would throw; the text they belong to is checked first, so this is a backstop. */
+function toDiagnostics(items: EditorDiagnostics['items'], length: number): Diagnostic[] {
+    return items.map((item) => {
+        const from = Math.min(item.from, length);
+        return { from, to: Math.min(Math.max(item.to, from), length), severity: item.severity, message: item.message };
+    });
+}
 
 /** Swapped through the compartment as `readOnly` flips, so the view is never rebuilt. */
 function readOnlyExtensions(readOnly: boolean) {
@@ -59,6 +72,7 @@ export function YamlEditor({
     placeholder,
     className,
     readOnly = false,
+    diagnostics,
     'aria-label': ariaLabel,
 }: {
     value: string;
@@ -66,13 +80,18 @@ export function YamlEditor({
     placeholder?: string;
     className?: string;
     readOnly?: boolean;
+    /**
+     * Marks to show in the text, with the text they were found in. Passing the prop at all gives the
+     * editor its gutter for them; null shows none.
+     */
+    diagnostics?: EditorDiagnostics | null;
     'aria-label'?: string;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     // Read once: the view is built a single time, so the mount effect has no reactive dependencies
     // and the change handler is always the latest one.
-    const initialRef = useRef({ value, placeholder, ariaLabel, readOnly });
+    const initialRef = useRef({ value, placeholder, ariaLabel, readOnly, linted: diagnostics !== undefined });
     const onChangeRef = useRef(onValueChange);
     const readOnlyCompartment = useRef(new Compartment());
     useEffect(() => {
@@ -87,6 +106,7 @@ export function YamlEditor({
             extensions: [
                 basicSetup,
                 keymap.of([indentWithTab]),
+                initial.linted ? lintGutter() : [],
                 yaml(),
                 editorTheme,
                 syntaxHighlighting(editorHighlight),
@@ -120,6 +140,16 @@ export function YamlEditor({
         const current = view.state.doc.toString();
         if (current !== value) view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
     }, [value]);
+
+    useEffect(() => {
+        const view = viewRef.current;
+        if (!view || diagnostics === undefined) return;
+        // Marks found in an older text would sit at the wrong offsets; the ones already shown are
+        // mapped through every edit by the editor itself until the check catches up.
+        if (diagnostics && diagnostics.text !== view.state.doc.toString()) return;
+        const items = toDiagnostics(diagnostics?.items ?? [], view.state.doc.length);
+        view.dispatch(setDiagnostics(view.state, items));
+    }, [diagnostics]);
 
     return <div ref={containerRef} className={cn('overflow-hidden bg-code-bg', className)} />;
 }
