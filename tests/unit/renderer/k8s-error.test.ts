@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { IpcError } from '../../../src/renderer/lib/ipc';
-import { describeError } from '../../../src/renderer/lib/k8s-error';
+import { describeError, readErrorSentence } from '../../../src/renderer/lib/k8s-error';
 
 describe('describeError', () => {
     it('titles every classified kind and keeps the structured detail', () => {
@@ -37,5 +37,33 @@ describe('describeError', () => {
         expect(describeError('plain')).toMatchObject({ kind: 'unknown', detail: 'plain' });
         expect(describeError(undefined).detail).toBe('Something went wrong');
         expect(describeError({ weird: true }).detail).toBe('Something went wrong');
+    });
+});
+
+describe('readErrorSentence', () => {
+    it('words every kind for a list and for one object', () => {
+        const cases: Array<[Parameters<typeof readErrorSentence>[0], string, string]> = [
+            [
+                'kubeconfig',
+                'The kubeconfig could not be loaded, so no cluster can be asked.',
+                'The kubeconfig could not be loaded, so no cluster can be asked.',
+            ],
+            ['forbidden', "You don't have permission to view Pods.", "You don't have permission to view this Pod."],
+            [
+                'unauthorized',
+                "Your session isn't authenticated to the cluster.",
+                "Your session isn't authenticated to the cluster.",
+            ],
+            ['unreachable', 'The cluster API server is unreachable.', 'The cluster API server is unreachable.'],
+            ['timeout', 'The cluster took too long to return Pods.', 'The cluster took too long to return this Pod.'],
+            ['notFound', "Pods aren't available on this cluster.", "This Pod isn't on this cluster."],
+            ['conflict', 'Failed to load Pods.', 'Failed to load Pod.'],
+            ['invalid', 'Failed to load Pods.', 'Failed to load Pod.'],
+            ['unknown', 'Failed to load Pods.', 'Failed to load Pod.'],
+        ];
+        for (const [kind, plural, one] of cases) {
+            expect(readErrorSentence(kind, { plural: 'Pods' })).toBe(plural);
+            expect(readErrorSentence(kind, { one: 'Pod' })).toBe(one);
+        }
     });
 });
