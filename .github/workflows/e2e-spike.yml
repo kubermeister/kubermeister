@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
+# Not cancelled by a newer push, so a long macOS run finishes while the Windows spike iterates.
 concurrency:
   group: e2e-spike-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # Option (a) on Apple silicon: expected to fail, since the M1 hosts expose no nested virtualization.
@@ -76,69 +77,6 @@ jobs:
           npm run test:e2e
           code=$?
           echo "suite exit $code after $(( $(date +%s) - start ))s"
-          exit $code
-
-  # Option (a) on Windows: a Linux Docker daemon inside WSL2, reached from Windows over loopback TCP.
-  windows-wsl-docker:
-    name: spike windows wsl2 docker e2e
-    runs-on: windows-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: .nvmrc
-          check-latest: true
-          cache: npm
-      - run: wsl --version; wsl --status; wsl -l -v; exit 0
-      # Imported from Ubuntu's own WSL image rather than through a marketplace action (the
-      # repository allows none outside its list) or `wsl --install`, whose first launch asks for a user.
-      - name: import an ubuntu distribution as wsl2
-        run: |
-          $sw = [Diagnostics.Stopwatch]::StartNew()
-          $base = 'https://cloud-images.ubuntu.com/wsl/releases/noble/current'
-          $file = 'ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
-          curl.exe -fsSL -o "$env:RUNNER_TEMP\$file" "$base/$file"
-          curl.exe -fsSL -o "$env:RUNNER_TEMP\SHA256SUMS" "$base/SHA256SUMS"
-          $want = (Select-String -Path "$env:RUNNER_TEMP\SHA256SUMS" -Pattern " \*?$file$").Line.Split(' ')[0]
-          $got = (Get-FileHash "$env:RUNNER_TEMP\$file" -Algorithm SHA256).Hash.ToLower()
-          if ($want -ne $got) { throw "checksum mismatch: $got, expected $want" }
-          wsl --import km "$env:RUNNER_TEMP\wsl-km" "$env:RUNNER_TEMP\$file" --version 2
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          wsl -l -v
-          wsl -d km -u root -- uname -a
-          "imported after $([int]$sw.Elapsed.TotalSeconds)s"
-      - name: keep wsl alive
-        run: Start-Process -WindowStyle Hidden wsl -ArgumentList '-d','km','-u','root','--exec','sleep','infinity'
-      - name: start dockerd in wsl
-        run: |
-          $sw = [Diagnostics.Stopwatch]::StartNew()
-          wsl -d km -u root --exec sh -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io > /dev/null'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          wsl -d km -u root --exec sh -c 'setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://127.0.0.1:2375 > /var/log/dockerd.log 2>&1 < /dev/null &'
-          wsl -d km -u root --exec sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker version; tail -5 /var/log/dockerd.log'
-          "dockerd up after $([int]$sw.Elapsed.TotalSeconds)s"
-      - name: docker from windows
-        run: |
-          $env:DOCKER_HOST = 'tcp://127.0.0.1:2375'
-          docker version
-          docker run --rm -p 18080:80 -d --name probe nginx:alpine
-          Start-Sleep 5
-          curl.exe -sS -o NUL -w "nginx via forwarded port: %{http_code}`n" http://127.0.0.1:18080/
-          docker rm -f probe
-      - run: npm ci
-      - run: npm run build
-      - name: e2e
-        env:
-          DOCKER_HOST: tcp://127.0.0.1:2375
-          TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
-        run: |
-          $sw = [Diagnostics.Stopwatch]::StartNew()
-          npm run test:e2e
-          $code = $LASTEXITCODE
-          "suite exit $code after $([int]$sw.Elapsed.TotalSeconds)s"
           exit $code
 
   # Option (b): k3s on ubuntu published through a public TCP relay, probed from an arm64 Mac.
