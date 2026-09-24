@@ -13,6 +13,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- The manifest editor checks and completes against the cluster's schema on a real cluster. In 0.6.1
+  every schema lookup failed, so the editor quietly stayed plain YAML.
+
 ## [0.6.1] - 2026-09-24
 
 ### Added

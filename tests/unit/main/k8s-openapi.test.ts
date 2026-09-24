@@ -18,6 +18,29 @@ const client = {
 };
 vi.mock('../../../src/main/k8s/client.js', () => client);
 
+/**
+ * The client library's own sender, which is what a lookup must go through: it pairs the `undici`
+ * package's `fetch` with the dispatcher the kubeconfig builds. Answered here from `fetchMock`, while
+ * the global `fetch` throws, since that one refuses the library's dispatcher on a real cluster.
+ */
+vi.mock('@kubernetes/client-node', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@kubernetes/client-node')>();
+    class IsomorphicFetchHttpLibrary {
+        send(request: InstanceType<typeof actual.RequestContext>) {
+            return {
+                toPromise: async () => {
+                    const answer = await fetchMock(request.getUrl(), {
+                        headers: request.getHeaders(),
+                        signal: request.getSignal(),
+                    });
+                    return { httpStatusCode: answer.status, body: { text: async () => JSON.stringify(answer.body) } };
+                },
+            };
+        }
+    }
+    return { ...actual, IsomorphicFetchHttpLibrary };
+});
+
 const { getKindSchema, resetSchemaCache } = await import('../../../src/main/k8s/openapi/index.js');
 
 const discovery = (appsHash = 'APPS1') => ({
@@ -80,7 +103,7 @@ const fetchMock = vi.fn(async (url: string, init: { headers: Record<string, stri
     sentSignals.push(init.signal);
     const { status, body } = respond(url);
     expect(init.headers.Authorization).toBe('Bearer secret');
-    return { status, ok: status >= 200 && status < 300, json: async () => body };
+    return { status, body };
 });
 
 const DEPLOYMENT = { apiVersion: 'apps/v1', kind: 'Deployment' } as const;
@@ -88,7 +111,9 @@ const DEPLOYMENT = { apiVersion: 'apps/v1', kind: 'Deployment' } as const;
 describe('getKindSchema', () => {
     beforeEach(() => {
         userData = mkdtempSync(join(tmpdir(), 'km-schemas-'));
-        vi.stubGlobal('fetch', fetchMock);
+        vi.stubGlobal('fetch', () => {
+            throw new Error('the global fetch refuses the dispatcher the client library builds');
+        });
         vi.clearAllMocks();
         resetSchemaCache();
         fetched = [];
