@@ -464,6 +464,14 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   mutation-error toast.
 - Deleting a kind in `DANGEROUS_KINDS` (nodes, CRDs, cluster-wide plumbing) asks the user to type
   the name, and those kinds have no bulk delete.
+- **The editor checks a manifest against the cluster's own schema** as it is typed
+  (`src/renderer/lib/manifest-validation.ts`, pure and tested on fixture schemas;
+  `useManifestDiagnostics` feeds `YamlEditor`'s `diagnostics`). It parses with the `yaml` package
+  for positions, repeats the refusals `parseManifest` makes in main, and walks the `schemas.forKind`
+  answer following `$ref` and `allOf`. Wrong types, enums and required fields are errors; unknown
+  fields are warnings, since the API server drops them rather than refusing. `Quantity` and
+  `IntOrString` accept a number whatever an older server publishes for them, and null is never
+  wrong. Diagnostics carry the text they were found in, and the editor places none on another text.
 - A manifest opened from a file is text like any other: the shell takes the drop wherever it lands,
   stages it (`src/renderer/lib/manifest-import.ts`) and opens the Create screen on it, which applies
   it through the same create path and the same namespace checks as one typed in. Both a file and a

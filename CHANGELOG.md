@@ -13,6 +13,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The manifest editor and the Create screen check a manifest as you type against the schema the
+  cluster publishes for its kind, custom resources included: a wrong type, a value a field does not
+  allow and a missing required field are marked where they are, and a field the kind does not have
+  is flagged with the one it was probably meant to be.
+
 ## [0.6.0] - 2026-09-24
 
 ### Changed

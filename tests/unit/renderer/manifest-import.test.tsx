@@ -71,6 +71,15 @@ describe('importing a manifest through the OS picker', () => {
         expect(page).toHaveTextContent('config.yaml');
     });
 
+    it('checks the manifest it opened against the schema of the kind it names', async () => {
+        renderRoutes(routeTree, '/create');
+        const page = await screen.findByTestId('create-page');
+        await userEvent.click(within(page).getByRole('button', { name: 'Import' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('schemas.forKind', { apiVersion: 'v1', kind: 'ConfigMap' }),
+        );
+    });
+
     it('leaves the editor alone when the picker is cancelled', async () => {
         invoke.mockImplementation(async (channel: string) => (channel === 'manifest.pick' ? null : data[channel]));
         renderRoutes(routeTree, '/create');

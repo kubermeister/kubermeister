@@ -66,6 +66,17 @@ describe('manifest panel', () => {
         });
     });
 
+    it('checks the manifest against its schema only once it is being edited', async () => {
+        renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
+        const panel = await screen.findByTestId('manifest-panel');
+        await waitFor(() => expect(panel.textContent).toContain('kind: ConfigMap'));
+        expect(invoke).not.toHaveBeenCalledWith('schemas.forKind', expect.anything());
+        await userEvent.click(within(panel).getByRole('button', { name: 'Edit' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('schemas.forKind', { apiVersion: 'v1', kind: 'ConfigMap' }),
+        );
+    });
+
     it('offers the manifest as a download named after the object', async () => {
         renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
         await userEvent.click(await screen.findByRole('button', { name: 'Download' }));
