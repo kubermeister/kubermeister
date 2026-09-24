@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-25
+
 ### Added
 
 - Keyboard shortcuts for moving between the six domains (`⌘1` to `⌘6`, or `Ctrl+1` to `Ctrl+6`),
@@ -30,6 +32,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   port forward, shell and log follow; **View › Force Reload** still reloads it.
 - A detail page keeps its tab through a reload, and returning to an object with Back opens the tab
   you left it on, rather than Overview.
+- Starting Kubermeister while it is already running brings the open window forward instead of
+  starting a second copy.
 
 ## [0.6.2] - 2026-09-24
 
