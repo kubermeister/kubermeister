@@ -46,9 +46,11 @@ test('a second launch hands its link to the running app and quits', async () => 
         ],
         { env: appEnv(launched.userData), timeout: 60_000 },
     );
-    // The lock is held, so the second process quits on its own rather than timing out.
-    expect(second.error).toBeUndefined();
-    expect(second.status).toBe(0);
+    // The lock is held, so the second process quits on its own rather than timing out; what it
+    // printed is the only account of why when it does not.
+    const output = `${second.stdout}\n${second.stderr}`;
+    expect(second.error, output).toBeUndefined();
+    expect(second.status, output).toBe(0);
     await expect(launched.window.getByTestId('deployment-page')).toBeVisible();
     await expect.poll(() => routeOf(launched!)).toBe(`/workloads/deployments/${NAMESPACE}/web/manifest`);
 });
