@@ -82,23 +82,34 @@ jobs:
           node-version-file: .nvmrc
           check-latest: true
           cache: npm
-      - name: setup wsl
-        id: wsl
-        uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364 # v7.0.0
-        with:
-          distribution: Ubuntu-24.04
-          wsl-version: 2
-          additional-packages: docker.io
-      - run: wsl --status; wsl -l -v
-      - name: start dockerd in wsl
-        shell: wsl-bash {0}
+      - run: wsl --version; wsl --status; wsl -l -v
+      # Imported from Ubuntu's own WSL image rather than through a marketplace action (the
+      # repository allows none outside its list) or `wsl --install`, whose first launch asks for a user.
+      - name: import an ubuntu distribution as wsl2
         run: |
-          uname -a
-          setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://127.0.0.1:2375 > /tmp/dockerd.log 2>&1 < /dev/null &
-          for _ in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done
-          docker version
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $base = 'https://cloud-images.ubuntu.com/wsl/releases/noble/current'
+          $file = 'ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz'
+          curl.exe -fsSL -o "$env:RUNNER_TEMP\$file" "$base/$file"
+          curl.exe -fsSL -o "$env:RUNNER_TEMP\SHA256SUMS" "$base/SHA256SUMS"
+          $want = (Select-String -Path "$env:RUNNER_TEMP\SHA256SUMS" -Pattern " \*?$file$").Line.Split(' ')[0]
+          $got = (Get-FileHash "$env:RUNNER_TEMP\$file" -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "checksum mismatch: $got, expected $want" }
+          wsl --import km "$env:RUNNER_TEMP\wsl-km" "$env:RUNNER_TEMP\$file" --version 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          wsl -l -v
+          wsl -d km -u root -- uname -a
+          "imported after $([int]$sw.Elapsed.TotalSeconds)s"
       - name: keep wsl alive
-        run: Start-Process -WindowStyle Hidden wsl -ArgumentList '-d','Ubuntu-24.04','--exec','sleep','infinity'
+        run: Start-Process -WindowStyle Hidden wsl -ArgumentList '-d','km','-u','root','--exec','sleep','infinity'
+      - name: start dockerd in wsl
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          wsl -d km -u root -- sh -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io > /dev/null'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          wsl -d km -u root -- sh -c 'setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://127.0.0.1:2375 > /var/log/dockerd.log 2>&1 < /dev/null &'
+          wsl -d km -u root -- sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; docker version; tail -5 /var/log/dockerd.log'
+          "dockerd up after $([int]$sw.Elapsed.TotalSeconds)s"
       - name: docker from windows
         run: |
           $env:DOCKER_HOST = 'tcp://127.0.0.1:2375'
