@@ -78,7 +78,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Two Linux runners, one per architecture: electron-builder packages Linux for the host it
+        # runs on, and each writes its own architecture's feed.
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write

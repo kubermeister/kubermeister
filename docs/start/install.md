@@ -40,20 +40,27 @@ installer is not code-signed; check it against `SHA256SUMS` before you run it.
 
 ## Linux
 
-Two formats are published, both x86-64:
+Two formats are published, each for x86-64 and for arm64 (an Ampere or Graviton machine, a
+Raspberry Pi with a 64-bit OS, an arm64 virtual machine on an Apple silicon Mac). `uname -m` tells
+you which one you have: `x86_64` or `aarch64`.
+
+| Architecture | AppImage                | `.deb`            |
+| ------------ | ----------------------- | ----------------- |
+| x86-64       | `linux-x86_64.AppImage` | `linux-amd64.deb` |
+| arm64        | `linux-arm64.AppImage`  | `linux-arm64.deb` |
 
 - **AppImage** — download it, mark it executable and run it. Nothing is installed, and it needs no
   FUSE library.
 
   ```sh
-  chmod +x Kubermeister-*-linux-x86_64.AppImage
+  chmod +x Kubermeister-*-linux-x86_64.AppImage   # linux-arm64.AppImage on arm64
   ./Kubermeister-*-linux-x86_64.AppImage
   ```
 
 - **`.deb`** — for Debian, Ubuntu and derivatives.
 
   ```sh
-  sudo apt install ./Kubermeister-*-linux-amd64.deb
+  sudo apt install ./Kubermeister-*-linux-amd64.deb   # linux-arm64.deb on arm64
   ```
 
 The two update differently. The AppImage updates itself like the other builds. A `.deb` belongs to

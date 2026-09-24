@@ -66,87 +66,45 @@ runs:
 
     # The installer names carry the version, so a rerun of a failed release never overwrites an
     # asset a published feed still points at; the previous release stays whole until its own
-    # feed has moved.
-    - name: Name this OS's installers
+    # feed has moved. The feeds are found rather than named: see the script.
+    - name: Name this runner's installers and feeds
       id: files
       shell: bash
-      run: |
-        shopt -s nullglob
-        case "$RUNNER_OS" in
-          macOS)   files=(release/*.dmg release/*.dmg.blockmap release/*.zip release/*.zip.blockmap); feed="release/latest-mac.yml" ;;
-          Windows) files=(release/*.exe release/*.exe.blockmap); feed="release/latest.yml" ;;
-          Linux)   files=(release/*.AppImage release/*.deb); feed="release/latest-linux.yml" ;;
-        esac
-        [ "${#files[@]}" -gt 0 ] || { echo "::error::no installers under release/"; exit 1; }
-        test -f "$feed" || { echo "::error::missing updater metadata $feed"; exit 1; }
-        printf 'installers<<EOL\n%s\nEOL\n' "$(printf '%s\n' "${files[@]}")" >> "$GITHUB_OUTPUT"
-        echo "feed=$feed" >> "$GITHUB_OUTPUT"
+      run: bash "$GITHUB_ACTION_PATH/name-assets.sh"
 
-    # One file per call, retried with backoff: GitHub's upload service fails a large asset now
-    # and then with a 5xx, and one such failure must not cost the whole build. `--clobber` only
-    # ever meets an asset of this same version, left by a failed attempt or a rerun of the job.
     - name: Upload installers
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         TAG: ${{ inputs.release-tag }}
-        INSTALLERS: ${{ steps.files.outputs.installers }}
-      run: |
-        retry() {
-          local attempt=1 delay=15
-          until "$@"; do
-            if [ "$attempt" -ge 5 ]; then echo "::error::gave up after $attempt attempts: $*"; return 1; fi
-            echo "::warning::attempt $attempt failed: $*; retrying in ${delay}s"
-            sleep "$delay"; attempt=$((attempt + 1)); delay=$((delay * 2))
-          done
-        }
-        while IFS= read -r f; do
-          [ -n "$f" ] || continue
-          retry gh release upload "$TAG" "$f" --repo "$GITHUB_REPOSITORY" --clobber < /dev/null
-        done <<< "$INSTALLERS"
+        FILES: ${{ steps.files.outputs.installers }}
+      run: bash "$GITHUB_ACTION_PATH/upload.sh"
 
-    # Read every asset back and compare size and checksum before the feed may name it: an upload
-    # that returned success but stored something else must fail here, not on a user's machine.
+    # Checked before any feed may name them.
     - name: Verify the uploaded installers
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         TAG: ${{ inputs.release-tag }}
-        INSTALLERS: ${{ steps.files.outputs.installers }}
-      run: |
-        sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
-        assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | "\(.name)\t\(.state)\t\(.size)\t\(.digest)"')
-        ok=true
-        while IFS= read -r f; do
-          [ -n "$f" ] || continue
-          name=$(basename "$f")
-          expected=$(printf '%s\t%s\t%s\t%s' "$name" uploaded "$(wc -c < "$f" | tr -d ' ')" "sha256:$(sha256 "$f")")
-          if grep -qxF "$expected" <<< "$assets"; then
-            echo "ok  $name"
-          else
-            echo "::error::$name on the release does not match the packaged file"
-            echo "  expected: $expected"
-            echo "  release:  $(grep -F "$name" <<< "$assets" || echo '<missing>')"
-            ok=false
-          fi
-        done <<< "$INSTALLERS"
-        $ok
+        FILES: ${{ steps.files.outputs.installers }}
+      run: bash "$GITHUB_ACTION_PATH/verify-uploads.sh"
 
-    # Metadata last: the feed is what a running app reads, so it names only assets that exist
-    # and have been checked. Overwriting the previous feed is the one in-place write here.
+    # Metadata last: a feed is what a running app reads, so it names only assets that exist and
+    # have been checked. Overwriting the previous feed is the one in-place write here.
     - name: Upload updater metadata
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         TAG: ${{ inputs.release-tag }}
-        FEED: ${{ steps.files.outputs.feed }}
-      run: |
-        retry() {
-          local attempt=1 delay=15
-          until "$@"; do
-            if [ "$attempt" -ge 5 ]; then echo "::error::gave up after $attempt attempts: $*"; return 1; fi
-            echo "::warning::attempt $attempt failed: $*; retrying in ${delay}s"
-            sleep "$delay"; attempt=$((attempt + 1)); delay=$((delay * 2))
-          done
-        }
-        retry gh release upload "$TAG" "$FEED" --repo "$GITHUB_REPOSITORY" --clobber
+        FILES: ${{ steps.files.outputs.feeds }}
+      run: bash "$GITHUB_ACTION_PATH/upload.sh"
+
+    # Read back like the installers, so a feed that never arrived, or arrived as something else,
+    # fails the release rather than leaving that build's users on the version they have.
+    - name: Verify the uploaded updater metadata
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        TAG: ${{ inputs.release-tag }}
+        FILES: ${{ steps.files.outputs.feeds }}
+      run: bash "$GITHUB_ACTION_PATH/verify-uploads.sh"
