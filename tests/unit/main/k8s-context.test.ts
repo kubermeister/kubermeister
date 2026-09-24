@@ -21,12 +21,41 @@ describe('contexts', () => {
         updateSettings.mockReset();
     });
 
-    it('lists every context with its cluster, user, namespace and current flag', async () => {
+    it('lists every context with its cluster, API server, user, namespace and current flag', async () => {
         const { listContexts } = await load();
         expect(listContexts()).toEqual([
-            { name: 'alpha', cluster: 'alpha-cluster', user: 'alpha-user', namespace: 'team-a', current: true },
-            { name: 'beta', cluster: 'beta-cluster', user: 'beta-user', namespace: undefined, current: false },
+            {
+                name: 'alpha',
+                cluster: 'alpha-cluster',
+                server: 'https://127.0.0.1:1',
+                user: 'alpha-user',
+                namespace: 'team-a',
+                current: true,
+            },
+            {
+                name: 'beta',
+                cluster: 'beta-cluster',
+                server: 'https://127.0.0.1:2',
+                user: 'beta-user',
+                namespace: undefined,
+                current: false,
+            },
         ]);
+    });
+
+    it('names no server for a context whose cluster entry is missing', async () => {
+        settings.connection.kubeconfigPath = resolve('tests/unit/fixtures/kubeconfig-broken-context.yaml');
+        try {
+            const { listContexts } = await load();
+            const byName = Object.fromEntries(listContexts().map((ctx) => [ctx.name, ctx.server]));
+            expect(byName).toEqual({
+                alpha: undefined,
+                'ghost-user': 'https://127.0.0.1:2',
+                beta: 'https://127.0.0.1:2',
+            });
+        } finally {
+            settings.connection.kubeconfigPath = resolve('tests/unit/fixtures/kubeconfig.yaml');
+        }
     });
 
     it('marks a context whose cluster or user is missing, on the list and as the current one', async () => {
@@ -60,6 +89,7 @@ describe('contexts', () => {
         expect(switched).toEqual({
             name: 'beta',
             cluster: 'beta-cluster',
+            server: 'https://127.0.0.1:2',
             user: 'beta-user',
             namespace: undefined,
             current: true,

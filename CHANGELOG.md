@@ -19,9 +19,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   going back and forward, focusing the screen's search box with `/`, and opening Settings with `⌘,`
   or `Ctrl+,` on every platform, with a cheat sheet on `?`, in **Help › Keyboard Shortcuts** and in
   the command palette.
-- **Copy link**, beside the breadcrumbs on every detail page, copies a `kubermeister://` link that opens the same page and
-  tab for anybody with the same context, asking before it switches to another context and never
-  doing more than opening the page.
+- **Copy link**, beside the breadcrumbs on every detail page, copies a `kubermeister://` link that
+  names the cluster by its API server, so it opens the same page and tab for anybody whose
+  kubeconfig reaches that cluster, whatever their context for it is called. Opening one asks before
+  it switches context and never does more than open the page.
 
 ### Changed
 

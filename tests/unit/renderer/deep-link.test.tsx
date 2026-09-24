@@ -28,7 +28,9 @@ vi.mock('sonner', async () => ({
 const { routeTree } = await import('@/routeTree.gen');
 const { copyablePath, linkablePath, planDeepLink } = await import('@/lib/deep-link');
 
-const context = (name: string) => ({ name, cluster: name, user: name, current: false });
+const DEV = 'https://dev.example.com:6443';
+const PROD = 'https://prod.example.com:6443';
+const context = (name: string, server: string) => ({ name, cluster: name, server, user: name, current: false });
 
 /** The link main is holding, answered once as `deepLink.take` does. */
 let held: DeepLink | null = null;
@@ -36,9 +38,9 @@ let held: DeepLink | null = null;
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date' },
     'settings.get': settingsFixture(),
-    'contexts.list': [context('dev'), context('prod')],
-    'context.current': context('dev'),
-    'context.set': context('prod'),
+    'contexts.list': [context('dev', DEV), context('prod-admin', PROD)],
+    'context.current': context('dev', DEV),
+    'context.set': context('prod-admin', PROD),
     'namespaces.list': [],
     'namespace.active': { name: 'default' },
     'resources.list': { kind: 'Pod', items: [] },
@@ -92,34 +94,53 @@ describe('linkablePath', () => {
 });
 
 describe('planDeepLink', () => {
-    const scope = { current: 'dev', contexts: ['dev', 'prod'] };
+    const scope = {
+        current: { name: 'dev', server: DEV },
+        contexts: [
+            { name: 'dev', server: DEV },
+            { name: 'prod-admin', server: PROD },
+            { name: 'prod-readonly', server: PROD },
+            { name: 'broken', server: 'https://gone.example.com', problem: 'Context “broken” names user “x”.' },
+        ],
+    };
     const same = (path: string) => path;
 
-    it('navigates straight away under the current context', () => {
-        expect(planDeepLink({ ok: true, context: 'dev', path: '/workloads/pods' }, scope, same)).toEqual({
+    it('navigates straight away when the current context reaches that cluster', () => {
+        expect(planDeepLink({ ok: true, server: DEV, path: '/workloads/pods' }, scope, same)).toEqual({
             kind: 'navigate',
             path: '/workloads/pods',
         });
     });
 
-    it('asks first for another context the kubeconfig has, naming both', () => {
-        expect(planDeepLink({ ok: true, context: 'prod', path: '/workloads/pods' }, scope, same)).toEqual({
+    it('asks first, offering every context that reaches the cluster, whatever each is called', () => {
+        expect(planDeepLink({ ok: true, server: PROD, path: '/workloads/pods' }, scope, same)).toEqual({
             kind: 'confirm',
             from: 'dev',
-            to: 'prod',
+            server: PROD,
+            candidates: ['prod-admin', 'prod-readonly'],
             path: '/workloads/pods',
         });
     });
 
-    it('switches to nothing for a context the kubeconfig lacks', () => {
-        expect(planDeepLink({ ok: true, context: 'staging', path: '/' }, scope, same)).toEqual({
-            kind: 'missingContext',
-            context: 'staging',
+    it('switches to nothing when no context reaches the cluster', () => {
+        expect(planDeepLink({ ok: true, server: 'https://elsewhere.example.com', path: '/' }, scope, same)).toEqual({
+            kind: 'missingCluster',
+            server: 'https://elsewhere.example.com',
         });
     });
 
-    it('refuses an unknown path before looking at the context at all', () => {
-        const plan = planDeepLink({ ok: true, context: 'staging', path: '/nope' }, scope, () => null);
+    it('offers no context the kubeconfig cannot use', () => {
+        expect(planDeepLink({ ok: true, server: 'https://gone.example.com', path: '/' }, scope, same).kind).toBe(
+            'missingCluster',
+        );
+    });
+
+    it('refuses an unknown path before looking at the cluster at all', () => {
+        const plan = planDeepLink(
+            { ok: true, server: 'https://elsewhere.example.com', path: '/nope' },
+            scope,
+            () => null,
+        );
         expect(plan.kind).toBe('refused');
     });
 
@@ -152,7 +173,7 @@ describe('opening a link', () => {
     });
 
     it('opens a link for the current context without asking', async () => {
-        held = { ok: true, context: 'dev', path: '/workloads/deployments' };
+        held = { ok: true, server: DEV, path: '/workloads/deployments' };
         const { router } = renderRoutes(routeTree, '/workloads/pods');
         await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/deployments'));
         expect(screen.queryByTestId('deep-link-confirm')).toBeNull();
@@ -162,26 +183,43 @@ describe('opening a link', () => {
     it('takes a link again when main pushes that one is waiting', async () => {
         const { router } = renderRoutes(routeTree, '/workloads/pods');
         await waitFor(() => expect(pushes.has('deep-link')).toBe(true));
-        held = { ok: true, context: 'dev', path: '/workloads/pods/default/web-1/shell' };
+        held = { ok: true, server: DEV, path: '/workloads/pods/default/web-1/shell' };
         act(() => pushes.get('deep-link')!({}));
         // The Shell tab execs into the pod, so the link opens the pod's first tab instead.
         await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/pods/default/web-1'));
     });
 
-    it('asks before switching to another context, naming both, and switches only on yes', async () => {
-        held = { ok: true, context: 'prod', path: '/workloads/deployments' };
+    it('asks before switching to the context that reaches the cluster, naming both, and switches only on yes', async () => {
+        held = { ok: true, server: PROD, path: '/workloads/deployments' };
         const { router } = renderRoutes(routeTree, '/workloads/pods');
         const dialog = await screen.findByTestId('deep-link-confirm');
-        expect(dialog).toHaveTextContent('“prod”');
+        expect(dialog).toHaveTextContent('“prod-admin”');
         expect(dialog).toHaveTextContent('“dev”');
+        expect(dialog).toHaveTextContent(PROD);
         expect(setCalls()).toHaveLength(0);
         await userEvent.click(within(dialog).getByRole('button', { name: 'Switch and open' }));
         await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/deployments'));
-        expect(setCalls()).toEqual([['context.set', { name: 'prod' }]]);
+        expect(setCalls()).toEqual([['context.set', { name: 'prod-admin' }]]);
+    });
+
+    it('lets the reader choose when several contexts reach the cluster', async () => {
+        data['contexts.list'] = [context('dev', DEV), context('prod-admin', PROD), context('prod-readonly', PROD)];
+        try {
+            held = { ok: true, server: PROD, path: '/workloads/deployments' };
+            const { router } = renderRoutes(routeTree, '/workloads/pods');
+            const dialog = await screen.findByTestId('deep-link-confirm');
+            await userEvent.click(within(dialog).getByRole('combobox', { name: 'Context' }));
+            await userEvent.click(await screen.findByRole('option', { name: 'prod-readonly' }));
+            await userEvent.click(within(dialog).getByRole('button', { name: 'Switch and open' }));
+            await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/deployments'));
+            expect(setCalls()).toEqual([['context.set', { name: 'prod-readonly' }]]);
+        } finally {
+            data['contexts.list'] = [context('dev', DEV), context('prod-admin', PROD)];
+        }
     });
 
     it('switches nothing and stays put when the answer is no', async () => {
-        held = { ok: true, context: 'prod', path: '/workloads/deployments' };
+        held = { ok: true, server: PROD, path: '/workloads/deployments' };
         const { router } = renderRoutes(routeTree, '/workloads/pods');
         const dialog = await screen.findByTestId('deep-link-confirm');
         await userEvent.click(within(dialog).getByRole('button', { name: 'Stay' }));
@@ -190,13 +228,13 @@ describe('opening a link', () => {
         expect(router.state.location.pathname).toBe('/workloads/pods');
     });
 
-    it('says so when the kubeconfig has no such context, and switches nothing', async () => {
-        held = { ok: true, context: 'staging', path: '/workloads/deployments' };
+    it('says so when no context reaches the cluster, naming its server, and switches nothing', async () => {
+        held = { ok: true, server: 'https://staging.example.com', path: '/workloads/deployments' };
         const { router } = renderRoutes(routeTree, '/workloads/pods');
         await waitFor(() =>
             expect(toasts.error).toHaveBeenCalledWith(
-                'Context not in your kubeconfig',
-                expect.objectContaining({ description: expect.stringContaining('“staging”') }),
+                'No context for that cluster',
+                expect.objectContaining({ description: expect.stringContaining('https://staging.example.com') }),
             ),
         );
         expect(setCalls()).toHaveLength(0);
@@ -204,7 +242,7 @@ describe('opening a link', () => {
     });
 
     it('says so for a path no screen has', async () => {
-        held = { ok: true, context: 'dev', path: '/workloads/nope' };
+        held = { ok: true, server: DEV, path: '/workloads/nope' };
         const { router } = renderRoutes(routeTree, '/workloads/pods');
         await waitFor(() => expect(toasts.error).toHaveBeenCalledWith('That link cannot be opened', expect.anything()));
         expect(router.state.location.pathname).toBe('/workloads/pods');

@@ -17,7 +17,7 @@ const { routeTree } = await import('@/routeTree.gen');
 const { ContextSelector, NamespaceSelector } = await import('@/components/layout/top-bar');
 
 const contexts = [
-    { name: 'alpha', cluster: 'a', user: 'u', current: true },
+    { name: 'alpha', cluster: 'a', server: 'https://alpha.example.com:6443', user: 'u', current: true },
     { name: 'beta', cluster: 'b', user: 'u', current: false },
 ];
 const namespaces = [
@@ -70,7 +70,9 @@ describe('TopBar', () => {
         renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
         const bar = await screen.findByTestId('top-bar');
         await userEvent.click(await within(bar).findByRole('button', { name: 'Copy link' }));
-        expect(writeText).toHaveBeenCalledWith('kubermeister://open/alpha/workloads/pods/team-a/web-1/network');
+        expect(writeText).toHaveBeenCalledWith(
+            `kubermeister://open/${encodeURIComponent('https://alpha.example.com:6443')}/workloads/pods/team-a/web-1/network`,
+        );
         // One Copy link on the page: the header no longer carries its own.
         expect(screen.getAllByRole('button', { name: 'Copy link' })).toHaveLength(1);
     });
@@ -81,7 +83,9 @@ describe('TopBar', () => {
         renderRoutes(routeTree, '/workloads/pods/team-a/web-1/shell');
         const bar = await screen.findByTestId('top-bar');
         await userEvent.click(await within(bar).findByRole('button', { name: 'Copy link' }));
-        expect(writeText).toHaveBeenCalledWith('kubermeister://open/alpha/workloads/pods/team-a/web-1');
+        expect(writeText).toHaveBeenCalledWith(
+            `kubermeister://open/${encodeURIComponent('https://alpha.example.com:6443')}/workloads/pods/team-a/web-1`,
+        );
     });
 
     it('offers no link on a list page', async () => {

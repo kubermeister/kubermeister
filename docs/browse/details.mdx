@@ -49,25 +49,36 @@ The link button beside the breadcrumbs in the top bar, **Copy link**, puts a lin
 clipboard:
 
 ```text
-kubermeister://open/prod-eu/workloads/pods/default/web-1/logs
+kubermeister://open/https%3A%2F%2FABC123.gr7.eu-west-1.eks.amazonaws.com/workloads/pods/default/web-1/logs
 ```
 
-It names the context you are on and the page and tab you are looking at. Anybody whose kubeconfig
-has a context of the same name can click it, in a chat or a browser's address bar, and land on the
-same page. A context name with `:` or `/` in it, such as an EKS ARN, is written escaped, so
-the link still reads back as one name. A link to the **Shell** tab is copied as a link to the pod's
-first tab, because opening a shell runs a command in the pod and a click on a link is not a
-decision to do that.
+It names the cluster by its API server address, the `server` your kubeconfig gives the current
+context's cluster, and the page and tab you are looking at. A context name would not do: the same
+cluster is `Development` in one kubeconfig and `AppDevelopment` in another, while its address is the
+same for everybody whose kubeconfig came from the cloud provider's CLI or from a shared file. Anybody
+whose kubeconfig reaches that address can click the link, in a chat or a browser's address bar, and
+land on the same page, whatever their context for it is called. A link to the **Shell** tab is
+copied as a link to the pod's first tab, because opening a shell runs a command in the pod and a
+click on a link is not a decision to do that.
 
 Opening a link only ever opens a page:
 
-- Under the context you are on, the page opens straight away.
-- Under another context in your kubeconfig, Kubermeister asks first, naming both contexts, and
-  switches only when you choose **Switch and open**. Switching ends your port forwards, shells and
-  log follows, as any context switch does. **Stay** leaves everything as it was.
-- Under a context your kubeconfig does not have, Kubermeister says so and switches nothing.
+- When the context you are on reaches that cluster, the page opens straight away.
+- When another context in your kubeconfig reaches it, Kubermeister asks first, naming the cluster's
+  address, that context and the one you are on, and switches only when you choose **Switch and
+  open**. When several contexts reach it, which usually means they sign in as different users, you
+  pick one in the dialog. Switching ends your port forwards, shells and log follows, as any context
+  switch does. **Stay** leaves everything as it was.
+- When no context reaches it, Kubermeister says so, naming the address, and switches nothing.
 - A link naming a page this version does not have, or one that is not a Kubermeister link at all,
   opens nothing and says why.
+
+Addresses are compared as your kubeconfig writes them, after ignoring letter case, the default port
+and a trailing slash. Nothing asks the cluster, so opening a link works while a cluster is down. If
+you reach a cluster through a different address from your colleague's (a local tunnel, another DNS
+name for the same API server), the link finds no context for it. A link carries the API server's
+address, so it tells whoever reads it where your cluster's API server is, though nothing that would
+let them sign in.
 
 The namespace in the link is the object's own, so the namespace selector keeps whatever you had
 chosen. A link never deletes, restarts, forwards a port or downloads anything, and a link to the

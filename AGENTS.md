@@ -233,18 +233,22 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 
 ### Deep links
 
-- **A `kubermeister://open/<context>/<route path>` link is outside input, so it only ever
+- **A `kubermeister://open/<API server>/<route path>` link is outside input, so it only ever
   navigates.** Main parses it (`parseDeepLink` in `src/shared/deep-link.ts`, by hand rather than
   through `URL`, which would resolve `..`) and holds the latest one in `src/main/deep-links.ts`; the
   `deep-link` push only says one is waiting, and the renderer takes it through `deepLink.take` on
   mount and on every push, so a link that arrived before a screen could hear it waits and a reload
-  never opens it twice. The context is one percent-encoded segment, since EKS names hold `:` and
-  `/`.
+  never opens it twice.
+- **A link names the cluster by its API server, never by a context**, since a context is whatever
+  each kubeconfig calls it. The server is one percent-encoded segment in `normalizeServer`'s form
+  (lower-case scheme and host, no default port or trailing slash, the path kept for proxies that
+  route on it, credentials dropped), and every `KubeContext` carries its cluster entry's `server` in
+  the same form, so matching reads the kubeconfig alone and never asks a cluster.
 - The renderer checks the path against the route tree (`linkablePath` in
   `src/renderer/lib/deep-link.ts`, which refuses the router's fuzzy `**` matches), opens a tab in
   `UNLINKABLE_TABS` (the Shell, which execs on mount) as the object's first tab, and switches
-  context only through `DeepLinkHandler`'s confirm dialog and `useSwitchContext`; a context the
-  kubeconfig lacks switches nothing. Copy link sits in the top bar beside the breadcrumbs
+  context only through `DeepLinkHandler`'s confirm dialog and `useSwitchContext`, offering every usable
+  context on that server; a server no context reaches switches nothing. Copy link sits in the top bar beside the breadcrumbs
   on detail pages (`listPathForSubPage`), reading the tab from the deepest match's params.
 - **One instance per `userData`**: `claimSingleInstance` runs once the path is settled, which is
   what keeps parallel end-to-end runs from quitting one another. macOS sends `open-url`, possibly
