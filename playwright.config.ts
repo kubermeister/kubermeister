@@ -10,4 +10,7 @@ export default defineConfig({
     retries: 0,
     workers: 1,
     reporter: [['list']],
+    // A failure on CI cannot be rerun to look at, so it keeps its trace; CI uploads test-results/.
+    // The harness applies this itself, since Playwright's fixtures never see an Electron context.
+    use: { trace: 'retain-on-failure' },
 });
