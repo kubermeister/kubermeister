@@ -94,6 +94,16 @@ describe('breadcrumbsForPath', () => {
         expect(crumbs[1]?.to).toBeUndefined();
     });
 
+    it('names a detail tab by the label it is given rather than its id', () => {
+        expect(breadcrumbsForPath('/workloads/pods/team-a/web-1/logs', 'Logs').map((c) => c.label)).toEqual([
+            'Pods',
+            'team-a',
+            'web-1',
+            'Logs',
+        ]);
+        expect(breadcrumbsForPath('/overview/nodes', 'Logs').map((c) => c.label)).toEqual(['Nodes']);
+    });
+
     it('is a single crumb on a list page and empty outside the tree', () => {
         expect(breadcrumbsForPath('/overview/nodes').map((c) => c.label)).toEqual(['Nodes']);
         expect(breadcrumbsForPath('/workloads/pods/')).toHaveLength(1);

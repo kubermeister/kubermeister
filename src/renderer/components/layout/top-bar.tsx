@@ -29,6 +29,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useDetailTabLabel } from '@/lib/detail-tab';
 import { breadcrumbsForPath } from '@/lib/nav';
 import { useIpcQuery } from '@/lib/query';
 import { useSelectNamespace, useSwitchContext } from '@/lib/scope';
@@ -42,7 +43,8 @@ import { UpdatePill } from './update-pill';
 
 export function TopBar() {
     const pathname = useRouterState({ select: (s) => s.location.pathname });
-    const crumbs = breadcrumbsForPath(pathname);
+    const tabLabel = useDetailTabLabel(pathname);
+    const crumbs = breadcrumbsForPath(pathname, tabLabel);
     const router = useRouter();
 
     return (

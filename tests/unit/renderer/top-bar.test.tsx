@@ -55,6 +55,13 @@ describe('TopBar', () => {
         expect(within(crumbs).queryByRole('link', { name: 'web-1' })).not.toBeInTheDocument();
     });
 
+    it('names the tab of a detail page by its label', async () => {
+        renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
+        const crumbs = await screen.findByTestId('breadcrumbs');
+        await waitFor(() => expect(crumbs).toHaveTextContent('Podsteam-aweb-1Network'));
+        expect(crumbs).not.toHaveTextContent('network');
+    });
+
     it('walks the history with the back and forward buttons', async () => {
         const { router } = renderRoutes(routeTree, '/overview/nodes');
         await screen.findByRole('heading', { name: 'Nodes' });

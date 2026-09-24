@@ -346,8 +346,12 @@ export interface Crumb {
     to?: string;
 }
 
-/** Breadcrumbs: the owning nav item, then one crumb per remaining path segment, decoded. */
-export function breadcrumbsForPath(pathname: string): Crumb[] {
+/**
+ * Breadcrumbs: the owning nav item, then one crumb per remaining path segment, decoded. A detail
+ * screen whose path ends in a tab id passes that tab's label, which names the last crumb instead of
+ * the id.
+ */
+export function breadcrumbsForPath(pathname: string, tabLabel?: string): Crumb[] {
     const match = navItemForPath(pathname);
     if (!match) return [];
     const crumbs: Crumb[] = [{ label: match.item.label, icon: match.item.icon, to: match.item.path }];
@@ -356,5 +360,7 @@ export function breadcrumbsForPath(pathname: string): Crumb[] {
             if (segment) crumbs.push({ label: decodeURIComponent(segment) });
         }
     }
+    const last = crumbs.at(-1);
+    if (tabLabel && crumbs.length > 1 && last) last.label = tabLabel;
     return crumbs;
 }
