@@ -1,3 +1,4 @@
+import { once } from 'node:events';
 import * as net from 'node:net';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -107,11 +108,27 @@ describe('resolving a service port to a pod port', () => {
 });
 
 describe('startPodPortForward', () => {
-    const ws = { close: vi.fn() };
+    // One per test: a connection a test leaves closing reaches the websocket it was handed, so a
+    // shared one counted the previous test's close in the next test's assertions.
+    let ws: { close: ReturnType<typeof vi.fn> };
+
+    /**
+     * The local socket the next connection is handed to the pod with, once the forward reaches it.
+     * Awaited rather than polled, so a test waits as long as the connection takes instead of the one
+     * second `vi.waitFor` allows by default.
+     */
+    function nextForward(): Promise<net.Socket> {
+        return new Promise((resolve) => {
+            portForward.mockImplementationOnce(async (...args: unknown[]) => {
+                resolve(args[3] as net.Socket);
+                return ws;
+            });
+        });
+    }
 
     beforeEach(() => {
         portForward.mockReset();
-        ws.close.mockReset();
+        ws = { close: vi.fn() };
         readOrNull.mockReset();
         readOrNull.mockResolvedValue({ metadata: { name: 'web-1' } });
         portForward.mockResolvedValue(ws);
@@ -130,22 +147,16 @@ describe('startPodPortForward', () => {
             data: { status: 'listening', localPort, targetPort: 8080, pod: 'web-1' },
         });
 
+        const forwarded = nextForward();
         const client = await connect(localPort);
-        await vi.waitFor(() =>
-            expect(portForward).toHaveBeenCalledWith(
-                'team-a',
-                'web-1',
-                [8080],
-                expect.any(net.Socket),
-                null,
-                expect.any(net.Socket),
-            ),
-        );
-        await vi.waitFor(() => expect(portForward.mock.results[0]?.value).resolves.toBe(ws));
+        const local = await forwarded;
+        expect(portForward).toHaveBeenCalledWith('team-a', 'web-1', [8080], local, null, local);
+        await new Promise((resolve) => setImmediate(resolve));
 
+        const closed = Promise.all([once(local, 'close'), once(client, 'close')]);
         ctl.stop();
-        await new Promise<void>((resolve) => client.once('close', () => resolve()));
-        await vi.waitFor(() => expect(ws.close).toHaveBeenCalledOnce());
+        await closed;
+        expect(ws.close).toHaveBeenCalledOnce();
         await expect(connect(localPort)).rejects.toThrow();
     });
 
@@ -172,18 +183,13 @@ describe('startPodPortForward', () => {
             type: 'data',
             data: { status: 'listening', localPort, targetPort: 80, pod: 'web-2' },
         });
+        const forwarded = nextForward();
         const client = await connect(localPort);
-        await vi.waitFor(() =>
-            expect(portForward).toHaveBeenCalledWith(
-                'team-a',
-                'web-2',
-                [8080],
-                expect.any(net.Socket),
-                null,
-                expect.any(net.Socket),
-            ),
-        );
+        const local = await forwarded;
+        expect(portForward).toHaveBeenCalledWith('team-a', 'web-2', [8080], local, null, local);
+        const closed = once(local, 'close');
         client.destroy();
+        await closed;
         ctl.stop();
     });
 
@@ -193,11 +199,14 @@ describe('startPodPortForward', () => {
             { name: 'web-1', namespace: 'team-a', targetPort: 80, localPort },
             vi.fn(),
         );
+        const forwarded = nextForward();
         const client = await connect(localPort);
-        await vi.waitFor(() => expect(portForward).toHaveBeenCalled());
+        const local = await forwarded;
         await new Promise((resolve) => setImmediate(resolve));
+        const closed = once(local, 'close');
         client.destroy();
-        await vi.waitFor(() => expect(ws.close).toHaveBeenCalledOnce());
+        await closed;
+        expect(ws.close).toHaveBeenCalledOnce();
         ctl.stop();
     });
 
