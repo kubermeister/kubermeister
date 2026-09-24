@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-24
+
 ### Added
 
 - The manifest editor and the Create screen check a manifest as you type against the schema the
