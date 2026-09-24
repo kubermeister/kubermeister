@@ -61,12 +61,12 @@ jobs:
             Start-Process -WindowStyle Hidden wsl -ArgumentList '-d','km','-u','root','--exec','sleep','infinity'
             Start-Sleep 3
             wsl -d km -u root --exec sh -c "setsid nohup dockerd -H unix:///var/run/docker.sock -H tcp://${bind}:2375 > /var/log/dockerd.log 2>&1 < /dev/null &"
-            wsl -d km -u root --exec sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; ip -4 -o addr show; ss -ltn | grep 2375'
+            wsl -d km -u root --exec sh -c 'for i in $(seq 60); do docker info > /dev/null 2>&1 && break; sleep 1; done; ip -4 -o addr show; ss -ltnp; tail -8 /var/log/dockerd.log'
           }
           function Test-Loopback($label) {
             $code = curl.exe -s -m 5 -o NUL -w '%{http_code}' http://127.0.0.1:2375/_ping
-            "$label -> 127.0.0.1:2375/_ping answered '$code'"
-            return $code -eq '200'
+            Write-Host "$label -> 127.0.0.1:2375/_ping answered '$code'"
+            $code -eq '200'
           }
           Start-Dockerd '127.0.0.1'
           if (Test-Loopback 'nat, bound to 127.0.0.1') { "WSL_MODE=nat-loopback" >> $env:GITHUB_ENV; exit 0 }
