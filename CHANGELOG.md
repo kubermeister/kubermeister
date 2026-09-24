@@ -24,6 +24,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   cannot read is left untouched while the top bar says so.
 - An edit to `settings.json` takes effect while Kubermeister runs, within a second of being saved,
   the same way a change made in Settings does.
+- A published JSON Schema for `settings.json` gives editors completion, a description and the
+  default of every key, and flags a value Kubermeister would refuse; a file the app creates points
+  at it.
 
 ## [0.5.1] - 2026-09-23
 

@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SETTINGS, mergeSettings } from '../../../src/shared/settings';
+import { DEFAULT_SETTINGS, mergeSettings, SETTINGS_SCHEMA_URL } from '../../../src/shared/settings';
 
 let root = '';
 let userData = '';
@@ -140,7 +140,11 @@ describe('settings store', () => {
     it('creates the settings file on the first save, holding only what was saved', async () => {
         const { updateSettings } = await loadStore();
         updateSettings({ general: { confirmQuit: false } });
-        expect(readJson(configFile)).toEqual({ version: 2, general: { confirmQuit: false } });
+        expect(readJson(configFile)).toEqual({
+            $schema: SETTINGS_SCHEMA_URL,
+            version: 2,
+            general: { confirmQuit: false },
+        });
     });
 
     it('writes nothing when a save changes nothing', async () => {
@@ -198,7 +202,11 @@ describe('settings store', () => {
         writeFileSync(join(userData, 'settings.json'), JSON.stringify(legacy, null, 4));
         const { getSettings } = await loadStore();
         expect(getSettings()).toEqual(legacy);
-        expect(readJson(configFile)).toEqual({ version: 2, data: { readTimeoutSec: 300 } });
+        expect(readJson(configFile)).toEqual({
+            $schema: SETTINGS_SCHEMA_URL,
+            version: 2,
+            data: { readTimeoutSec: 300 },
+        });
         expect(readJson(join(userData, 'state.json'))).toEqual({
             session: { lastContext: 'prod', lastNamespace: 'web' },
             data: { forwards: [] },

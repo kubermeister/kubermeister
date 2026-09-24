@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/kubermeister/kubermeister/main/settings.schema.json",
+  "title": "Kubermeister settings",
+  "description": "The settings file, ~/.config/kubermeister/settings.json. Every key is optional; a missing one takes its default.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "This schema, for editors.",
+      "type": "string"
+    },
+    "version": {
+      "description": "The shape the file is written in. Optional; the app adds it when it first saves.",
+      "const": 2
+    },
+    "general": {
+      "description": "Preferences about the app itself rather than about a cluster.",
+      "type": "object",
+      "properties": {
+        "confirmQuit": {
+          "description": "Ask before quitting, since quitting ends every port forward, shell session, log follow and drain at once.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "description": "What the app opens on.",
+      "type": "object",
+      "properties": {
+        "restoreOnLaunch": {
+          "description": "Reopen on the context and namespace last used; when false, follow the kubeconfig's current-context.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "connection": {
+      "description": "Which kubeconfig the app reads.",
+      "type": "object",
+      "properties": {
+        "kubeconfigPath": {
+          "description": "The kubeconfig file to read; null reads $KUBECONFIG or ~/.kube/config.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "data": {
+      "description": "How often screens refresh, how long a cluster read may take, and how much a console keeps.",
+      "type": "object",
+      "properties": {
+        "refreshIntervalSec": {
+          "description": "Seconds between polls of the live lists, metrics and the dashboard.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "default": 12
+        },
+        "readTimeoutSec": {
+          "description": "Seconds one cluster read may take before it is reported as timed out.",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 60
+        },
+        "logBufferLines": {
+          "description": "Log lines a live follow keeps before dropping the oldest.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "default": 2000
+        },
+        "terminalFontSize": {
+          "description": "Font size of the shell terminals, in points.",
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 32,
+          "default": 12
+        }
+      },
+      "additionalProperties": false
+    },
+    "updates": {
+      "description": "How far the updater goes on its own.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "\"check\" finds new versions and asks before downloading, \"download\" fetches them in the background, \"off\" checks only when asked; null follows the default, which is \"download\".",
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "check",
+                "download",
+                "off"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "checkIntervalHours": {
+          "description": "Hours between scheduled update checks.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 168,
+          "default": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "network": {
+      "description": "How cluster traffic reaches the API server.",
+      "type": "object",
+      "properties": {
+        "proxyMode": {
+          "description": "\"env\" follows HTTPS_PROXY, HTTP_PROXY and NO_PROXY the way kubectl does, \"manual\" uses proxyUrl, \"off\" connects directly. A context whose kubeconfig sets proxy-url always uses that.",
+          "type": "string",
+          "enum": [
+            "env",
+            "manual",
+            "off"
+          ],
+          "default": "env"
+        },
+        "proxyUrl": {
+          "description": "The proxy used under \"manual\", as an http, https or socks URL; null means none.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "noProxy": {
+          "description": "Hosts that never go through a proxy, spelled as NO_PROXY spells them; null follows NO_PROXY.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "caBundlePath": {
+          "description": "A PEM file of extra certificate authorities to trust for cluster TLS, added to the ones already trusted.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "charts": {
+      "description": "Helm chart repositories and OCI registries.",
+      "type": "object",
+      "properties": {
+        "repositories": {
+          "description": "Chart sources: a classic repository by its https URL, or an OCI registry by oci://host. Credentials are added in Settings and kept in the system keychain, never here.",
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9_.]{0,61}[a-z0-9])?$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "classic",
+                  "oci"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "url"
+            ]
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -36,7 +36,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "screenshots": "playwright test --config playwright.demo.config.ts",
-    "screenshots:sync": "node scripts/sync-screenshots.mjs"
+    "screenshots:sync": "node scripts/sync-screenshots.mjs",
+    "schema": "vitest run tests/unit/repo/settings-schema.test.ts --mode write"
   },
   "dependencies": {
     "@kubernetes/client-node": "^2.0.0",

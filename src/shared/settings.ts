@@ -147,6 +147,13 @@ const windowSchema = z.object({
     bounds: windowBoundsSchema.nullable(),
 });
 
+/**
+ * Where the published JSON Schema for the settings file lives. A file the app creates points at it,
+ * so an editor completes and checks the keys without being told where to look.
+ */
+export const SETTINGS_SCHEMA_URL =
+    'https://raw.githubusercontent.com/kubermeister/kubermeister/main/settings.schema.json';
+
 /** The shape the file on disk is written in; {@link parseSettings} migrates every older one. */
 export const SETTINGS_VERSION = 2;
 
@@ -215,7 +222,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Every section, by the name it has in the file, with the schema its keys are checked against. */
-const SECTION_SCHEMAS = {
+export const SECTION_SCHEMAS = {
     general: generalSchema,
     session: sessionSchema,
     connection: connectionSchema,
