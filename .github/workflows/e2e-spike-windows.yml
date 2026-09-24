@@ -101,12 +101,24 @@ jobs:
         env:
           DOCKER_HOST: tcp://127.0.0.1:2375
           TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
+          # Keep the cluster after the suite, so a failure can be asked what the cluster holds.
+          KM_E2E_KEEP_CLUSTER: '1'
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
           npm run test:e2e
           $code = $LASTEXITCODE
           "suite exit $code after $([int]$sw.Elapsed.TotalSeconds)s"
           exit $code
+      - name: what the cluster holds after a failure
+        if: failure()
+        env:
+          DOCKER_HOST: tcp://127.0.0.1:2375
+        run: |
+          docker exec km-e2e-cluster kubectl get crd widgets.km-e2e.test -o wide
+          docker exec km-e2e-cluster kubectl get widgets -A -o wide
+          docker exec km-e2e-cluster kubectl get widgets -n km-e2e -o yaml
+          docker exec km-e2e-cluster kubectl get events -n km-e2e --field-selector involvedObject.kind=Widget
+          exit 0
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
