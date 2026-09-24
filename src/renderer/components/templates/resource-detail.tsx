@@ -1,5 +1,6 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useLayoutEffect, type KeyboardEvent, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { CalendarClockIcon, InfoIcon, TagIcon, type LucideIcon } from 'lucide-react';
 import type { ObjectEventsInput } from '../../../shared/k8s/events';
 import { KINDS, kindInfo, type Kind } from '../../../shared/k8s/registry';
@@ -13,9 +14,14 @@ import { ObjectEvents } from '@/components/templates/object-events';
 import { ManifestEditContext, useManifestEditBridge } from '@/components/templates/manifest-edit';
 import { ObjectMetaCard } from '@/components/templates/object-meta-card';
 import { isManifestKind } from '../../../shared/k8s/manifest';
+import { publishDetailTab } from '@/lib/detail-tab';
 import { cn } from '@/lib/utils';
 
 export interface DetailTab {
+    /**
+     * The tab's segment in the route (`/workloads/pods/<namespace>/<name>/<id>`), so it is part of
+     * a URL from the moment it ships: rename one only knowing an old link then opens the first tab.
+     */
     id: string;
     label: string;
     icon: LucideIcon;
@@ -147,11 +153,31 @@ export function ResourceDetail({
     ...header
 }: ResourceDetailProps) {
     const allTabs = groups.flatMap((g) => g.items);
-    const [activeId, setActiveId] = useState(allTabs[0]?.id);
-    const activeTab = allTabs.find((t) => t.id === activeId) ?? allTabs[0];
+    // The tab lives in the route's optional last segment, so a reload or Back lands where the reader
+    // was. An id no tab has, such as a tab renamed since a link was made, opens the first tab rather
+    // than a not-found page.
+    const { tab: tabParam } = useParams({ strict: false });
+    const activeTab = allTabs.find((t) => t.id === tabParam) ?? allTabs[0];
+    const navigate = useNavigate();
+    const pathname = useLocation({ select: (l) => l.pathname });
+    // Replacing is what the rail does, so Back leaves the object in one press and the entry it
+    // leaves holds the last tab; a jump from outside the rail (the Edit button) pushes. The first
+    // tab is written as the bare path, so it has one URL.
+    const openTab = (id: string, replace: boolean) => {
+        if (id === activeTab?.id) return;
+        void navigate({
+            to: '.',
+            params: (prev) => ({ ...prev, tab: id === allTabs[0]?.id ? undefined : id }),
+            replace,
+        });
+    };
     // The header's Edit action opens the Manifest tab in edit mode; the panel registers the other
     // half of that handshake when it mounts.
-    const editControl = useManifestEditBridge(() => setActiveId('manifest'));
+    const editControl = useManifestEditBridge(() => openTab('manifest', false));
+
+    // The breadcrumb names the tab by its label; the rail is the only place that knows it.
+    const tabLabel = tabParam ? activeTab?.label : undefined;
+    useLayoutEffect(() => publishDetailTab(pathname, tabLabel), [pathname, tabLabel]);
 
     // Roving tabindex with arrow keys across the flat tab order, the WAI-ARIA pattern for a vertical tablist.
     const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -161,7 +187,7 @@ export function ResourceDetail({
         e.preventDefault();
         const next = allTabs[(index + delta + allTabs.length) % allTabs.length];
         if (!next) return;
-        setActiveId(next.id);
+        openTab(next.id, true);
         document.getElementById(`tab-${next.id}`)?.focus();
     };
 
@@ -249,7 +275,7 @@ export function ResourceDetail({
                                                 aria-selected={active}
                                                 aria-controls={`panel-${tab.id}`}
                                                 tabIndex={active ? 0 : -1}
-                                                onClick={() => setActiveId(tab.id)}
+                                                onClick={() => openTab(tab.id, true)}
                                                 onKeyDown={(e) => onTabKeyDown(e, allTabs.indexOf(tab))}
                                                 className={cn(
                                                     'mb-px flex w-full items-center gap-2.5 border-l-2 py-1.5 pr-2 pl-2 text-left text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',

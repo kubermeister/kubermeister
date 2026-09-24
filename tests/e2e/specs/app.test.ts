@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
-import { launchApp, type LaunchedApp } from '../harness/launch';
+import { closeApp, launchApp, type LaunchedApp } from '../harness/launch';
 
 let launched: LaunchedApp;
 
@@ -13,7 +13,7 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-    await launched.app.close();
+    await closeApp(launched);
 });
 
 test('passes the startup gate against the isolated cluster and shows the shell', async () => {
@@ -61,6 +61,24 @@ test('lists the k3s node as Ready and the seeded namespace', async () => {
     const namespaces = window.getByTestId('namespaces-table');
     await expect(namespaces.locator(`[data-namespace="${NAMESPACE}"]`)).toContainText('Active');
     await expect(namespaces.locator('[data-namespace="kube-system"]')).toBeVisible();
+});
+
+test('keeps a detail screen on its tab through a reload and a return with Back', async () => {
+    const { window } = launched;
+    await window.getByTestId('sidebar').getByRole('link', { name: 'Nodes', exact: true }).click();
+    await window.getByTestId('nodes-table').locator('[data-node]').first().getByRole('link').click();
+    await window.getByRole('tab', { name: 'System info' }).click();
+    await expect(window).toHaveURL(/#\/overview\/nodes\/[^/]+\/system$/);
+    await expect(window.getByTestId('breadcrumbs')).toContainText('System info');
+
+    await window.reload();
+    await expect(window.getByRole('tab', { name: 'System info' })).toHaveAttribute('aria-selected', 'true');
+    await expect(window.getByTestId('node-page').getByTestId('system-info')).toBeVisible();
+
+    await window.getByTestId('sidebar').getByRole('link', { name: 'Namespaces', exact: true }).click();
+    await expect(window.getByTestId('namespaces-table')).toBeVisible();
+    await window.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(window.getByRole('tab', { name: 'System info' })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('keeps all per-user state inside the throwaway data directory', async () => {
@@ -1030,7 +1048,7 @@ test('names a current context whose cluster is missing, and switching away clear
         await expect(bad.window.getByTestId('connection-notice')).toHaveCount(0);
         await expect(bad.window.getByTestId('context-selector')).toContainText(CONTEXT_NAME);
     } finally {
-        await bad.app.close();
+        await closeApp(bad);
     }
 });
 
@@ -1056,6 +1074,6 @@ test('opens the shell with a connection notice when the kubeconfig path names no
         );
         await expect(bad.window.getByTestId('startup-error')).toHaveCount(0);
     } finally {
-        await bad.app.close();
+        await closeApp(bad);
     }
 });

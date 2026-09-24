@@ -24,6 +24,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - `⌘R` and `Ctrl+R` refresh the screen's data instead of reloading the window, which ended every
   port forward, shell and log follow; **View › Force Reload** still reloads it.
+- A detail page keeps its tab through a reload, and returning to an object with Back opens the tab
+  you left it on, rather than Overview.
 
 ## [0.6.2] - 2026-09-24
 

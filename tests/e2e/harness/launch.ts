@@ -1,7 +1,7 @@
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import { _electron as electron, test, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE } from './cluster';
 
 export interface LaunchedApp {
@@ -42,6 +42,7 @@ export async function launchApp(
             KUBERMEISTER_SHOW_INACTIVE: '1',
         },
     });
+    if (traceMode() !== 'off') await app.context().tracing.start({ screenshots: true, snapshots: true });
     const window = await app.firstWindow();
     // The first window is handed over while index.html may still be loading; a spec that evaluates
     // or clicks before the load settles would hit a destroyed execution context.
@@ -49,4 +50,69 @@ export async function launchApp(
     // A spec that launches against its own kubeconfig decides for itself what to wait for.
     if (!options.kubeconfigPath) await window.getByTestId('app-shell').waitFor();
     return { app, window, userData };
+}
+
+/**
+ * Playwright's `trace` option only reaches the contexts its own fixtures create, never one that
+ * `_electron.launch` hands back, so the harness records the trace itself under the mode the config
+ * names.
+ */
+function traceMode(): string {
+    const trace = test.info().project.use.trace;
+    return (typeof trace === 'string' ? trace : trace?.mode) ?? 'off';
+}
+
+/**
+ * Close the app, keeping what a failure needs to be read afterwards: the trace, and the window's own
+ * state as main and the renderer see it. A click that waits for a stable element measures it over
+ * animation frames, so a window that stopped painting hangs there without saying why (#364); the
+ * state answers whether the window was shown, focused and still producing frames.
+ */
+export async function closeApp({ app, window, userData }: LaunchedApp): Promise<void> {
+    const info = test.info();
+    const failed = info.status !== info.expectedStatus;
+    if (failed) await attachWindowState(app, window);
+    const mode = traceMode();
+    if (mode !== 'off') {
+        const keep = mode === 'on' || failed;
+        const path = keep ? info.outputPath(`trace-${basename(userData)}.zip`) : undefined;
+        await app.context().tracing.stop({ path });
+        if (path) await info.attach('trace', { path, contentType: 'application/zip' });
+    }
+    await app.close();
+}
+
+async function attachWindowState(app: ElectronApplication, window: Page): Promise<void> {
+    const main = await app
+        .evaluate(({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows().map((w) => ({
+                visible: w.isVisible(),
+                focused: w.isFocused(),
+                minimized: w.isMinimized(),
+                bounds: w.getBounds(),
+                backgroundThrottling: w.webContents.getBackgroundThrottling(),
+            })),
+        )
+        .catch((error: unknown) => String(error));
+    const renderer = await window
+        .evaluate(
+            () =>
+                new Promise((resolve) => {
+                    const state = { visibilityState: document.visibilityState, hasFocus: document.hasFocus() };
+                    const timer = setTimeout(() => resolve({ ...state, animationFrame: false }), 1000);
+                    requestAnimationFrame(() => {
+                        clearTimeout(timer);
+                        resolve({ ...state, animationFrame: true });
+                    });
+                }),
+        )
+        .catch((error: unknown) => String(error));
+    await test.info().attach('window-state', {
+        body: JSON.stringify({ main, renderer }, null, 2),
+        contentType: 'application/json',
+    });
+    await window.screenshot({ timeout: 5000 }).then(
+        (body) => test.info().attach('window', { body, contentType: 'image/png' }),
+        () => undefined,
+    );
 }
