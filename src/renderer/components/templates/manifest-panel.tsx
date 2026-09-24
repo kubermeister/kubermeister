@@ -4,7 +4,7 @@ import { CheckIcon, CodeIcon, DiffIcon, DownloadIcon, EyeIcon, PencilIcon, XIcon
 import { toast } from 'sonner';
 import type { ManifestKind } from '../../../shared/k8s/manifest';
 import { YamlEditor } from '@/components/data-display/yaml-editor';
-import { useManifestDiagnostics } from '@/lib/manifest-diagnostics';
+import { useManifestChecks } from '@/lib/manifest-diagnostics';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -106,7 +106,7 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
     const liveKind = query.data?.kind ?? kind ?? crd;
     const text = edits ?? query.data?.yaml ?? '';
     // Only an edit is checked: the object as the cluster holds it is not the reader's to fix.
-    const diagnostics = useManifestDiagnostics(text, editing);
+    const checks = useManifestChecks(text, editing);
     const dirty = editing && edits !== null && edits !== query.data?.yaml;
     const empty = text.trim().length === 0;
 
@@ -304,7 +304,8 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
                 value={text}
                 onValueChange={setEdits}
                 readOnly={!editing}
-                diagnostics={diagnostics}
+                diagnostics={checks.diagnostics}
+                schema={checks.schema}
                 aria-label={`${liveKind} manifest`}
                 className="min-h-0 flex-1"
             />

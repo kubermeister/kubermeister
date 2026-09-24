@@ -19,6 +19,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   cluster publishes for its kind, custom resources included: a wrong type, a value a field does not
   allow and a missing required field are marked where they are, and a field the kind does not have
   is flagged with the one it was probably meant to be.
+- The manifest editor completes field names and allowed values from the same schema, required fields
+  first, and shows a field's type and description when you hover its name.
 
 ## [0.6.0] - 2026-09-24
 

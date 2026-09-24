@@ -7,7 +7,9 @@ const invoke = vi.fn();
 vi.mock('@/lib/ipc', async () => ({ ...(await vi.importActual<typeof import('@/lib/ipc')>('@/lib/ipc')), invoke }));
 
 const { YamlEditor } = await import('@/components/data-display/yaml-editor');
-const { useManifestDiagnostics } = await import('@/lib/manifest-diagnostics');
+const { useManifestChecks } = await import('@/lib/manifest-diagnostics');
+const { startCompletion, currentCompletions } = await import('@codemirror/autocomplete');
+const { EditorView } = await import('@codemirror/view');
 
 const configMapSchema: KindSchema = {
     apiVersion: 'v1',
@@ -30,8 +32,8 @@ const configMapSchema: KindSchema = {
 const MANIFEST = 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app\ndata:\n  port: 8080\n';
 
 function Checked({ text, enabled = true }: { text: string; enabled?: boolean }) {
-    const diagnostics = useManifestDiagnostics(text, enabled);
-    return <YamlEditor value={text} onValueChange={() => {}} diagnostics={diagnostics} />;
+    const { diagnostics, schema } = useManifestChecks(text, enabled);
+    return <YamlEditor value={text} onValueChange={() => {}} diagnostics={diagnostics} schema={schema} />;
 }
 
 const marked = (container: HTMLElement, severity: 'error' | 'warning') =>
@@ -61,6 +63,24 @@ describe('checking a manifest in the editor', () => {
         await waitFor(() => expect(container.querySelector('.cm-content')).not.toBeNull());
         expect(marked(container, 'error')).toEqual([]);
         expect(invoke).not.toHaveBeenCalled();
+    });
+
+    it('completes the fields of the mapping at the cursor from the same schema', async () => {
+        const text = 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app\nd';
+        const { container } = renderWithQuery(<Checked text={text} />);
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('schemas.forKind', expect.anything()));
+        const content = container.querySelector('.cm-content') as HTMLElement;
+        const view = EditorView.findFromDOM(content);
+        expect(view).not.toBeNull();
+        view!.focus();
+        view!.dispatch({ selection: { anchor: text.length } });
+        // The schema reaches the editor a render after the query answers; completion reads it then.
+        await waitFor(() => {
+            startCompletion(view!);
+            return new Promise((resolve) => setTimeout(resolve, 150)).then(() =>
+                expect(currentCompletions(view!.state).map((option) => option.label)).toEqual(['data']),
+            );
+        });
     });
 
     it('never places marks found in an older text', async () => {

@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo } from 'react';
+import type { KindSchema } from '../../shared/k8s/openapi';
 import { diagnose, readManifest, type ManifestDiagnostic } from './manifest-validation';
 import { useIpcQuery } from './query';
 
@@ -11,6 +12,12 @@ export interface EditorDiagnostics {
 /** Asked for when there is nothing to ask about, with the query disabled so it never runs. */
 const NO_KIND = { apiVersion: 'v1', kind: 'Pod' } as const;
 
+export interface ManifestChecks {
+    diagnostics: EditorDiagnostics | null;
+    /** The schema of the kind the text names, for completion and descriptions; null while there is none. */
+    schema: KindSchema | null;
+}
+
 /**
  * Check the editor's text as it is typed, against the schema the cluster publishes for the kind it
  * names. The check trails typing (a deferred value) so a large object never slows a keystroke, and
@@ -18,7 +25,7 @@ const NO_KIND = { apiVersion: 'v1', kind: 'Pod' } as const;
  * The schema is read once per kind, from main, which caches it per context; a cluster that publishes
  * none, or cannot be reached, leaves the checks main makes itself.
  */
-export function useManifestDiagnostics(text: string, enabled = true): EditorDiagnostics | null {
+export function useManifestChecks(text: string, enabled = true): ManifestChecks {
     const deferred = useDeferredValue(text);
     const read = useMemo(() => (enabled ? readManifest(deferred) : null), [deferred, enabled]);
     const head = read?.head ?? null;
@@ -27,8 +34,10 @@ export function useManifestDiagnostics(text: string, enabled = true): EditorDiag
         staleTime: Infinity,
         retry: false,
     });
-    return useMemo(
-        () => (read ? { text: deferred, items: diagnose(read, head ? schema.data : null) } : null),
-        [read, deferred, head, schema.data],
+    const current = head ? (schema.data ?? null) : null;
+    const diagnostics = useMemo(
+        () => (read ? { text: deferred, items: diagnose(read, current) } : null),
+        [read, deferred, current],
     );
+    return { diagnostics, schema: current };
 }

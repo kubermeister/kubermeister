@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { YamlEditor } from '@/components/data-display/yaml-editor';
 import { useNavigateTo } from '@/components/layout/nav-link';
 import { invoke } from '@/lib/ipc';
-import { useManifestDiagnostics } from '@/lib/manifest-diagnostics';
+import { useManifestChecks } from '@/lib/manifest-diagnostics';
 import { clearStagedManifest, importFailed, useStagedManifest } from '@/lib/manifest-import';
 import { useIpcQuery } from '@/lib/query';
 import { TEMPLATES, type Template } from '@/lib/create-templates';
@@ -50,7 +50,7 @@ function CreateResourcePage() {
     const navigateTo = useNavigateTo();
     const create = useCreateResource();
     const [text, setText] = useState('');
-    const diagnostics = useManifestDiagnostics(text);
+    const checks = useManifestChecks(text);
     // The content last inserted verbatim — used to tell an untouched template or a freshly opened
     // file apart from one the user has edited (or their own pasted manifest), so a replacement only
     // warns when it would actually discard work.
@@ -178,7 +178,8 @@ function CreateResourcePage() {
                 <YamlEditor
                     value={text}
                     onValueChange={setText}
-                    diagnostics={diagnostics}
+                    diagnostics={checks.diagnostics}
+                    schema={checks.schema}
                     placeholder={
                         'Paste a manifest, drop a file on the window, or insert a template.\n\napiVersion: apps/v1\nkind: Deployment\n…'
                     }

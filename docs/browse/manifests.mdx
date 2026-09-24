@@ -75,6 +75,12 @@ per kind and cached. A cluster that publishes no schema for a kind, or that cann
 gets the first four checks. The Manifest tab checks nothing until **Edit**: the object as the cluster
 holds it is not yours to fix.
 
+The same schema completes as you type. At the start of a line the editor offers the fields the
+mapping you are in does not have yet, required ones first, each with what it holds and what it is
+for; after `field: ` it offers the values the field allows, or `true` and `false` for a switch.
+`Ctrl+Space` asks for them at any point. Hovering a field's name shows its type, whether it is
+required, and its description. Every template on the Create screen starts out with nothing marked.
+
 ## Creating
 
 **Create resource**, in the top bar or the command palette, opens a blank editor. Its heading says

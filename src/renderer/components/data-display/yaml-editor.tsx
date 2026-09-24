@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react';
+import type { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
+import { EditorView, hoverTooltip, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { basicSetup } from 'codemirror';
+import type { KindSchema } from '../../../shared/k8s/openapi';
+import { completionsAt, describeAt } from '@/lib/manifest-completion';
 import type { EditorDiagnostics } from '@/lib/manifest-diagnostics';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +41,11 @@ const editorTheme = EditorView.theme({
     '.cm-diagnostic': { fontFamily: 'var(--font-sans)', padding: '4px 8px' },
     '.cm-diagnostic-error': { borderLeftColor: 'var(--danger)' },
     '.cm-diagnostic-warning': { borderLeftColor: 'var(--warn)' },
+    '.cm-field-doc': { fontFamily: 'var(--font-sans)', maxWidth: '420px', padding: '6px 10px' },
+    '.cm-field-doc-title': { fontFamily: 'var(--font-mono)', color: 'var(--primary)' },
+    '.cm-field-doc-detail': { color: 'var(--text-muted)', marginLeft: '8px' },
+    '.cm-field-doc-description': { marginTop: '4px', color: 'var(--text-2)', whiteSpace: 'pre-wrap' },
+    '.cm-completionInfo': { fontFamily: 'var(--font-sans)', maxWidth: '420px', whiteSpace: 'pre-wrap' },
 });
 
 const editorHighlight = HighlightStyle.define([
@@ -54,6 +62,62 @@ function toDiagnostics(items: EditorDiagnostics['items'], length: number): Diagn
         const from = Math.min(item.from, length);
         return { from, to: Math.min(Math.max(item.to, from), length), severity: item.severity, message: item.message };
     });
+}
+
+/** A word being completed: a field name, or a value, which may carry dots, dashes and slashes. */
+const COMPLETION_WORD = /^[\w.\-/]*$/;
+
+/**
+ * Completion and the description over a field, both from the kind's schema. The schema is read
+ * through `schemaRef` at the moment each is asked for, so the one editor follows the kind the text
+ * names as it changes, and offers nothing while there is none.
+ */
+function schemaExtensions(schemaRef: { current: KindSchema | null | undefined }) {
+    const complete = (context: CompletionContext): CompletionResult | null => {
+        const schema = schemaRef.current;
+        if (!schema) return null;
+        const found = completionsAt(context.state.doc.toString(), context.pos, schema);
+        if (!found) return null;
+        return {
+            from: found.from,
+            validFor: COMPLETION_WORD,
+            options: found.options.map((option) => ({
+                label: option.label,
+                apply: option.apply,
+                type: option.type,
+                detail: option.detail || undefined,
+                info: option.info,
+                boost: option.boost,
+            })),
+        };
+    };
+    const describe = hoverTooltip((view, pos) => {
+        const schema = schemaRef.current;
+        const field = schema ? describeAt(view.state.doc.toString(), pos, schema) : null;
+        if (!field) return null;
+        return {
+            pos: field.from,
+            end: field.to,
+            above: true,
+            create: () => {
+                const dom = document.createElement('div');
+                dom.className = 'cm-field-doc';
+                const title = dom.appendChild(document.createElement('span'));
+                title.className = 'cm-field-doc-title';
+                title.textContent = field.title;
+                const detail = dom.appendChild(document.createElement('span'));
+                detail.className = 'cm-field-doc-detail';
+                detail.textContent = field.detail;
+                if (field.description) {
+                    const description = dom.appendChild(document.createElement('div'));
+                    description.className = 'cm-field-doc-description';
+                    description.textContent = field.description;
+                }
+                return { dom };
+            },
+        };
+    });
+    return [EditorState.languageData.of(() => [{ autocomplete: complete }]), describe];
 }
 
 /** Swapped through the compartment as `readOnly` flips, so the view is never rebuilt. */
@@ -73,6 +137,7 @@ export function YamlEditor({
     className,
     readOnly = false,
     diagnostics,
+    schema,
     'aria-label': ariaLabel,
 }: {
     value: string;
@@ -85,18 +150,34 @@ export function YamlEditor({
      * editor its gutter for them; null shows none.
      */
     diagnostics?: EditorDiagnostics | null;
+    /**
+     * The schema of the kind the text names, which completes fields and values and describes the
+     * field under the pointer. Passing the prop at all turns both on; null offers nothing.
+     */
+    schema?: KindSchema | null;
     'aria-label'?: string;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     // Read once: the view is built a single time, so the mount effect has no reactive dependencies
     // and the change handler is always the latest one.
-    const initialRef = useRef({ value, placeholder, ariaLabel, readOnly, linted: diagnostics !== undefined });
+    const initialRef = useRef({
+        value,
+        placeholder,
+        ariaLabel,
+        readOnly,
+        linted: diagnostics !== undefined,
+        schemed: schema !== undefined,
+    });
+    const schemaRef = useRef(schema);
     const onChangeRef = useRef(onValueChange);
     const readOnlyCompartment = useRef(new Compartment());
     useEffect(() => {
         onChangeRef.current = onValueChange;
     }, [onValueChange]);
+    useEffect(() => {
+        schemaRef.current = schema;
+    }, [schema]);
 
     useEffect(() => {
         const initial = initialRef.current;
@@ -107,6 +188,7 @@ export function YamlEditor({
                 basicSetup,
                 keymap.of([indentWithTab]),
                 initial.linted ? lintGutter() : [],
+                initial.schemed ? schemaExtensions(schemaRef) : [],
                 yaml(),
                 editorTheme,
                 syntaxHighlighting(editorHighlight),

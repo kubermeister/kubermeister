@@ -91,7 +91,9 @@ export function readManifest(text: string): ReadManifest {
         });
     }
     const doc = all[0];
-    if (!doc || diagnostics.length > 0) return { doc: null, head: null, diagnostics };
+    // Text mid-edit rarely parses, and that is when completion is wanted: the kind is still read
+    // from a document whose top is a mapping, while the schema check waits for YAML that parses.
+    if (!doc || diagnostics.length > 0) return { doc: null, head: doc ? headOf(doc.contents) : null, diagnostics };
     const root = doc.contents;
     if (!isMap(root)) {
         const at = rangeOf(root, whole);
@@ -119,12 +121,20 @@ export function readManifest(text: string): ReadManifest {
             message: 'The manifest must declare metadata.name.',
         });
     }
-    const head = kindSchemaInputSchema.safeParse({ apiVersion, kind });
-    return { doc, head: head.success ? head.data : null, diagnostics };
+    return { doc, head: headOf(root), diagnostics };
+}
+
+/** The kind a document's top mapping names, in a form the schema lookup accepts, or null. */
+function headOf(root: Node | null): KindSchemaInput | null {
+    const head = kindSchemaInputSchema.safeParse({
+        apiVersion: scalarString(mapValue(root, 'apiVersion')),
+        kind: scalarString(mapValue(root, 'kind')),
+    });
+    return head.success ? head.data : null;
 }
 
 /** A schema node with its `$ref` followed and its `allOf` folded in, which is how the API server reads it. */
-interface Resolved {
+export interface Resolved {
     types: string[];
     description?: string;
     enum?: unknown[];
@@ -148,7 +158,7 @@ const LENIENT_DEFINITIONS: Record<string, string[]> = {
     'io.k8s.apimachinery.pkg.util.intstr.IntOrString': ['integer', 'string'],
 };
 
-function resolve(node: SchemaNode | undefined, definitions: KindSchema['definitions'], depth = 0): Resolved {
+export function resolve(node: SchemaNode | undefined, definitions: KindSchema['definitions'], depth = 0): Resolved {
     const out: Resolved = { types: [], required: [], properties: {}, hasProperties: false, preserveUnknown: false };
     if (!node || depth > MAX_DEPTH) return out;
     const targetName = node.$ref ? refName(node.$ref) : null;
@@ -224,7 +234,7 @@ function typeMatches(expected: string[], actual: string): boolean {
     return expected.includes(actual) || (actual === 'integer' && expected.includes('number'));
 }
 
-function describeTypes(types: string[]): string {
+export function describeTypes(types: string[]): string {
     return types.map((type) => TYPE_WORDS[type] ?? type).join(' or ');
 }
 
