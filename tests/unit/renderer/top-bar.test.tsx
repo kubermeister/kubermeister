@@ -28,6 +28,8 @@ const data: Record<string, unknown> = {
     startupChecks: { ok: true, checks: [] },
     'update.state': { status: 'up-to-date' },
     'contexts.list': contexts,
+    'context.current': contexts[0],
+    'deepLink.take': { link: null },
     'namespaces.list': namespaces,
     'namespace.active': { name: 'team-a' },
     'cluster.active': { name: 'alpha', nodes: 1, status: 'Degraded', version: '1.36.4', provider: 'k3s', region: '—' },
@@ -60,6 +62,33 @@ describe('TopBar', () => {
         const crumbs = await screen.findByTestId('breadcrumbs');
         await waitFor(() => expect(crumbs).toHaveTextContent('Podsteam-aweb-1Network'));
         expect(crumbs).not.toHaveTextContent('network');
+    });
+
+    it('copies a link to the detail page and tab beside the breadcrumbs', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.assign(navigator, { clipboard: { writeText } });
+        renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
+        const bar = await screen.findByTestId('top-bar');
+        await userEvent.click(await within(bar).findByRole('button', { name: 'Copy link' }));
+        expect(writeText).toHaveBeenCalledWith('kubermeister://open/alpha/workloads/pods/team-a/web-1/network');
+        // One Copy link on the page: the header no longer carries its own.
+        expect(screen.getAllByRole('button', { name: 'Copy link' })).toHaveLength(1);
+    });
+
+    it('copies a pod’s Shell tab as the pod’s first tab', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.assign(navigator, { clipboard: { writeText } });
+        renderRoutes(routeTree, '/workloads/pods/team-a/web-1/shell');
+        const bar = await screen.findByTestId('top-bar');
+        await userEvent.click(await within(bar).findByRole('button', { name: 'Copy link' }));
+        expect(writeText).toHaveBeenCalledWith('kubermeister://open/alpha/workloads/pods/team-a/web-1');
+    });
+
+    it('offers no link on a list page', async () => {
+        renderRoutes(routeTree, '/workloads/pods');
+        const crumbs = await screen.findByTestId('breadcrumbs');
+        await waitFor(() => expect(crumbs).toHaveTextContent('Pods'));
+        expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument();
     });
 
     it('walks the history with the back and forward buttons', async () => {
