@@ -17,6 +17,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SCREEN_SEARCH } from '@/lib/shortcuts';
 import { cn } from '@/lib/utils';
 
 export interface SinceOption {
@@ -227,6 +228,7 @@ export function LogViewer({
                         onChange={(e) => onSearchChange({ ...search, query: e.target.value })}
                         placeholder="search…"
                         aria-label="Filter log lines"
+                        {...SCREEN_SEARCH}
                         className={cn('h-7 pl-7 text-cell', brokenPattern && 'border-danger')}
                     />
                 </div>

@@ -29,11 +29,12 @@ Nodes, Namespaces, the Events stream, Quotas, Limits, Snapshots (a kind whose de
 need not have), the instances of a custom resource, Helm releases and Helm charts.
 
 The **Refresh** button beside the search box re-reads the list at once, whichever way it is kept
-current.
+current. `⌘R` or `Ctrl+R` does the same.
 
 ## Searching
 
-The search box narrows the rows on screen against the columns on screen, ignoring case. Nothing
+The search box narrows the rows on screen against the columns on screen, ignoring case. `/`, or
+`⌘F` or `Ctrl+F`, puts the cursor in it. Nothing
 about it reaches the API server, which is why it is instant and why it costs the cluster nothing.
 The footer then reads "N of M results", and a hidden column is not searched.
 

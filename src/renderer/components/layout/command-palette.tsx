@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { Loader2Icon, PlusIcon, RefreshCwIcon } from 'lucide-react';
+import { KeyboardIcon, Loader2Icon, PlusIcon, RefreshCwIcon } from 'lucide-react';
 import {
     CommandDialog,
     CommandEmpty,
@@ -19,27 +18,19 @@ import { useNavigateTo } from './nav-link';
 interface CommandPaletteProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onShowShortcuts: () => void;
 }
 
-/** ⌘K / Ctrl+K quick actions: switch context or namespace, jump to any screen. */
-export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+/**
+ * ⌘K / Ctrl+K quick actions: switch context or namespace, jump to any screen. The key itself is the
+ * shell's shortcut dispatcher's, like every other.
+ */
+export function CommandPalette({ open, onOpenChange, onShowShortcuts }: CommandPaletteProps) {
     const navigateTo = useNavigateTo();
     const switchContext = useSwitchContext();
     const selectNamespace = useSelectNamespace();
     const contexts = useIpcQuery('contexts.list', {}).data ?? [];
     const namespaces = useIpcQuery('namespaces.list', {});
-
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
-            // Match on the physical key so Caps Lock and non-Latin layouts still trigger.
-            if (e.code === 'KeyK' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                onOpenChange(!open);
-            }
-        };
-        document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
-    }, [open, onOpenChange]);
 
     const close = () => onOpenChange(false);
     const go = (path: string) => {
@@ -117,6 +108,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     >
                         <RefreshCwIcon className="size-3.5 text-text-muted" />
                         <span className="flex-1">Check for updates</span>
+                    </CommandItem>
+                    <CommandItem
+                        value="keyboard shortcuts"
+                        onSelect={() => {
+                            close();
+                            onShowShortcuts();
+                        }}
+                    >
+                        <KeyboardIcon className="size-3.5 text-text-muted" />
+                        <span className="flex-1">Keyboard shortcuts</span>
                     </CommandItem>
                 </CommandGroup>
 

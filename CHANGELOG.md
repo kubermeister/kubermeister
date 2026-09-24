@@ -13,8 +13,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Keyboard shortcuts for moving between the six domains (`⌘1` to `⌘6`, or `Ctrl+1` to `Ctrl+6`),
+  going back and forward, focusing the screen's search box with `/`, and opening Settings with `⌘,`
+  or `Ctrl+,` on every platform, with a cheat sheet on `?`, in **Help › Keyboard Shortcuts** and in
+  the command palette.
+
 ### Changed
 
+- `⌘R` and `Ctrl+R` refresh the screen's data instead of reloading the window, which ended every
+  port forward, shell and log follow; **View › Force Reload** still reloads it.
 - A detail page keeps its tab through a reload, and returning to an object with Back opens the tab
   you left it on, rather than Overview.
 

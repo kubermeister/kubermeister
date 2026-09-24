@@ -220,6 +220,34 @@ test('opens the command palette from the keyboard and jumps to a screen', async 
     await expect(palette).toBeHidden();
 });
 
+test('moves between screens by key, refreshes without reloading, and opens the cheat sheet', async () => {
+    const { window } = launched;
+    const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await expect(window.getByTestId('cluster-summary')).toBeVisible();
+
+    await window.keyboard.press(`${mod}+2`);
+    const search = window.getByTestId('resource-list').getByRole('textbox', { name: /Search/ });
+    await expect(search).toBeVisible();
+    await window.keyboard.press('/');
+    await expect(search).toBeFocused();
+    await search.blur();
+
+    // A reload would drop this; a refresh re-reads the list and leaves the page alone.
+    await window.evaluate(() => Object.assign(globalThis, { kmBeforeRefresh: true }));
+    await window.keyboard.press(`${mod}+r`);
+    await expect(window.getByTestId('pods-table').locator('[data-pod^="web-"]').first()).toBeVisible();
+    expect(await window.evaluate(() => 'kmBeforeRefresh' in globalThis)).toBe(true);
+
+    await window.keyboard.press(process.platform === 'darwin' ? 'Meta+BracketLeft' : 'Alt+ArrowLeft');
+    await expect(window.getByTestId('cluster-summary')).toBeVisible();
+
+    await window.keyboard.press('?');
+    const sheet = window.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    await expect(sheet).toContainText('Go to Workloads');
+    await window.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+});
+
 test('opens Settings from the sidebar and switches the theme', async () => {
     const { window } = launched;
     await window

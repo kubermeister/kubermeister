@@ -55,7 +55,7 @@ describe('command palette', () => {
         expect(within(dialog).getByPlaceholderText('Switch cluster, namespace or resource…')).toBeInTheDocument();
         await userEvent.keyboard('{Escape}');
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-        await userEvent.keyboard('{Meta>}k{/Meta}');
+        await userEvent.keyboard('{Control>}k{/Control}');
         expect(await screen.findByRole('dialog', { name: 'Quick actions' })).toBeInTheDocument();
         await userEvent.keyboard('{Control>}k{/Control}');
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
