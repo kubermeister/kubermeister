@@ -1,4 +1,4 @@
-import { ApiException, HttpMethod, RequestContext } from '@kubernetes/client-node';
+import { ApiException, HttpMethod, IsomorphicFetchHttpLibrary, RequestContext } from '@kubernetes/client-node';
 import type { KindSchema, KindSchemaInput, SchemaNode } from '../../../shared/k8s/openapi.js';
 import { currentAbortSignal } from '../abort.js';
 import { activeContextName, kubeConfig } from '../client.js';
@@ -47,10 +47,19 @@ export function resetSchemaCache(): void {
 }
 
 /**
+ * The client library's own sender. It sends with the `undici` package's `fetch`, the one the
+ * dispatcher the kubeconfig builds (TLS, client certificates, the proxy) belongs to; the `fetch`
+ * Node bundles carries a different copy of undici and refuses that dispatcher outright ("invalid
+ * onRequestStart method"), which failed every lookup on every cluster.
+ */
+const http = new IsomorphicFetchHttpLibrary();
+
+/**
  * One GET against the API server, authenticated the way every other call is. The client library
  * generates no client for `/openapi/v3`, so the request is built the way the library builds its
- * own: a request context the kubeconfig applies credentials and a dispatcher to. A 404 is the
- * answer "this server publishes no such document" rather than a failure.
+ * own: a request context the kubeconfig applies credentials and a dispatcher to, sent by the
+ * library's own sender. A 404 is the answer "this server publishes no such document" rather than a
+ * failure.
  */
 async function clusterGet(relativeUrl: string): Promise<unknown> {
     const kc = kubeConfig();
@@ -62,19 +71,15 @@ async function clusterGet(relativeUrl: string): Promise<unknown> {
     const request = new RequestContext(url, HttpMethod.GET);
     request.setHeaderParam('Accept', 'application/json');
     await kc.applySecurityAuthentication(request);
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: request.getHeaders(),
-        // This request is built by hand rather than by a generated client, so the ceiling's signal
-        // has to be put on it here; without it the read would outlive the call that asked for it.
-        signal: currentAbortSignal(),
-        // The library bundles its own copy of undici's types, so the dispatcher it hands back is
-        // the same object under a second name; the cast is between the two copies, not two things.
-        dispatcher: request.getDispatcher() as RequestInit['dispatcher'],
-    });
-    if (response.status === 404) return null;
-    if (!response.ok) throw new ApiException(response.status, `GET ${relativeUrl} failed`, undefined, {});
-    return response.json();
+    // This request is built by hand rather than by a generated client, so the ceiling's signal has
+    // to be put on it here; without it the read would outlive the call that asked for it.
+    const signal = currentAbortSignal();
+    if (signal) request.setSignal(signal);
+    const response = await http.send(request).toPromise();
+    const status = response.httpStatusCode;
+    if (status === 404) return null;
+    if (status < 200 || status >= 300) throw new ApiException(status, `GET ${relativeUrl} failed`, undefined, {});
+    return JSON.parse(await response.body.text()) as unknown;
 }
 
 /** The documents this cluster publishes, asked for again once the memo is old enough. */

@@ -457,6 +457,25 @@ test('creates a config map from the editor, scales the deployment, then deletes 
     await expect(window.getByTestId('configmaps-table').locator('[data-configmap="my-config"]')).toHaveCount(0);
 });
 
+test('checks and completes a manifest against the schema the cluster publishes', async () => {
+    const { window } = launched;
+    await window.getByRole('link', { name: 'Create resource' }).click();
+    const create = window.getByTestId('create-page');
+    const editor = create.locator('.cm-content');
+    await editor.click();
+    await window.keyboard.insertText(
+        'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checked\nspec:\n  replicas: two\n  replica: 2\n',
+    );
+    // Every mark needs the Deployment schema, which only the cluster can answer: `spec` lacks its
+    // required selector and template, `two` is no number, and `replica` is no field.
+    await expect(create.locator('.cm-lintRange-error')).toHaveText(['spec', 'two']);
+    await expect(create.locator('.cm-lintRange-warning')).toHaveText('replica');
+
+    await window.keyboard.type('  strat');
+    await expect(window.locator('.cm-tooltip-autocomplete')).toContainText('strategy');
+    await window.keyboard.press('Escape');
+});
+
 test('opens a manifest from a file through the picker and applies it', async () => {
     const { app, window } = launched;
     const path = join(tmpdir(), `km-e2e-import-${Date.now()}.yaml`);

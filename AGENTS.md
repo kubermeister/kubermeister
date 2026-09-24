@@ -472,6 +472,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   fields are warnings, since the API server drops them rather than refusing. `Quantity` and
   `IntOrString` accept a number whatever an older server publishes for them, and null is never
   wrong. Diagnostics carry the text they were found in, and the editor places none on another text.
+- **A request built by hand goes out through the client library's own sender**
+  (`IsomorphicFetchHttpLibrary`), as `clusterGet` in `src/main/k8s/openapi/index.ts` does. The
+  dispatcher the kubeconfig builds belongs to the `undici` package, and Node's global `fetch`
+  refuses it ("invalid onRequestStart method"), which is what failed every schema lookup in 0.6.1;
+  the unit tests make the global `fetch` throw so it cannot come back, and an end-to-end spec asks
+  the k3s cluster for a real schema.
 - Completion and the description over a field come from the same schema
   (`src/renderer/lib/manifest-completion.ts`, pure). The cursor's place is read from the key columns
   and `- ` markers of the lines above rather than from a parse, since text mid-edit rarely parses,
