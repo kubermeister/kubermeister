@@ -37,6 +37,9 @@ export async function ensureCluster(): Promise<void> {
         '--disable=servicelb',
         '--disable=metrics-server',
     ]);
+    // Spike for #198: a nested VM boots k3s slower than the library's two minutes allow.
+    if (process.env.KM_E2E_STARTUP_TIMEOUT_MS)
+        container.withStartupTimeout(Number(process.env.KM_E2E_STARTUP_TIMEOUT_MS));
     if (KEEP_CLUSTER) container.withName(CONTAINER_NAME).withReuse();
     started = await container.start();
     // Rename the generic "default" context, cluster and user so the UI shows an unmistakable name.

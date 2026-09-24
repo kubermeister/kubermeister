@@ -66,9 +66,21 @@ jobs:
             echo "colima (qemu) up after $(( $(date +%s) - start ))s"
           fi
           docker version
+      - name: time a bare k3s boot inside colima
+        run: |
+          docker pull -q rancher/k3s:v1.36.4-k3s1
+          start=$(date +%s)
+          docker run -d --privileged --cgroupns=host --name k3s-probe rancher/k3s:v1.36.4-k3s1 server --disable=traefik --disable=servicelb --disable=metrics-server
+          for _ in $(seq 120); do docker logs k3s-probe 2>&1 | grep -q 'Node controller sync successful' && break; sleep 5; done
+          echo "k3s ready after $(( $(date +%s) - start ))s"
+          docker exec k3s-probe kubectl get nodes || true
+          docker rm -f k3s-probe
+          sysctl -n hw.ncpu hw.memsize; colima list
       - run: npm ci
       - run: npm run build
       - name: e2e
+        env:
+          KM_E2E_STARTUP_TIMEOUT_MS: '600000'
         run: |
           export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
           export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
