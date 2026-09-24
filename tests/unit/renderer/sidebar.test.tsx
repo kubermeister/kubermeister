@@ -87,7 +87,7 @@ describe('Sidebar', () => {
             'Admission Policies',
             'API Services',
             'Flow Schemas',
-            'Settings',
+            'SettingsCtrl+,',
         ]);
     });
 
@@ -119,15 +119,15 @@ describe('Sidebar', () => {
         expect(within(sidebar).getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-expanded', 'true');
     });
 
-    it('shows Quick actions and the Settings entry in the footer, with the macOS hint only on a Mac', async () => {
+    it('shows Quick actions and the Settings entry in the footer, with their keys for the platform', async () => {
         renderRoutes(routeTree, '/overview/summary');
         const sidebar = await screen.findByTestId('sidebar');
-        expect(within(sidebar).getByTestId('quick-actions')).toHaveTextContent('Quick actions⌘K');
+        // jsdom reports no Mac platform, so the hints are the Ctrl ones.
+        expect(within(sidebar).getByTestId('quick-actions')).toHaveTextContent('Quick actionsCtrl+K');
         const settings = within(sidebar).getByRole('link', { name: /Settings/ });
         expect(settings).toHaveAttribute('href', '/settings');
         expect(settings).not.toHaveAttribute('aria-current');
-        // jsdom reports no Mac platform, so the ⌘, hint stays hidden here.
-        expect(settings).not.toHaveTextContent('⌘,');
+        expect(settings).toHaveTextContent('Ctrl+,');
         expect(within(sidebar).queryByTestId('theme-toggle')).not.toBeInTheDocument();
     });
 });

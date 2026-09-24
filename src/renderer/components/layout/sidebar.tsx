@@ -6,8 +6,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { NavLink } from './nav-link';
 import { DOMAINS, SETTINGS_NAV, activeSectionId, isActivePath, type Domain, type NavItem } from '@/lib/nav';
-import { isMac } from '@/lib/platform';
+import { shortcutPlatform } from '@/lib/platform';
+import { formatChord, shortcutById, type ShortcutId } from '../../../shared/shortcuts';
 import { cn } from '@/lib/utils';
+
+const hintFor = (id: ShortcutId) => formatChord(shortcutById(id).keys[shortcutPlatform][0]!, shortcutPlatform);
 
 export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
     const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -57,14 +60,14 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                 >
                     <SearchIcon className="size-3.25 text-text-muted" />
                     <span className="flex-1 text-left">Quick actions</span>
-                    <span className="font-mono text-caption text-text-dim">⌘K</span>
+                    <span className="font-mono text-caption text-text-dim">{hintFor('palette')}</span>
                 </button>
                 <div className="h-px bg-border" />
                 <SidebarItem
                     item={SETTINGS_NAV}
                     flat
                     active={isActivePath(pathname, SETTINGS_NAV.path)}
-                    hint={isMac ? '⌘,' : undefined}
+                    hint={hintFor('settings')}
                 />
             </div>
         </aside>

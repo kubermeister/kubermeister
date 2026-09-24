@@ -12,6 +12,11 @@ export const subSchemas = {
     /** The application menu's Settings item; the renderer routes to the settings screen. */
     'open-settings': z.object({}),
     /**
+     * A menu item for a key the renderer handles itself, clicked: the click and the key then take
+     * one path, the renderer's dispatcher.
+     */
+    shortcut: z.object({ id: z.enum(['refresh', 'cheatSheet']) }),
+    /**
      * The settings file changed on disk and main has taken the change in. `reconnected` says the
      * connection was remade with it, so every cluster read the renderer holds is from before.
      */

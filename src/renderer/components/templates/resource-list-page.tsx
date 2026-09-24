@@ -34,6 +34,7 @@ import { useNavigateTo } from '@/components/layout/nav-link';
 import { ageToSeconds, namespaceColumn, selectColumn } from '@/components/templates/list-columns';
 import { describeError } from '@/lib/k8s-error';
 import { usePersistedColumns } from '@/lib/persisted-columns';
+import { SCREEN_SEARCH } from '@/lib/shortcuts';
 import type { K8sErrorKind } from '../../../shared/k8s/errors';
 
 /** The slice of a TanStack Query result the list page consumes: data, load/error flags, error, and retry. */
@@ -325,6 +326,7 @@ export function ResourceListPage<T>({
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder={placeholder}
                         aria-label={placeholder}
+                        {...SCREEN_SEARCH}
                         className="h-8 pl-8 text-body"
                     />
                 </div>

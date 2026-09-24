@@ -102,7 +102,7 @@ Every stream shares one live connection, and these end them all:
   top bar;
 - choosing or resetting the kubeconfig, or changing the proxy or CA bundle — an open shell prints the
   reason and `[session ended]`;
-- reloading the window (**View › Reload**, `⌘R` or `Ctrl+R`).
+- reloading the window (**View › Force Reload**, `⇧⌘R` or `Ctrl+Shift+R`).
 
 Nothing reconnects by itself. Open the tab again, or start the forward again from the top bar, where
 the forwards you have used on this context are offered.

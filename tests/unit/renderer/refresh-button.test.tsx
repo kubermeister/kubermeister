@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { RefreshButton } from '@/components/refresh-button';
+import { refreshScreen } from '@/lib/refresh';
 
 function renderWith(client: QueryClient, ui: React.ReactElement) {
     return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
@@ -34,5 +35,21 @@ describe('RefreshButton', () => {
         expect(spy).toHaveBeenCalledTimes(2);
         expect(spy).toHaveBeenCalledWith({ queryKey: ['nodes.list'] });
         expect(spy).toHaveBeenCalledWith({ queryKey: ['pods'] });
+    });
+
+    it("gives Mod+R the newest button's refresh, and every query once none is mounted", async () => {
+        const client = new QueryClient();
+        const spy = vi.spyOn(client, 'invalidateQueries').mockResolvedValue();
+        const first = renderWith(client, <RefreshButton queryKeys={[['nodes.list']]} />);
+        const second = renderWith(client, <RefreshButton queryKeys={[['pods']]} />);
+        await refreshScreen(client);
+        expect(spy).toHaveBeenLastCalledWith({ queryKey: ['pods'] });
+        second.unmount();
+        await refreshScreen(client);
+        expect(spy).toHaveBeenLastCalledWith({ queryKey: ['nodes.list'] });
+        first.unmount();
+        await refreshScreen(client);
+        expect(spy).toHaveBeenLastCalledWith();
+        expect(spy).toHaveBeenCalledTimes(3);
     });
 });
