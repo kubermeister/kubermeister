@@ -251,7 +251,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   before ready; Windows and Linux put the link in `argv` of the first launch and of
   `second-instance`. The installers register the scheme (`protocols` in `electron-builder.yml`, which
   also writes the Linux desktop entry's `MimeType`); only `npm run dev` calls
-  `setAsDefaultProtocolClient`, so a test run never takes the scheme from an installed app.
+  `setAsDefaultProtocolClient`, so a test run never takes the scheme from an installed app, and
+  only on Windows and Linux: macOS ignores the app path and binds the stock `Electron.app` every
+  checkout shares, whose cold start is an empty window. Try links on macOS with `npm run package:dir`.
 
 ### Lists
 
