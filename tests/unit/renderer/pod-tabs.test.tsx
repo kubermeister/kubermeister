@@ -189,6 +189,8 @@ describe('LogViewer', () => {
         expect(rows[0]!.textContent).toBe('12026-09-15T12:00:00ZERROR boom');
         expect(rows[1]!.textContent).toBe('22026-09-15T12:00:00Zfine');
         expect(screen.getByTestId('log-status')).toHaveTextContent('snapshot · 2 lines (filtered)');
+        // Only the follow state is a live region; the line count changes with every batch.
+        expect(screen.getByRole('status')).toHaveTextContent(/^snapshot$/);
         expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'false');
     });
 
@@ -212,6 +214,7 @@ describe('LogViewer', () => {
         expect(screen.getByTestId('log-viewer')).toHaveAttribute('data-live', 'true');
         expect(screen.getByRole('alert')).toHaveTextContent('forbidden');
         expect(screen.getByTestId('log-status')).toHaveTextContent('streaming · 0 lines');
+        expect(screen.getByRole('status')).toHaveTextContent(/^following$/);
         expect(screen.getByRole('button', { name: 'Live' })).toHaveAttribute('aria-pressed', 'true');
         await userEvent.click(screen.getByRole('button', { name: 'Live' }));
         expect(onLiveToggle).toHaveBeenCalledOnce();
@@ -569,6 +572,9 @@ describe('ShellTab', () => {
         terminal.onData.mockReturnValue({ dispose: vi.fn() });
         invoke.mockResolvedValue({ version: 1, data: { terminalFontSize: 12 } });
     });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
 
     it('opens on the app container and never offers an init container, which has no process left', async () => {
         streams.openPodExec.mockReturnValue({ stop: vi.fn(), send: vi.fn() });
@@ -658,6 +664,46 @@ describe('ShellTab', () => {
         );
     });
 
+    it('tells a screen reader how the session stands, which the terminal canvas cannot', async () => {
+        streams.openPodExec.mockReturnValue({ stop: vi.fn(), send: vi.fn() });
+        renderWithQuery(<ShellTab name="web-1" namespace="team-a" pod={pod} />);
+        const status = screen.getByRole('status');
+        expect(status).toHaveTextContent('Opening a shell in web');
+        const callbacks = streams.openPodExec.mock.calls[0]![1] as {
+            onData: (chunk: string) => void;
+            onError: (message: string) => void;
+            onEnd: () => void;
+        };
+        act(() => callbacks.onData('$ '));
+        expect(status).toHaveTextContent('Shell open in web');
+        act(() => callbacks.onEnd());
+        expect(status).toHaveTextContent('Shell session in web ended');
+        act(() => callbacks.onError('pods "web-1" not found'));
+        expect(status).toHaveTextContent('Shell in web: pods "web-1" not found');
+    });
+
+    it('starts over when another container is chosen, and ignores the session it left', async () => {
+        streams.openPodExec.mockReturnValue({ stop: vi.fn(), send: vi.fn() });
+        renderWithQuery(<ShellTab name="web-1" namespace="team-a" pod={pod} />);
+        const first = streams.openPodExec.mock.calls[0]![1] as { onData: (chunk: string) => void; onEnd: () => void };
+        act(() => first.onData('$ '));
+        await userEvent.click(screen.getByRole('button', { name: 'Container' }));
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'sidecar' }));
+        expect(screen.getByRole('status')).toHaveTextContent('Opening a shell in sidecar');
+        act(() => first.onEnd());
+        expect(screen.getByRole('status')).toHaveTextContent('Opening a shell in sidecar');
+    });
+
+    it('keeps the cursor still when the OS asks for less motion', () => {
+        streams.openPodExec.mockReturnValue({ stop: vi.fn(), send: vi.fn() });
+        const { unmount } = renderWithQuery(<ShellTab name="web-1" namespace="team-a" pod={pod} />);
+        expect(terminalOptions?.cursorBlink).toBe(true);
+        unmount();
+        vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }));
+        renderWithQuery(<ShellTab name="web-1" namespace="team-a" pod={pod} />);
+        expect(terminalOptions?.cursorBlink).toBe(false);
+    });
+
     it('reads token colours with fallbacks and the palette for the root class', () => {
         const host = document.createElement('div');
         expect(readTerminalTheme(host)).toMatchObject({ background: '#0b0e14', ...DARK_ANSI });
@@ -709,6 +755,8 @@ describe('NetworkTab and PortForwardControl', () => {
         await waitFor(() =>
             expect(screen.getByTestId('port-forward-status')).toHaveTextContent('Listening on 127.0.0.1:9090 → 8443'),
         );
+        // Announced from a region that was there before the status, so the change is heard.
+        expect(screen.getByRole('status')).toContainElement(screen.getByTestId('port-forward-status'));
         expect(screen.getByRole('textbox', { name: 'Local port' })).toBeDisabled();
         await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
         await waitFor(() => expect(forwardSnapshot()).toEqual([]));

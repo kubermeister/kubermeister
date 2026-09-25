@@ -152,6 +152,8 @@ describe('drain dialog', () => {
         emit({ type: 'evicting', pod: { name: 'web-1', namespace: 'team-a' } });
         const progress = await screen.findByTestId('drain-progress');
         await waitFor(() => expect(progress).toHaveTextContent('Evicting team-a/web-1'));
+        // A log region, so each pod a screen reader has not heard yet is read as it arrives.
+        expect(screen.getByRole('log', { name: 'Drain progress' })).toBe(progress);
 
         await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
         expect(streamStop).toHaveBeenCalled();

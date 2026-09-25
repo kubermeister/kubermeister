@@ -113,6 +113,15 @@ describe('status primitives and logo', () => {
         expect(within(badge).getByText('', { selector: 'span.bg-warn' })).toBeInTheDocument();
     });
 
+    it('names a dot with a title for a screen reader and hides one that only repeats its label', () => {
+        render(<StatusDot tone="danger" title="Cluster unreachable" />);
+        expect(screen.getByRole('img', { name: 'Cluster unreachable' })).toHaveClass('bg-danger');
+        render(<StatusBadge tone="ok">Running</StatusBadge>);
+        const dot = within(screen.getByText('Running')).getByText('', { selector: 'span.bg-ok' });
+        expect(dot).toHaveAttribute('aria-hidden', 'true');
+        expect(dot).not.toHaveAttribute('role');
+    });
+
     it('renders the wordmark by default and names the app through the svg without it', () => {
         const { rerender } = render(<KMLogo />);
         expect(screen.getByText('Kubermeister')).toBeInTheDocument();

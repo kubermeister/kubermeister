@@ -90,6 +90,9 @@ describe('TopBar', () => {
         await waitFor(() =>
             expect(selector.querySelector('[title]')).toHaveAttribute('title', expect.stringContaining('not ready')),
         );
+        // The label names the control; the context and its health are what it describes.
+        expect(selector).toHaveAccessibleName('Kubernetes context');
+        expect(selector).toHaveAttribute('aria-description', expect.stringMatching(/^alpha, .*not ready/));
     });
 });
 

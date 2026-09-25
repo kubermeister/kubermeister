@@ -263,7 +263,10 @@ export function LogViewer({
                     onTailChange={(tail) => setView({ tail })}
                 />
                 <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
-                    <span className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')} />
+                    <span
+                        aria-hidden
+                        className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')}
+                    />
                     Live
                 </Button>
                 <Button variant="ghost" size="icon-xs" aria-label="Download logs" onClick={onDownload}>
@@ -347,7 +350,9 @@ export function LogViewer({
                     {filtered && ' (filtered)'}
                 </span>
                 <div className="flex-1" />
-                <span>{live ? (follow.following ? 'following' : 'not following') : 'snapshot'}</span>
+                {/* Announced when it changes, which is rarely; the line count beside it changes with
+                    every batch and would talk over everything else. */}
+                <span role="status">{live ? (follow.following ? 'following' : 'not following') : 'snapshot'}</span>
             </div>
         </Card>
     );
