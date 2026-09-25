@@ -21,7 +21,7 @@ vi.mock('sonner', async () => ({
 
 const { ManifestPanel, spliceResourceVersion } = await import('@/components/templates/manifest-panel');
 const { DeleteResourceButton } = await import('@/components/templates/delete-resource-button');
-const { ScaleControl } = await import('@/components/templates/scale-control');
+const { ScaleButton, ScaleControl } = await import('@/components/templates/scale-control');
 const { RestartButton } = await import('@/components/templates/restart-button');
 const { RollbackButton } = await import('@/components/deployment/rollback-button');
 const { PauseButton } = await import('@/components/deployment/pause-button');
@@ -318,6 +318,37 @@ describe('scale control', () => {
                 replicas: 5,
             }),
         );
+    });
+});
+
+describe('scale button', () => {
+    it('opens the exact-replicas field on the current count and writes the target', async () => {
+        renderInRouter(<ScaleButton kind="Deployment" name="web" namespace="team-a" replicas={2} />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Scale' }));
+        const field = await screen.findByLabelText('Replicas');
+        expect(field).toHaveValue(2);
+        await userEvent.clear(field);
+        await userEvent.type(field, '4{Enter}');
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('resources.scale', {
+                context: 'alpha',
+                kind: 'Deployment',
+                name: 'web',
+                namespace: 'team-a',
+                replicas: 4,
+            }),
+        );
+        expect(toasts.success).toHaveBeenCalledWith('Scaled Deployment “web” to 4');
+    });
+
+    it('does not write the count the workload already has', async () => {
+        renderInRouter(<ScaleButton kind="StatefulSet" name="db" namespace="team-a" replicas={1} />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Scale' }));
+        const popover = await screen.findByRole('dialog');
+        const submit = within(popover).getByRole('button', { name: 'Scale' });
+        expect(submit).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(submit);
+        expect(invoke).not.toHaveBeenCalledWith('resources.scale', expect.anything());
     });
 });
 

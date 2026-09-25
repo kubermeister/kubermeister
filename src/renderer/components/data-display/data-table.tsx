@@ -161,7 +161,7 @@ export function DataTable<TData>({
                             // The whole row is a click target for convenience; keyboard users reach the
                             // detail through the Name cell's link, so the row itself is not focusable.
                             onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                            className={cn('border-border hover:bg-elev-2', onRowClick && 'cursor-pointer')}
+                            className={cn('group/row border-border hover:bg-elev-2', onRowClick && 'cursor-pointer')}
                         >
                             {row.getVisibleCells().map((cell) => (
                                 <TableCell key={cell.id} className="px-3 py-2.5 text-body text-text-2">

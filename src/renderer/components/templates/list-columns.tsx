@@ -281,7 +281,7 @@ export function scaleColumn<T extends { name: string; namespace?: string; replic
     return {
         id: 'scale',
         header: 'Scale',
-        size: options.size ?? 110,
+        size: options.size ?? 140,
         enableSorting: false,
         enableHiding: false,
         cell: ({ row }) => (

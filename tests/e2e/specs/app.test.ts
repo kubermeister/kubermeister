@@ -499,6 +499,22 @@ test('creates a config map from the editor, scales the deployment, then deletes 
     await expect(window.getByText(/Scaled Deployment/)).toBeVisible();
     await expect(web).toContainText('2', { timeout: 30_000 });
     await web.getByRole('button', { name: 'Scale down' }).click();
+    await expect(web).toContainText('1/1', { timeout: 30_000 });
+
+    // The detail header scales to an exact count through the same field the list's button opens.
+    await web.getByRole('link').first().click();
+    const page = window.getByTestId('deployment-page');
+    await page.getByRole('button', { name: 'Scale', exact: true }).click();
+    const field = window.getByLabel('Replicas');
+    await expect(field).toHaveValue('1');
+    await field.fill('3');
+    await field.press('Enter');
+    await expect(window.getByText('Scaled Deployment “web” to 3')).toBeVisible();
+    await expect(page).toContainText('/3', { timeout: 30_000 });
+    await page.getByRole('button', { name: 'Scale', exact: true }).click();
+    await window.getByLabel('Replicas').fill('1');
+    await window.getByLabel('Replicas').press('Enter');
+    await expect(page).toContainText('/1', { timeout: 30_000 });
 
     await window.getByTestId('sidebar').getByRole('link', { name: 'Config Maps' }).click();
     await window.getByTestId('configmaps-table').locator('[data-configmap="my-config"]').getByRole('link').click();

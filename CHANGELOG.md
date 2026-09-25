@@ -15,6 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- A Deployment's and a StatefulSet's detail page has **Scale** in its header, which sets the replica
+  count to an exact number.
 - An `.rpm` package for Fedora, RHEL and openSUSE is published for x86-64 and arm64 beside the
   AppImage and the `.deb`, and like the `.deb` it is updated through the package manager.
 - A Helm release opens on a **Resources** tab listing every object its current revision rendered,
@@ -28,6 +30,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- The Scale column in the Deployments and StatefulSets lists joins the steppers and the count into
+  one group, and the exact number is set from a button beside it that appears on the hovered row
+  rather than by clicking the count.
 - When the operating system asks for reduced motion, dialogs and menus appear without transitions,
   spinners and the Live dot stand still, and the shell's cursor stops blinking.
 - **Copy link** is back in a detail page's header as a labelled button, the first of its actions,

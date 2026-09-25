@@ -14,6 +14,7 @@ import { manifestTab } from '@/components/templates/manifest-panel';
 import { EditResourceButton } from '@/components/templates/edit-resource-button';
 import { DeleteResourceButton } from '@/components/templates/delete-resource-button';
 import { RestartButton } from '@/components/templates/restart-button';
+import { ScaleButton } from '@/components/templates/scale-control';
 import { ipcQueryKey } from '@/lib/query';
 import { useResource } from '@/lib/resources';
 
@@ -67,6 +68,9 @@ function StatefulSetDetailPage() {
                     <RefreshButton
                         queryKeys={[ipcQueryKey('resources.get', { kind: 'StatefulSet', name, namespace })]}
                     />
+                    {row && (
+                        <ScaleButton kind="StatefulSet" name={name} namespace={namespace} replicas={row.replicas} />
+                    )}
                     <RestartButton kind="StatefulSet" name={name} namespace={namespace} />
                     <EditResourceButton />
                     <DeleteResourceButton
