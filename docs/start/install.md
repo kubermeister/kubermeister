@@ -1,6 +1,6 @@
 ---
 title: Install Kubermeister
-description: Install the Kubermeister desktop Kubernetes client on macOS with Homebrew or the .dmg, on Windows with the installer, and on Linux from the AppImage, .deb or .rpm, and check a download against SHA256SUMS.
+description: Install the Kubermeister desktop Kubernetes client on macOS with Homebrew or the .dmg, on Windows with the installer, and on Linux from the AppImage, the .deb, the .rpm or the AUR, and check a download against SHA256SUMS.
 sidebar:
   order: 1
 ---
@@ -71,9 +71,17 @@ you which one you have: `x86_64` or `aarch64`.
   sudo zypper install --allow-unsigned-rpm ./Kubermeister-*-linux-x86_64.rpm   # openSUSE
   ```
 
-They update differently. The AppImage updates itself like the other builds. A `.deb` or `.rpm`
-belongs to your package manager, so the app only tells you a new version exists and links to its
-release page; you install the new package the same way you installed this one.
+On Arch Linux, the AUR package `kubermeister-bin` installs the same `.deb` for either
+architecture, with the dependencies Arch names them by. Each release updates it.
+
+```sh
+yay -S kubermeister-bin
+```
+
+The formats update differently. The AppImage updates itself like the other builds. A `.deb`, an
+`.rpm` and the AUR package belong to your package manager, so the app only tells you a new version
+exists and links to its release page; you install the new `.deb` or `.rpm` the same way you
+installed this one, and the AUR package with your usual upgrade (`yay -Syu`).
 
 An AppImage installs no desktop entry until you integrate it, so on Linux the window sets its own
 icon rather than relying on one to supply it.

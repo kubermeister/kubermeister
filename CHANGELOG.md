@@ -21,6 +21,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   read live from the cluster with each one's own status, under a health roll-up that names the
   object making the release unhealthy, such as one that is missing.
 - Linux builds for arm64, as an AppImage and a `.deb`, which update the same way as the x64 ones.
+- An AUR package, `kubermeister-bin`, for x86-64 and arm64, updated with every release.
 
 ### Fixed
 

@@ -205,6 +205,53 @@ jobs:
               fi
             '
 
+      # The AUR package the release publishes, built from this run's deb rather than a released
+      # one: the template's sources are cut down to local names and the files put under them, so
+      # makepkg checks the same digests the release would fill in. Arch builds for x86-64 alone.
+      - name: The AUR package builds, installs and starts on Arch
+        if: matrix.arch == 'x64'
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          build=$(mktemp -d)
+          cp "release/Kubermeister-$VERSION-linux-amd64.deb" "$build/kubermeister-bin-$VERSION-x86_64.deb"
+          cp LICENSE "$build/LICENSE-$VERSION"
+          sed -e "s/__VERSION__/$VERSION/g" \
+            -e "s/__SHA256_X86_64__/$(sha256sum "$build/kubermeister-bin-$VERSION-x86_64.deb" | cut -d' ' -f1)/g" \
+            -e "s/__SHA256_AARCH64__/SKIP/g" \
+            -e "s/__SHA256_LICENSE__/$(sha256sum LICENSE | cut -d' ' -f1)/g" \
+            -e 's/"\([^":]*\)::[^"]*"/"\1"/g' \
+            packaging/aur/PKGBUILD.tmpl > "$build/PKGBUILD"
+          cat "$build/PKGBUILD"
+          # SYS_ADMIN is what lets the package's SUID chrome-sandbox make its namespaces, which a
+          # container refuses by default and the app then dies on at launch.
+          docker run --rm --cap-add SYS_ADMIN -v "$build:/src:ro" archlinux:latest bash -euo pipefail -c '
+            # pacman drops to a seccomp-sandboxed user for downloads, which a container refuses;
+            # this one is thrown away, and makepkg -s calls pacman too, so the switch is global.
+            sed -i "s/^\[options\]$/[options]\nDisableSandbox/" /etc/pacman.conf
+            pacman -Syu --noconfirm --needed base-devel namcap xorg-server-xvfb
+            # makepkg refuses root, and -s installs the dependencies through sudo.
+            useradd --create-home builder
+            echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+            install -d -o builder /home/builder/pkg
+            install -o builder /src/* /home/builder/pkg/
+            su builder -c "cd ~/pkg && makepkg -si --noconfirm"
+            # Printed for the reader, not a gate: namcap warns about things an Electron bundle
+            # always carries.
+            su builder -c "cd ~/pkg && namcap PKGBUILD && namcap kubermeister-bin-*.pkg.tar.zst" || true
+            bin=$(command -v kubermeister)
+            echo "installed kubermeister-bin, starting $bin"
+            set +e
+            su builder -c "KUBERMEISTER_USER_DATA=\$(mktemp -d) KUBECONFIG=/nonexistent timeout --signal=TERM 30 xvfb-run --auto-servernum $bin" > /tmp/aur.log 2>&1
+            code=$?
+            set -e
+            cat /tmp/aur.log
+            if [ "$code" -ne 124 ]; then
+              echo "::error::the installed app exited on its own with $code"
+              exit 1
+            fi
+          '
+
   build:
     name: build (${{ matrix.os }})
     strategy:

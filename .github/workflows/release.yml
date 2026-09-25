@@ -117,6 +117,8 @@ jobs:
       HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
       # Presence flag only; the token itself is used solely by the dispatch below.
       HAS_SITE_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN != '' }}
+      # Presence flag only; the key itself is used solely by the AUR push below.
+      HAS_AUR_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
     steps:
       # Installers are unsigned on Windows and on Linux, so a checksum is the only way to tell a
       # good download from a truncated or tampered one. The digests come from the release itself
@@ -144,8 +146,9 @@ jobs:
 
       # Homebrew cask: render the template with this version and the dmg checksums, push to the
       # tap. Skipped when HOMEBREW_TAP_TOKEN is not configured so the release itself never blocks.
+      # This checkout also brings the AUR template.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: env.HAS_TAP_TOKEN == 'true'
+        if: env.HAS_TAP_TOKEN == 'true' || env.HAS_AUR_KEY == 'true'
         with:
           persist-credentials: false
       # This checkout keeps its token on purpose: the step below pushes the cask with it.
@@ -174,6 +177,60 @@ jobs:
           git diff --cached --quiet && { echo "cask unchanged"; exit 0; }
           git commit -m "kubermeister $VERSION"
           git push
+
+      # kubermeister-bin on the AUR: render the PKGBUILD with this version and the deb checksums,
+      # generate its .SRCINFO and push both. Skipped when AUR_SSH_PRIVATE_KEY is not configured so
+      # the release itself never blocks. Plain git over ssh rather than a marketplace action, which
+      # would hold a key that publishes a package people install. The AUR's host key is pinned
+      # here, checked against the fingerprint aur.archlinux.org publishes, so a first connection
+      # never trusts whatever answers.
+      - name: Render and push the AUR package
+        if: env.HAS_AUR_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # The digests the packaging action already compared with the files it built, the same
+          # ones SHA256SUMS lists; that file does not survive the checkout above.
+          digest() {
+            gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets \
+              --jq ".assets[] | select(.name == \"$1\") | .digest" | sed 's/^sha256://'
+          }
+          SHA_X86_64=$(digest "Kubermeister-$VERSION-linux-amd64.deb")
+          SHA_AARCH64=$(digest "Kubermeister-$VERSION-linux-arm64.deb")
+          SHA_LICENSE=$(sha256sum LICENSE | cut -d' ' -f1)
+          if [ -z "$SHA_X86_64" ] || [ -z "$SHA_AARCH64" ]; then
+            echo "::error::the release is missing a deb the AUR package is built from"
+            exit 1
+          fi
+
+          install -d -m 700 ~/.ssh
+          (umask 077 && printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur)
+          echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' \
+            > ~/.ssh/aur_known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/aur_known_hosts -o StrictHostKeyChecking=yes"
+
+          git clone ssh://aur@aur.archlinux.org/kubermeister-bin.git aur
+          sed -e "s/__VERSION__/$VERSION/g" -e "s/__SHA256_X86_64__/$SHA_X86_64/g" \
+            -e "s/__SHA256_AARCH64__/$SHA_AARCH64/g" -e "s/__SHA256_LICENSE__/$SHA_LICENSE/g" \
+            packaging/aur/PKGBUILD.tmpl > aur/PKGBUILD
+          # makepkg is Arch's own and refuses to run as root, so .SRCINFO is written by an ordinary
+          # user in an Arch container, from a copy, leaving the clone's ownership alone.
+          docker run --rm -v "$PWD/aur/PKGBUILD:/PKGBUILD:ro" archlinux:latest bash -euo pipefail -c '
+            useradd --create-home builder
+            install -o builder /PKGBUILD /home/builder/PKGBUILD
+            su builder -c "cd ~ && makepkg --printsrcinfo"
+          ' > aur/.SRCINFO
+
+          cd aur
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && { echo "AUR package unchanged"; exit 0; }
+          git commit -m "kubermeister $VERSION"
+          # The AUR accepts pushes to master alone, whatever the runner's git calls a new branch.
+          git push origin HEAD:master
 
       # kubermeister.dev reads this repository's releases and CHANGELOG.md at build time, so without
       # this the download page keeps offering the previous version until somebody pushes to the

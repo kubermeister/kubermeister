@@ -888,6 +888,11 @@ through the next release.
 - The cask is rendered from `packaging/homebrew/kubermeister.rb.tmpl` and pushed to
   `kubermeister/homebrew-tap` with `HOMEBREW_TAP_TOKEN`, a fine-grained token whose resource owner
   must be the organization.
+- The AUR package `kubermeister-bin` is rendered from `packaging/aur/PKGBUILD.tmpl` and pushed to
+  `aur.archlinux.org` over ssh with `AUR_SSH_PRIVATE_KEY`, a key on the maintainer's own AUR account
+  (the AUR has no organizations), against a host key pinned in `release.yml`. It repackages the
+  release's debs, so their names are load-bearing for it too, and extracting `data.tar` skips the
+  deb's postinst: `package()` makes the `/usr/bin` link and the SUID `chrome-sandbox` itself.
 - The website lives in `kubermeister/website` and builds against this repository's releases and
   `CHANGELOG.md`, so the last step of `publish` dispatches `release-published` to it with
   `WEBSITE_DISPATCH_TOKEN`, a fine-grained token of the same shape as the tap's. The dispatch names
