@@ -178,11 +178,15 @@ jobs:
       # A Fedora container is what resolves the rpm's dependencies against the names a dnf-based
       # distribution really uses, which the Ubuntu runner cannot. The app runs as an ordinary user,
       # as it would for anybody who installed it, since Chromium refuses to start as root.
+      # Docker's default seccomp profile and capability set refuse the PID and network namespaces
+      # Chromium's sandbox creates, which a real Fedora install is allowed; the container is given
+      # them rather than the app `--no-sandbox`, so the sandbox the package sets up is what starts.
       - name: The rpm installs and starts on Fedora
         run: |
           set -euo pipefail
           rpm=$(ls release/*.rpm)
-          docker run --rm -v "$PWD/release:/release:ro" -e RPM="/release/$(basename "$rpm")" \
+          docker run --rm --cap-add SYS_ADMIN --security-opt seccomp=unconfined \
+            -v "$PWD/release:/release:ro" -e RPM="/release/$(basename "$rpm")" \
             fedora:latest bash -euo pipefail -c '
               dnf install -y "$RPM" /usr/bin/xvfb-run
               name=$(rpm -qp --queryformat "%{NAME}" "$RPM")
