@@ -86,6 +86,21 @@ export async function invalidateClusterQueries(): Promise<void> {
     ]);
 }
 
+/**
+ * Mark what a write changed as out of date. A read already in flight went out before the write
+ * landed, so it is cancelled first: left alone it would settle as fresh with the old answer, and a
+ * screen mounting meanwhile joins that read instead of starting its own. On an unmounted list that
+ * is a deleted row back on screen with nothing left to remove it.
+ */
+export async function refreshAfterWrite(client: QueryClient, keys: QueryKey[]): Promise<void> {
+    await Promise.all(
+        keys.map(async (queryKey) => {
+            await client.cancelQueries({ queryKey });
+            await client.invalidateQueries({ queryKey });
+        }),
+    );
+}
+
 export interface IpcMutationOptions<C extends IpcChannel, TVariables> {
     /** Query keys to refetch once the write succeeds; name only the domains the write touches. */
     invalidates?: (input: IpcInput<C>, data: IpcOutput<C>) => QueryKey[];
@@ -110,8 +125,7 @@ export function useIpcMutation<C extends IpcChannel, TVariables = IpcInput<C>>(
                 ? await options.prepare(variables, client)
                 : (variables as unknown as IpcInput<C>);
             const data = await invoke(channel, input);
-            const keys = options.invalidates?.(input, data) ?? [];
-            await Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
+            await refreshAfterWrite(client, options.invalidates?.(input, data) ?? []);
             return data;
         },
     });
