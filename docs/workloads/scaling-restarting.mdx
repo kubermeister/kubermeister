@@ -1,6 +1,6 @@
 ---
 title: Scaling and restarting
-description: Scaling Deployments and StatefulSets from their lists in Kubermeister, restarting a workload the way kubectl rollout restart does, adjusting a HorizontalPodAutoscaler, and evicting or deleting pods.
+description: Scaling Deployments and StatefulSets from their detail pages and lists in Kubermeister, restarting a workload the way kubectl rollout restart does, adjusting a HorizontalPodAutoscaler, and evicting or deleting pods.
 sidebar:
   order: 2
 ---
@@ -9,19 +9,24 @@ import Figure from '@/components/docs/Figure.astro';
 
 ## Scaling
 
-Deployments and StatefulSets are the two kinds that scale, and they scale from their **lists**, not
-their detail pages. Each row has a **Scale** column: **Scale down** (−), the current count and
-**Scale up** (+). A step sets the count one lower or higher.
+Deployments and StatefulSets are the two kinds that scale, from their detail pages and from their
+lists.
+
+On a Deployment's or a StatefulSet's detail page, **Scale** sits in the header beside **Restart**. It
+opens **Scale Deployment** (or **Scale StatefulSet**) with a **Replicas** field, filled in with the
+current count, and **Scale** and **Cancel**. `Enter` in the field scales too. Any whole number from
+0 to 1000 is accepted; **Scale** stays disabled until the number differs from the current one.
+
+In the lists, each row has a **Scale** column: **Scale down** (−), the current count and **Scale up**
+(+), joined in one group. A step sets the count one lower or higher. Hovering the row shows one more
+button beside the group, which opens the same **Replicas** field for an exact number; it is there for
+the keyboard too, as the next stop after **Scale up**.
 
 <Figure
   name="deployments-scale"
-  alt="The Deployments list with a Scale column of − and + steppers either side of each replica count."
-  caption="Click the count between the steppers to type an exact number."
+  alt="The Deployments list with a Scale column of − and + steppers either side of each replica count, and a button beside the hovered row's group."
+  caption="Hover a row for the button that sets an exact number."
 />
-
-Clicking the count opens **Scale Deployment** (or **Scale StatefulSet**) with a **Replicas** field,
-filled in with the current count, and **Scale** and **Cancel**. Any whole number from 0 to 1000 is
-accepted; **Scale** stays disabled until the number differs from the current one.
 
 Each step writes the absolute target, not a delta, and both steppers go inert while a write is in
 flight, so rapid clicks cannot race each other. The write reads the scale subresource first and puts

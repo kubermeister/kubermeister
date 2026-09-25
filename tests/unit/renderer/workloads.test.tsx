@@ -225,6 +225,7 @@ describe('workload details', () => {
         expect(page).toHaveTextContent('Available2');
         expect(page).toHaveTextContent('Updated3');
         expect(within(page).getByRole('button', { name: 'Restart' })).toBeEnabled();
+        expect(within(page).getByRole('button', { name: 'Scale' })).toBeEnabled();
 
         const rail = within(page).getByRole('tablist');
         expect(
@@ -381,6 +382,7 @@ describe('workload details', () => {
         await waitFor(() => expect(page).toHaveTextContent('service: db-headless'));
         expect(page).toHaveTextContent('postgres:16');
         expect(within(page).getByRole('tab', { name: /Labels/ })).toHaveTextContent('1');
+        expect(within(page).getByRole('button', { name: 'Scale' })).toBeEnabled();
 
         const { router } = renderRoutes(routeTree, '/workloads/daemonsets/kube-system/agent');
         const daemon = await screen.findByTestId('daemonset-page');

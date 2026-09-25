@@ -339,9 +339,10 @@ test('port-forwards', async () => {
 test('deployments-scale', async () => {
     const { window } = launched;
     await goto('/workloads/deployments');
-    // The Scale column's steppers are the only place a replica count is changed, so the list is the
-    // picture rather than a detail page.
-    await expect(window.getByTestId('deployments-table')).toContainText('checkout', { timeout: 30_000 });
+    const table = window.getByTestId('deployments-table');
+    await expect(table).toContainText('checkout', { timeout: 30_000 });
+    // The exact-count button only shows on the hovered row, and it is what the page points at.
+    await table.locator('[data-deployment="checkout"]').hover();
     await shoot('deployments-scale');
 });
 
