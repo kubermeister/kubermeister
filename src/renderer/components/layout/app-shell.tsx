@@ -10,6 +10,8 @@ import { TopBar } from './top-bar';
 import { stageManifestImport, useManifestDrop } from '@/lib/manifest-import';
 import { useShortcuts } from '@/lib/shortcuts';
 
+const MAIN_ID = 'main-content';
+
 export function AppShell() {
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -27,10 +29,20 @@ export function AppShell() {
     });
     return (
         <div className="grid h-screen grid-cols-[252px_1fr] overflow-hidden" data-testid="app-shell">
+            {/* The first stop of the tab order, moved into view only while focused: the sidebar and
+                top bar come first in the document and are dozens of stops before the screen itself.
+                A button rather than a `#main` link, because the router owns the hash. */}
+            <button
+                type="button"
+                onClick={() => document.getElementById(MAIN_ID)?.focus()}
+                className="fixed top-2 left-2 z-50 -translate-y-16 rounded-md bg-primary px-3 py-1.5 text-body font-medium text-primary-foreground focus:translate-y-0"
+            >
+                Skip to content
+            </button>
             <Sidebar onOpenPalette={() => setPaletteOpen(true)} />
             <div className="flex min-w-0 flex-col overflow-hidden">
                 <TopBar />
-                <main className="min-h-0 flex-1 overflow-hidden">
+                <main id={MAIN_ID} tabIndex={-1} className="min-h-0 flex-1 overflow-hidden outline-none">
                     <Outlet />
                 </main>
             </div>

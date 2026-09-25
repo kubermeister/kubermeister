@@ -196,6 +196,31 @@
     }
 }
 
+/* Every focusable element shows where focus is when it arrives from the keyboard. The shadcn
+   primitives draw their own ring and opt out with `outline-none`, a utility, which wins over this
+   base rule; everything else (links, the sidebar, bespoke buttons) gets the ring colour as an
+   outline instead of the browser's own, which is faint on these surfaces and ignores the theme. */
+@layer base {
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+}
+
+/* The OS asking for less motion stops the app's own: dialog and popover transitions, the chevrons,
+   the pulsing Live dot and the spinners, which settle on their first frame. The duration is near
+   zero rather than zero so the animationend Radix waits for before unmounting still fires. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* Thin scrollbars to match the dense ops aesthetic */
 @layer base {
     ::-webkit-scrollbar {

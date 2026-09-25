@@ -135,6 +135,9 @@ export function ContextSelector() {
                     size="sm"
                     className="gap-2 px-2.5"
                     aria-label="Kubernetes context"
+                    // The label names the control, so the context and its health, which the button
+                    // shows, are read as its description rather than lost under the label.
+                    aria-description={`${current?.name ?? 'No cluster'}, ${health.title}`}
                     data-testid="context-selector"
                 >
                     <StatusDot tone={health.tone} title={health.title} />

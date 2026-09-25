@@ -355,7 +355,7 @@ export function ResourceDetail({
                                         tabIndex={0}
                                         hidden={!active}
                                         className={cn(
-                                            'min-h-0 pt-3.5 outline-none',
+                                            'min-h-0 pt-3.5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                                             active && 'flex-1',
                                             tab.fill ? 'flex flex-col overflow-hidden' : 'overflow-auto',
                                         )}

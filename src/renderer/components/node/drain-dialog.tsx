@@ -113,7 +113,12 @@ export function DrainDialog({ name, context }: { name: string; context: string |
                     )}
 
                     {started && (
-                        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto" data-testid="drain-progress">
+                        <div
+                            className="flex max-h-64 flex-col gap-1 overflow-y-auto"
+                            role="log"
+                            aria-label="Drain progress"
+                            data-testid="drain-progress"
+                        >
                             {drain.cordoned && <div className="text-cell text-text-muted">Node cordoned.</div>}
                             {drain.lines.map((line) => (
                                 <div

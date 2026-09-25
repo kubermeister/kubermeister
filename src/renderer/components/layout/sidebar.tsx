@@ -55,7 +55,7 @@ export function Sidebar({ onOpenPalette }: { onOpenPalette: () => void }) {
                 <button
                     type="button"
                     onClick={onOpenPalette}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-body text-text-2 transition-colors hover:bg-elev-2/60"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-body text-text-2 transition-colors -outline-offset-2 hover:bg-elev-2/60"
                     data-testid="quick-actions"
                 >
                     <SearchIcon className="size-3.25 text-text-muted" />
@@ -137,7 +137,8 @@ function SidebarItem({
             aria-current={active ? 'page' : undefined}
             className={cn(
                 'relative mb-px flex items-center gap-2.5 rounded py-1 pr-2.5 text-body transition-colors',
-                flat ? 'mb-0 rounded-none px-4 py-2.5' : 'pl-[34px]',
+                // A footer entry spans the aside, whose overflow would clip an outline drawn outside.
+                flat ? 'mb-0 rounded-none px-4 py-2.5 -outline-offset-2' : 'pl-[34px]',
                 active ? 'bg-elev-2 text-foreground' : 'text-text-2 hover:bg-elev-2/60',
             )}
         >

@@ -21,9 +21,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   read live from the cluster with each one's own status, under a health roll-up that names the
   object making the release unhealthy, such as one that is missing.
 - Linux builds for arm64, as an AppImage and a `.deb`, which update the same way as the x64 ones.
+- A **Skip to content** button as the first `Tab` stop moves focus past the sidebar and top bar, and
+  whatever has keyboard focus is outlined in the theme's accent colour.
+- A screen reader hears the state of a shell session, a port forward, a drain and a log console's
+  follow as it changes, and a status dot that stands alone is read by what it means.
 
 ### Changed
 
+- When the operating system asks for reduced motion, dialogs and menus appear without transitions,
+  spinners and the Live dot stand still, and the shell's cursor stops blinking.
 - **Copy link** is back in a detail page's header as a labelled button, the first of its actions,
   instead of an icon beside the breadcrumbs.
 

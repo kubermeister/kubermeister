@@ -16,6 +16,7 @@ import { ContainerRoleNote } from '@/components/pod/container-role-note';
 import type { StreamHandle } from '@/lib/ipc';
 import { containerChoices } from '@/lib/pod-containers';
 import { openPodExec } from '@/lib/pod-streams';
+import { prefersReducedMotion } from '@/lib/motion';
 import { useTerminalFontSize } from '@/lib/settings';
 import { readTerminalLook, readTerminalTheme } from '@/lib/terminal-look';
 
@@ -24,6 +25,17 @@ import { readTerminalLook, readTerminalTheme } from '@/lib/terminal-look';
  * shell belongs to the pod it is a shell into, so it opens when this tab does and ends with it.
  * The tab is not kept mounted on purpose: merely looking at a pod should never exec into it.
  */
+type SessionState = 'connecting' | 'open' | 'ended';
+
+/** What a screen reader hears of the session, which it otherwise sees only as a canvas of cells. */
+function sessionAnnouncement(state: SessionState, container: string | undefined, error: string | null): string {
+    if (!container) return '';
+    if (error) return `Shell in ${container}: ${error}`;
+    if (state === 'connecting') return `Opening a shell in ${container}`;
+    if (state === 'open') return `Shell open in ${container}`;
+    return `Shell session in ${container} ended`;
+}
+
 export function ShellTab({ name, namespace, pod }: { name: string; namespace: string; pod?: PodDetail | null }) {
     const ref = useRef<HTMLDivElement>(null);
     // A shell needs a running process to attach to, which a finished init container no longer has.
@@ -32,6 +44,15 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
     const [selectedContainer, setSelectedContainer] = useState<string | null>(null);
     const container = selectedContainer && containers.includes(selectedContainer) ? selectedContainer : containers[0];
     const fontSize = useTerminalFontSize();
+    // One session per pod and container; a new one starts out connecting again, reset during
+    // render because an effect may not set state.
+    const sessionKey = container ? `${namespace}/${name}/${container}` : null;
+    const [session, setSession] = useState<{ key: string | null; state: SessionState; error: string | null }>({
+        key: sessionKey,
+        state: 'connecting',
+        error: null,
+    });
+    if (session.key !== sessionKey) setSession({ key: sessionKey, state: 'connecting', error: null });
 
     useEffect(() => {
         const host = ref.current;
@@ -42,7 +63,7 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
         const term = new Terminal({
             fontFamily: look.fontFamily,
             fontSize: look.fontSize,
-            cursorBlink: true,
+            cursorBlink: !prefersReducedMotion(),
             theme: look.theme,
         });
         const fit = new FitAddon();
@@ -52,14 +73,30 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
         // session: the size it opens with is the size the shell starts at, and a resize sent while
         // the session is still starting has nowhere to go yet.
         let control: StreamHandle | null = null;
+        const key = sessionKey;
+        const report = (next: Partial<{ state: SessionState; error: string }>) =>
+            setSession((prev) => (prev.key === key ? { ...prev, ...next } : prev));
+        let opened = false;
         const raf = requestAnimationFrame(() => {
             fit.fit();
             control = openPodExec(
                 { name, namespace, container, size: { cols: term.cols, rows: term.rows } },
                 {
-                    onData: (chunk) => term.write(chunk),
-                    onError: (message) => term.write(`\r\n\x1b[31m${message}\x1b[0m\r\n`),
-                    onEnd: () => term.write('\r\n\x1b[90m[session ended]\x1b[0m\r\n'),
+                    onData: (chunk) => {
+                        term.write(chunk);
+                        if (!opened) {
+                            opened = true;
+                            report({ state: 'open' });
+                        }
+                    },
+                    onError: (message) => {
+                        term.write(`\r\n\x1b[31m${message}\x1b[0m\r\n`);
+                        report({ error: message });
+                    },
+                    onEnd: () => {
+                        term.write('\r\n\x1b[90m[session ended]\x1b[0m\r\n');
+                        report({ state: 'ended' });
+                    },
                 },
             );
         });
@@ -121,6 +158,9 @@ export function ShellTab({ name, namespace, pod }: { name: string; namespace: st
                     <span className="text-meta text-text-muted">/bin/sh</span>
                 </div>
                 <div ref={ref} className="min-h-0 flex-1 overflow-hidden p-2" data-testid="terminal-host" />
+                <div role="status" className="sr-only" data-testid="shell-session-status">
+                    {sessionAnnouncement(session.state, container, session.error)}
+                </div>
             </Card>
         </div>
     );

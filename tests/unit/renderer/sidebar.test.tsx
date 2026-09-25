@@ -119,6 +119,19 @@ describe('Sidebar', () => {
         expect(within(sidebar).getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-expanded', 'true');
     });
 
+    it('opens the tab order with a skip link that moves focus past the sidebar and top bar', async () => {
+        renderRoutes(routeTree, '/overview/summary');
+        await screen.findByTestId('sidebar');
+        await userEvent.tab();
+        const skip = screen.getByRole('button', { name: 'Skip to content' });
+        expect(skip).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+        expect(screen.getByRole('main')).toHaveFocus();
+        // Past the screen's own first control rather than back into the sidebar.
+        await userEvent.tab();
+        expect(screen.getByTestId('sidebar')).not.toContainElement(document.activeElement as HTMLElement);
+    });
+
     it('shows Quick actions and the Settings entry in the footer, with their keys for the platform', async () => {
         renderRoutes(routeTree, '/overview/summary');
         const sidebar = await screen.findByTestId('sidebar');

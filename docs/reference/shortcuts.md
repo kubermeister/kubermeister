@@ -131,6 +131,9 @@ within two seconds to leave it.
 
 ## Elsewhere
 
+- **`Tab`** first reaches **Skip to content**, which moves focus past the sidebar and top bar to the
+  screen. See [accessibility](/docs/reference/accessibility/#moving-through-the-window).
+
 - **Dialogs and popovers** close with `Escape`.
 - **The Shell tab** sends what you type to the shell in the pod; the terminal adds no shortcuts of its
   own. See [where the keys work](#where-the-keys-work).

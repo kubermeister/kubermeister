@@ -119,15 +119,19 @@ export function PortForwardControl({
                     )}
                 </div>
             )}
-            {status && (
-                <div
-                    className="mt-2 font-mono text-label text-text-2"
-                    data-testid="port-forward-status"
-                    data-error={String(Boolean(formError ?? forward?.error))}
-                >
-                    {status}
-                </div>
-            )}
+            {/* The live region is always there, so a status that appears is announced rather than
+                arriving together with the region that should have reported it. */}
+            <div role="status">
+                {status && (
+                    <div
+                        className="mt-2 font-mono text-label text-text-2"
+                        data-testid="port-forward-status"
+                        data-error={String(Boolean(formError ?? forward?.error))}
+                    >
+                        {status}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
