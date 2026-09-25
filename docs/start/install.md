@@ -1,6 +1,6 @@
 ---
 title: Install Kubermeister
-description: Install the Kubermeister desktop Kubernetes client on macOS with Homebrew or the .dmg, on Windows with the installer, and on Linux from the AppImage or .deb, and check a download against SHA256SUMS.
+description: Install the Kubermeister desktop Kubernetes client on macOS with Homebrew or the .dmg, on Windows with the installer, and on Linux from the AppImage, .deb or .rpm, and check a download against SHA256SUMS.
 sidebar:
   order: 1
 ---
@@ -40,14 +40,14 @@ installer is not code-signed; check it against `SHA256SUMS` before you run it.
 
 ## Linux
 
-Two formats are published, each for x86-64 and for arm64 (an Ampere or Graviton machine, a
+Three formats are published, each for x86-64 and for arm64 (an Ampere or Graviton machine, a
 Raspberry Pi with a 64-bit OS, an arm64 virtual machine on an Apple silicon Mac). `uname -m` tells
 you which one you have: `x86_64` or `aarch64`.
 
-| Architecture | AppImage                | `.deb`            |
-| ------------ | ----------------------- | ----------------- |
-| x86-64       | `linux-x86_64.AppImage` | `linux-amd64.deb` |
-| arm64        | `linux-arm64.AppImage`  | `linux-arm64.deb` |
+| Architecture | AppImage                | `.deb`            | `.rpm`              |
+| ------------ | ----------------------- | ----------------- | ------------------- |
+| x86-64       | `linux-x86_64.AppImage` | `linux-amd64.deb` | `linux-x86_64.rpm`  |
+| arm64        | `linux-arm64.AppImage`  | `linux-arm64.deb` | `linux-aarch64.rpm` |
 
 - **AppImage** — download it, mark it executable and run it. Nothing is installed, and it needs no
   FUSE library.
@@ -63,9 +63,17 @@ you which one you have: `x86_64` or `aarch64`.
   sudo apt install ./Kubermeister-*-linux-amd64.deb   # linux-arm64.deb on arm64
   ```
 
-The two update differently. The AppImage updates itself like the other builds. A `.deb` belongs to
-your package manager, so the app only tells you a new version exists and links to its release
-page; you install the new `.deb` the same way you installed this one.
+- **`.rpm`** — for Fedora, RHEL and derivatives, and openSUSE. The package is not signed, so
+  `zypper` asks to be told that is expected.
+
+  ```sh
+  sudo dnf install ./Kubermeister-*-linux-x86_64.rpm   # linux-aarch64.rpm on arm64
+  sudo zypper install --allow-unsigned-rpm ./Kubermeister-*-linux-x86_64.rpm   # openSUSE
+  ```
+
+They update differently. The AppImage updates itself like the other builds. A `.deb` or `.rpm`
+belongs to your package manager, so the app only tells you a new version exists and links to its
+release page; you install the new package the same way you installed this one.
 
 An AppImage installs no desktop entry until you integrate it, so on Linux the window sets its own
 icon rather than relying on one to supply it.
@@ -73,7 +81,7 @@ icon rather than relying on one to supply it.
 ## Verifying a download
 
 Every release carries a `SHA256SUMS` file beside its installers, listing the SHA-256 digest of each
-`.dmg`, `.zip`, `.exe`, `.AppImage` and `.deb`. Download it from the
+`.dmg`, `.zip`, `.exe`, `.AppImage`, `.deb` and `.rpm`. Download it from the
 [releases page](https://github.com/kubermeister/kubermeister/releases) into the same folder as the
 installer and check it:
 
@@ -97,7 +105,7 @@ only ever names files that are complete.
 
 Kubermeister checks its GitHub releases for a new version. By default it downloads one in the
 background and installs it when you quit. You can have it ask first, or stop checking on a
-schedule — see [updates](/docs/reference/updates/). A `.deb` install is the exception: it reports
+schedule — see [updates](/docs/reference/updates/). A `.deb` or `.rpm` install is the exception: it reports
 the new version and leaves the installing to you.
 
 ## Next

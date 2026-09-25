@@ -45,8 +45,16 @@ function outputList(output: string, name: string): string[] {
     return match?.[1]?.split('\n') ?? [];
 }
 
-const LINUX_X64 = ['Kubermeister-1.2.3-linux-x86_64.AppImage', 'Kubermeister-1.2.3-linux-amd64.deb'];
-const LINUX_ARM64 = ['Kubermeister-1.2.3-linux-arm64.AppImage', 'Kubermeister-1.2.3-linux-arm64.deb'];
+const LINUX_X64 = [
+    'Kubermeister-1.2.3-linux-x86_64.AppImage',
+    'Kubermeister-1.2.3-linux-amd64.deb',
+    'Kubermeister-1.2.3-linux-x86_64.rpm',
+];
+const LINUX_ARM64 = [
+    'Kubermeister-1.2.3-linux-arm64.AppImage',
+    'Kubermeister-1.2.3-linux-arm64.deb',
+    'Kubermeister-1.2.3-linux-aarch64.rpm',
+];
 
 describe('naming what a runner packaged', () => {
     beforeEach(() => {
@@ -57,7 +65,7 @@ describe('naming what a runner packaged', () => {
         rmSync(dir, { recursive: true, force: true });
     });
 
-    it('finds the x64 Linux feed and both packages', () => {
+    it('finds the x64 Linux feed and every package', () => {
         release(LINUX_X64, { 'latest-linux.yml': LINUX_X64 });
         const { status, output } = run('Linux', 'X64');
         expect(status).toBe(0);
@@ -70,6 +78,12 @@ describe('naming what a runner packaged', () => {
         const { status, output } = run('Linux', 'ARM64');
         expect(status).toBe(0);
         expect(outputList(output, 'feeds')).toEqual(['release/latest-linux-arm64.yml']);
+    });
+
+    it('uploads the rpm, which is published with the other Linux packages', () => {
+        release(LINUX_ARM64, { 'latest-linux-arm64.yml': LINUX_ARM64 });
+        const { output } = run('Linux', 'ARM64');
+        expect(outputList(output, 'installers')).toContain('release/Kubermeister-1.2.3-linux-aarch64.rpm');
     });
 
     it('refuses an arm64 build whose feed is not the one its updater reads', () => {
@@ -131,6 +145,13 @@ describe('naming what a runner packaged', () => {
 });
 
 describe('the package action', () => {
+    it('installs rpmbuild on Linux before packaging, since the runner image carries none', () => {
+        const install = indexOf(/rpm/i);
+        expect(install).toBeGreaterThanOrEqual(0);
+        expect(steps[install]?.run).toContain('apt-get install');
+        expect(install).toBeLessThan(indexOf(/^package$/i));
+    });
+
     it('uploads and verifies every feed it found rather than one it names', () => {
         for (const step of [steps[indexOf(/^upload updater/i)], steps[indexOf(/^verify the uploaded updater/i)]]) {
             expect(step?.env?.FILES).toBe('${{ steps.files.outputs.feeds }}');

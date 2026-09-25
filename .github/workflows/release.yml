@@ -130,7 +130,7 @@ jobs:
           # Installers only: the *.yml feeds are rewritten in place and the blockmaps are updater
           # plumbing, neither of which anybody checks a download against.
           gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets \
-            --jq '.assets[] | select(.name | test("\\.(dmg|zip|exe|AppImage|deb)$")) | "\(.digest)  \(.name)"' \
+            --jq '.assets[] | select(.name | test("\\.(dmg|zip|exe|AppImage|deb|rpm)$")) | "\(.digest)  \(.name)"' \
             | sed 's/^sha256://' | sort -k2 > SHA256SUMS
           test -s SHA256SUMS || { echo "::error::no installers to checksum"; exit 1; }
           cat SHA256SUMS

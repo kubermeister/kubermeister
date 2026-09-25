@@ -28,7 +28,7 @@ case "${RUNNER_OS:-}" in
         expected=latest.yml
         ;;
     Linux)
-        installers=(release/*.AppImage release/*.deb)
+        installers=(release/*.AppImage release/*.deb release/*.rpm)
         blockmaps=()
         # electron-updater asks for latest-linux.yml on x64 and latest-linux-<arch>.yml anywhere
         # else (getChannelFilePrefix in its Provider), whichever package type it is updating.

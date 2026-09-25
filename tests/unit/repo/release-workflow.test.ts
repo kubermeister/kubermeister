@@ -49,6 +49,6 @@ describe('publishing a release', () => {
         expect(filter).not.toBeNull();
         const extensions = (filter?.[1] ?? '').split('|').sort();
         // The feeds are rewritten in place and the blockmaps are plumbing; neither is checked by hand.
-        expect(extensions).toEqual(['AppImage', 'deb', 'dmg', 'exe', 'zip']);
+        expect(extensions).toEqual(['AppImage', 'deb', 'dmg', 'exe', 'rpm', 'zip']);
     });
 });

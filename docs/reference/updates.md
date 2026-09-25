@@ -1,12 +1,12 @@
 ---
 title: Updates
-description: How Kubermeister finds and installs new versions — the three update modes, the check interval, the top-bar pill, the menu's Check for Updates dialog, and why a .deb install does not update itself.
+description: How Kubermeister finds and installs new versions — the three update modes, the check interval, the top-bar pill, the menu's Check for Updates dialog, and why a .deb or .rpm install does not update itself.
 sidebar:
   order: 3
 ---
 
 Kubermeister checks its GitHub releases for new versions. On macOS, Windows and the Linux AppImage
-it can download and install one itself. A `.deb` install cannot: see [the .deb](#the-deb).
+it can download and install one itself. A `.deb` or `.rpm` install cannot: see [the .deb and the .rpm](#the-deb-and-the-rpm).
 
 ## Modes
 
@@ -73,16 +73,16 @@ works when it has not, so a broken install always has a way to the fix.
 - A downloaded version: **Restart Now** and **Later**, which installs it when you quit.
 - Up to date, or a failure ("Kubermeister could not check for updates."): **OK**.
 
-## The .deb
+## The .deb and the .rpm
 
-A `.deb` belongs to your package manager, and an app that overwrote its own files would leave the
-package database describing something else. So a `.deb` install never downloads or installs a new
+A `.deb` or `.rpm` belongs to your package manager, and an app that overwrote its own files would leave the
+package database describing something else. So such an install never downloads or installs a new
 version. It reads the release feed to learn one exists, and then:
 
 - the pill reads **Update available**, and its popover and the About card say "This package is
   managed by the system, so the new version is installed the same way as this one.";
 - the one action is **Get the update**, which opens that version's release page, where you download
-  the new `.deb` and install it as you did the first;
+  the new package and install it as you did the first;
 - the menu's dialog offers **Release Notes** and **OK**, with no **Download**.
 
 The modes and the schedule apply as they do elsewhere; only the installing is left to you. The

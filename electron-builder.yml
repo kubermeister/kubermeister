@@ -86,6 +86,8 @@ linux:
   # is always built, whatever `--x64` or `--arm64` says, so `[x64, arm64]` here would have each
   # runner cross-build the other's packages, which nothing could start, and upload a second copy of
   # the other runner's feed over its own.
+  # The rpm is built with the host's rpmbuild, which the package action installs on the runner.
   target:
     - AppImage
     - deb
+    - rpm
