@@ -18,9 +18,10 @@ import { KeyValueCard, labelsTab, overviewTab, ResourceDetail } from '@/componen
 import { IpcError } from '@/lib/ipc';
 import type { K8sErrorKind } from '../../../src/shared/k8s/errors';
 
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock('@/lib/ipc', async () => ({
     ...(await vi.importActual<typeof import('@/lib/ipc')>('@/lib/ipc')),
-    invoke: vi.fn(),
+    invoke,
 }));
 
 type Props = Partial<Parameters<typeof ResourceDetail>[0]>;
@@ -304,6 +305,46 @@ describe('ResourceDetail', () => {
             'Resource “web-1” was not found in the current namespace.',
         );
         expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+});
+
+describe('Copy link', () => {
+    const server = 'https://abc123.gr7.eu-west-1.eks.amazonaws.com';
+    const writeText = vi.fn(() => Promise.resolve());
+
+    function onContext(): void {
+        Object.assign(navigator, { clipboard: { writeText } });
+        writeText.mockClear();
+        invoke.mockImplementation((channel: string) =>
+            Promise.resolve(
+                channel === 'context.current'
+                    ? { name: 'prod', cluster: 'prod', server, user: 'prod', current: true }
+                    : channel === 'namespace.active'
+                      ? { name: 'default' }
+                      : undefined,
+            ),
+        );
+    }
+
+    it('copies a link to the screen and tab on the current context’s cluster', async () => {
+        onContext();
+        renderDetail({}, '/pods/web-1/logs');
+        await userEvent.click(await screen.findByRole('button', { name: 'Copy link' }));
+        expect(writeText).toHaveBeenCalledWith(`kubermeister://open/${encodeURIComponent(server)}/pods/web-1/logs`);
+    });
+
+    it('copies the Shell tab as the object’s first tab', async () => {
+        onContext();
+        renderDetail({}, '/pods/web-1/shell');
+        await userEvent.click(await screen.findByRole('button', { name: 'Copy link' }));
+        expect(writeText).toHaveBeenCalledWith(`kubermeister://open/${encodeURIComponent(server)}/pods/web-1`);
+    });
+
+    it('offers no link before the context’s server is known', async () => {
+        invoke.mockImplementation(() => Promise.resolve(undefined));
+        renderDetail({});
+        await screen.findByText('web-1');
+        expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument();
     });
 });
 

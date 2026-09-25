@@ -30,14 +30,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDetailTabLabel } from '@/lib/detail-tab';
-import { breadcrumbsForPath, listPathForSubPage } from '@/lib/nav';
+import { breadcrumbsForPath } from '@/lib/nav';
 import { useIpcQuery } from '@/lib/query';
 import { useSelectNamespace, useSwitchContext } from '@/lib/scope';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { CLUSTER_TONE, type StatusTone } from '@/lib/status';
 import { cn } from '@/lib/utils';
 import { ConnectionNotice } from './connection-notice';
-import { CopyLinkButton } from './copy-link-button';
 import { NavLink } from './nav-link';
 import { ForwardManager } from './forward-manager';
 import { UpdatePill } from './update-pill';
@@ -88,8 +87,6 @@ export function TopBar() {
                     );
                 })}
             </nav>
-            {/* A detail page names one object, which is what a link is worth sending. */}
-            {listPathForSubPage(pathname) && <CopyLinkButton />}
             <div className="flex-1" />
             <ForwardManager />
             <UpdatePill />
