@@ -115,6 +115,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # electron-builder builds the rpm with the host's own rpmbuild, as the package action does.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
       - run: npm run package
 
       # The release runs this same script before it uploads anything, so what it finds here — the
@@ -172,6 +174,32 @@ jobs:
             echo "::error::the installed app exited on its own with $code"
             exit 1
           fi
+
+      # A Fedora container is what resolves the rpm's dependencies against the names a dnf-based
+      # distribution really uses, which the Ubuntu runner cannot. The app runs as an ordinary user,
+      # as it would for anybody who installed it, since Chromium refuses to start as root.
+      - name: The rpm installs and starts on Fedora
+        run: |
+          set -euo pipefail
+          rpm=$(ls release/*.rpm)
+          docker run --rm -v "$PWD/release:/release:ro" -e RPM="/release/$(basename "$rpm")" \
+            fedora:latest bash -euo pipefail -c '
+              dnf install -y "$RPM" /usr/bin/xvfb-run
+              name=$(rpm -qp --queryformat "%{NAME}" "$RPM")
+              # The package links /usr/bin/<name> as it installs, so this is the command a user types.
+              bin=$(command -v "$name")
+              echo "installed $name, starting $bin"
+              useradd --create-home tester
+              set +e
+              su tester -c "KUBERMEISTER_USER_DATA=\$(mktemp -d) KUBECONFIG=/nonexistent timeout --signal=TERM 30 xvfb-run --auto-servernum $bin" > /tmp/rpm.log 2>&1
+              code=$?
+              set -e
+              cat /tmp/rpm.log
+              if [ "$code" -ne 124 ]; then
+                echo "::error::the installed app exited on its own with $code"
+                exit 1
+              fi
+            '
 
   build:
     name: build (${{ matrix.os }})

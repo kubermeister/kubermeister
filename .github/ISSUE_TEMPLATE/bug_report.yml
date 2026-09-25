@@ -42,6 +42,7 @@ body:
         - Windows
         - Linux (AppImage)
         - Linux (deb)
+        - Linux (rpm)
     validations:
       required: true
   - type: input

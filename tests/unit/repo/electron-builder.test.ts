@@ -107,11 +107,14 @@ describe('the Linux packages', () => {
         expect(assetName(Arch.x64, 'deb')).toBe('Kubermeister-1.2.3-linux-amd64.deb');
         expect(assetName(Arch.arm64, 'AppImage')).toBe('Kubermeister-1.2.3-linux-arm64.AppImage');
         expect(assetName(Arch.arm64, 'deb')).toBe('Kubermeister-1.2.3-linux-arm64.deb');
+        // The rpm spells both architectures the way rpm itself does, unlike the deb beside it.
+        expect(assetName(Arch.x64, 'rpm')).toBe('Kubermeister-1.2.3-linux-x86_64.rpm');
+        expect(assetName(Arch.arm64, 'rpm')).toBe('Kubermeister-1.2.3-linux-aarch64.rpm');
     });
 
     it('builds for the host alone, so no runner cross-builds the other architecture', () => {
         // A listed arch is built whatever the command line asks for.
-        expect(config.linux?.target).toEqual(['AppImage', 'deb']);
+        expect(config.linux?.target).toEqual(['AppImage', 'deb', 'rpm']);
     });
 
     it('is released from one native runner per architecture', () => {

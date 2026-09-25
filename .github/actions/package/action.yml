@@ -33,6 +33,12 @@ runs:
     - run: npm run build
       shell: bash
 
+    # electron-builder builds the rpm with the host's own rpmbuild, which the Ubuntu images lack.
+    - name: Install rpmbuild for the rpm
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+
     - name: Package
       shell: bash
       env:
