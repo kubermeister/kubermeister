@@ -255,8 +255,10 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   `src/renderer/lib/deep-link.ts`, which refuses the router's fuzzy `**` matches), opens a tab in
   `UNLINKABLE_TABS` (the Shell, which execs on mount) as the object's first tab, and switches
   context only through `DeepLinkHandler`'s confirm dialog and `useSwitchContext`, offering every usable
-  context on that server; a server no context reaches switches nothing. Copy link sits in the top bar beside the breadcrumbs
-  on detail pages (`listPathForSubPage`), reading the tab from the deepest match's params.
+  context on that server; a server no context reaches switches nothing. Copy link is the first
+  action in every detail header, which `ResourceDetail` adds with the tab param: it was an icon
+  beside the breadcrumbs in 0.7.0 and came back to the header, labelled, because it was easy to
+  miss there.
 - **One instance per `userData`**: `claimSingleInstance` runs once the path is settled, which is
   what keeps parallel end-to-end runs from quitting one another. macOS sends `open-url`, possibly
   before ready; Windows and Linux put the link in `argv` of the first launch and of

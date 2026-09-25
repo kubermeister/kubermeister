@@ -64,35 +64,12 @@ describe('TopBar', () => {
         expect(crumbs).not.toHaveTextContent('network');
     });
 
-    it('copies a link to the detail page and tab beside the breadcrumbs', async () => {
-        const writeText = vi.fn(() => Promise.resolve());
-        Object.assign(navigator, { clipboard: { writeText } });
+    it('leaves Copy link to the detail header', async () => {
         renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
         const bar = await screen.findByTestId('top-bar');
-        await userEvent.click(await within(bar).findByRole('button', { name: 'Copy link' }));
-        expect(writeText).toHaveBeenCalledWith(
-            `kubermeister://open/${encodeURIComponent('https://alpha.example.com:6443')}/workloads/pods/team-a/web-1/network`,
-        );
-        // One Copy link on the page: the header no longer carries its own.
-        expect(screen.getAllByRole('button', { name: 'Copy link' })).toHaveLength(1);
-    });
-
-    it('copies a pod’s Shell tab as the pod’s first tab', async () => {
-        const writeText = vi.fn(() => Promise.resolve());
-        Object.assign(navigator, { clipboard: { writeText } });
-        renderRoutes(routeTree, '/workloads/pods/team-a/web-1/shell');
-        const bar = await screen.findByTestId('top-bar');
-        await userEvent.click(await within(bar).findByRole('button', { name: 'Copy link' }));
-        expect(writeText).toHaveBeenCalledWith(
-            `kubermeister://open/${encodeURIComponent('https://alpha.example.com:6443')}/workloads/pods/team-a/web-1`,
-        );
-    });
-
-    it('offers no link on a list page', async () => {
-        renderRoutes(routeTree, '/workloads/pods');
         const crumbs = await screen.findByTestId('breadcrumbs');
-        await waitFor(() => expect(crumbs).toHaveTextContent('Pods'));
-        expect(screen.queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument();
+        await waitFor(() => expect(crumbs).toHaveTextContent('Network'));
+        expect(within(bar).queryByRole('button', { name: 'Copy link' })).not.toBeInTheDocument();
     });
 
     it('walks the history with the back and forward buttons', async () => {

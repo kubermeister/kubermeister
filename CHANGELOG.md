@@ -22,6 +22,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   object making the release unhealthy, such as one that is missing.
 - Linux builds for arm64, as an AppImage and a `.deb`, which update the same way as the x64 ones.
 
+### Changed
+
+- **Copy link** is back in a detail page's header as a labelled button, the first of its actions,
+  instead of an icon beside the breadcrumbs.
+
 ### Fixed
 
 - A detail page that cannot be read says why — no permission to see the object, credentials the
