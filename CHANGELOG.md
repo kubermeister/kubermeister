@@ -25,6 +25,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A detail page that cannot be read says why — no permission to see the object, credentials the
   cluster rejected, a cluster that did not answer or took too long — instead of only "Failed to
   load", and a custom resource or Helm release that has been deleted reads as not found.
+- An object deleted from its own page no longer stays listed after you land back on its list,
+  which happened when the list had still been refreshing as you left it.
 
 ## [0.7.0] - 2026-09-25
 

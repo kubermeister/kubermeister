@@ -7,7 +7,7 @@ import type { Kind } from '../../shared/k8s/registry';
 import { mapWithConcurrency, type BulkDeleteResult, type SelectionTarget } from './selection';
 import { invoke, IpcError } from './ipc';
 import { describeError } from './k8s-error';
-import { ipcQueryKey, useIpcMutation } from './query';
+import { ipcQueryKey, refreshAfterWrite, useIpcMutation } from './query';
 
 type WriteChannel =
     | 'resources.create'
@@ -236,11 +236,7 @@ export function useBulkDeleteResources() {
             };
         },
         onSuccess: async () => {
-            await Promise.all(
-                [['resources.list'], ['resources.get'], ['metrics.alerts']].map((queryKey) =>
-                    client.invalidateQueries({ queryKey }),
-                ),
-            );
+            await refreshAfterWrite(client, [['resources.list'], ['resources.get'], ['metrics.alerts']]);
         },
     });
 }
