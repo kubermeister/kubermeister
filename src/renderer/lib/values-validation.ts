@@ -1,4 +1,5 @@
 import { isAlias, isMap, isScalar, isSeq, parse, parseAllDocuments, type Document, type Node } from 'yaml';
+import type { JsonValue } from '../../shared/chart-install';
 import type { JsonSchema } from '../../shared/chart-values';
 import {
     actualType,
@@ -89,6 +90,52 @@ export function readValues(text: string): ReadValues {
         return { doc: null, diagnostics };
     }
     return { doc, diagnostics };
+}
+
+/** The values Helm is handed, or why the text cannot be handed over. */
+export type RenderValues = { values: Record<string, JsonValue> } | { problem: string };
+
+function asJson(value: unknown): JsonValue | undefined {
+    if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+    if (Array.isArray(value)) {
+        const items = value.map(asJson);
+        return items.includes(undefined) ? undefined : (items as JsonValue[]);
+    }
+    const object = asObject(value);
+    if (!object) return undefined;
+    const out: Record<string, JsonValue> = {};
+    for (const [key, item] of Object.entries(object)) {
+        const json = asJson(item);
+        if (json === undefined) return undefined;
+        out[key] = json;
+    }
+    return out;
+}
+
+/**
+ * The editor's text as the values Helm renders with. It is read here exactly as it is checked —
+ * YAML 1.2, so `yes` is the string it looks like and `010` is ten — and handed to Helm as JSON,
+ * which Helm reads with no YAML 1.1 second opinion, so the values the review shows are the values
+ * that are installed. Text that does not read, or a number JSON cannot carry, is not handed over.
+ */
+export function valuesForRender(text: string): RenderValues {
+    const { doc, diagnostics } = readValues(text);
+    const first = diagnostics[0];
+    if (first) return { problem: `The values are not YAML Helm can read: ${first.message}` };
+    if (!doc) return { values: {} };
+    let parsed: unknown;
+    try {
+        parsed = doc.toJS({ maxAliasCount: 100 });
+    } catch (error) {
+        return { problem: `The values are not YAML Helm can read: ${firstLine((error as Error).message)}` };
+    }
+    if (parsed === null || parsed === undefined) return { values: {} };
+    const json = asJson(parsed);
+    const values = asObject(json);
+    return values
+        ? { values: values as Record<string, JsonValue> }
+        : { problem: 'The values hold a number JSON cannot carry, such as .inf or .nan.' };
 }
 
 /** The chart's own values as the merge starts from them; a file that does not read is none. */

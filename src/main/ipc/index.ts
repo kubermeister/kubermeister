@@ -52,9 +52,11 @@ import {
     uninstallRelease,
 } from '../k8s/resources/helm.js';
 import { getReleaseObjects } from '../k8s/resources/helm-objects.js';
+import { installRelease, reviewChart } from '../k8s/resources/helm-install.js';
 import {
     addChartRepository,
     listChartRepositories,
+    listChartVersions,
     refreshChartRepository,
     removeChartRepository,
 } from '../charts/repositories.js';
@@ -320,6 +322,7 @@ const handlers: Handlers = {
     'releases.resources': ({ name, namespace }) => getReleaseObjects(name, namespace),
     'releases.rollback': (input) => rollbackRelease(input),
     'releases.uninstall': (input) => uninstallRelease(input),
+    'releases.install': (input) => installRelease(input),
     'helmCharts.list': () => listHelmCharts(),
     'chartRepositories.list': () => listChartRepositories(),
     'chartRepositories.add': (input) => addChartRepository(input),
@@ -327,6 +330,8 @@ const handlers: Handlers = {
     'chartRepositories.remove': ({ name }) => removeChartRepository(name),
     'helm.status': () => helmStatus(),
     'charts.values': ({ source, chart, version }) => readChartValues(source, chart, version),
+    'charts.versions': ({ source, chart }) => listChartVersions(source, chart),
+    'charts.render': (input) => reviewChart(input),
     'namespaces.detail': ({ name }) => getNamespaceDetail(name),
     'customResources.list': ({ crd, namespace }) => listCustomResourceInstances(crd, namespace),
     'customResources.get': ({ crd, name, namespace }) => getCustomResourceInstance(crd, name, namespace),

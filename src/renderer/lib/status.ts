@@ -1,3 +1,4 @@
+import type { DryRunCheck } from '../../shared/chart-install';
 import type { ReleaseObjectState, ReleaseStatus, ReleaseStatusKind } from '../../shared/k8s/addons';
 import type { ReleaseHealth } from './release-health';
 import type { ClusterStatus, NodeStatus } from '../../shared/k8s/status';
@@ -110,3 +111,20 @@ export const KIND_STATUS_TONE: Record<ReleaseStatusKind, Record<string, StatusTo
 export function usageTone(percent: number): Extract<StatusTone, 'ok' | 'warn' | 'danger'> {
     return percent > 90 ? 'danger' : percent > 75 ? 'warn' : 'ok';
 }
+
+type DryRunState = DryRunCheck['state'];
+
+/** What a chart review's dry run said about each object it rendered. */
+export const DRY_RUN_TONE: Record<DryRunState, StatusTone> = {
+    passed: 'ok',
+    deferred: 'neutral',
+    exists: 'neutral',
+    failed: 'danger',
+};
+
+export const DRY_RUN_LABEL: Record<DryRunState, string> = {
+    passed: 'Checked',
+    deferred: 'After its CRD',
+    exists: 'Already there',
+    failed: 'Refused',
+};

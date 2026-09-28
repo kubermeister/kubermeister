@@ -72,7 +72,9 @@ const chartsMod = {
     addChartRepository: vi.fn(),
     refreshChartRepository: vi.fn(),
     removeChartRepository: vi.fn(),
+    listChartVersions: vi.fn(),
 };
+const helmInstallMod = { reviewChart: vi.fn(), installRelease: vi.fn() };
 const helmCliMod = { helmStatus: vi.fn() };
 const chartValuesMod = { readChartValues: vi.fn() };
 const manifestMod = { getObjectYaml: vi.fn() };
@@ -122,6 +124,7 @@ vi.mock('../../../src/main/k8s/resources/helm.js', () => helmMod);
 vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
 vi.mock('../../../src/main/charts/helm-cli.js', () => helmCliMod);
 vi.mock('../../../src/main/charts/values.js', () => chartValuesMod);
+vi.mock('../../../src/main/k8s/resources/helm-install.js', () => helmInstallMod);
 vi.mock('../../../src/main/k8s/resources/manifest.js', () => manifestMod);
 vi.mock('../../../src/main/k8s/resources/export.js', () => exportMod);
 vi.mock('node:fs/promises', () => fsMod);
@@ -849,6 +852,51 @@ describe('registerHandlers', () => {
             invoke('charts.values', { source: '../escape', chart: 'nginx', version: '1.0.0' }),
         ).rejects.toThrow();
         expect(chartValuesMod.readChartValues).toHaveBeenCalledOnce();
+    });
+
+    it('lists a chart’s versions, answering null for a registry that lists none', async () => {
+        chartsMod.listChartVersions.mockResolvedValueOnce(['0.2.0', '0.1.0']).mockResolvedValueOnce(null);
+        await expect(invoke('charts.versions', { source: 'bitnami', chart: 'nginx' })).resolves.toEqual([
+            '0.2.0',
+            '0.1.0',
+        ]);
+        await expect(invoke('charts.versions', { source: 'ghcr', chart: 'nginx' })).resolves.toBeNull();
+        expect(chartsMod.listChartVersions).toHaveBeenCalledWith('bitnami', 'nginx');
+    });
+
+    it('renders a chart for review with the values as JSON, refusing values JSON cannot carry', async () => {
+        const input = {
+            context: 'alpha',
+            source: 'bitnami',
+            chart: 'nginx',
+            version: '1.0.0',
+            name: 'web',
+            namespace: 'team-a',
+            values: { enabled: 'yes', replicas: 2, nested: { list: [1, null, true] } },
+        };
+        helmInstallMod.reviewChart.mockResolvedValue({
+            rendered: false,
+            reason: 'template',
+            message: 'a host is required',
+        });
+        await expect(invoke('charts.render', input)).resolves.toEqual({
+            rendered: false,
+            reason: 'template',
+            message: 'a host is required',
+        });
+        expect(helmInstallMod.reviewChart).toHaveBeenCalledWith(input);
+        await expect(invoke('charts.render', { ...input, values: { ratio: Infinity } })).rejects.toThrow();
+        await expect(invoke('charts.render', { ...input, name: 'Not_A_Name' })).rejects.toThrow();
+        await expect(invoke('charts.render', { ...input, name: 'x'.repeat(54) })).rejects.toThrow();
+        expect(helmInstallMod.reviewChart).toHaveBeenCalledOnce();
+    });
+
+    it('installs a review and answers a failed install as a result', async () => {
+        const failed = { name: 'web', namespace: 'team-a', revision: 1, status: 'failed', message: 'job failed' };
+        helmInstallMod.installRelease.mockResolvedValue(failed);
+        await expect(invoke('releases.install', { context: 'alpha', reviewId: 'r-1' })).resolves.toEqual(failed);
+        expect(helmInstallMod.installRelease).toHaveBeenCalledWith({ context: 'alpha', reviewId: 'r-1' });
+        await expect(invoke('releases.install', { reviewId: 'r-1' })).rejects.toThrow();
     });
 
     it('forwards the chart repository calls and refuses an input the contract does not allow', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonSchema } from '../../../src/shared/chart-values';
-import { chartDefaults, readValues, validateValues } from '@/lib/values-validation';
+import { chartDefaults, readValues, validateValues, valuesForRender } from '@/lib/values-validation';
 import { WEB_DEFAULTS, webChart } from './values-schema-fixture';
 
 const defaults = chartDefaults(WEB_DEFAULTS);
@@ -199,5 +199,31 @@ describe('chartDefaults', () => {
         expect(chartDefaults('')).toEqual({});
         expect(chartDefaults('- a\n')).toEqual({});
         expect(chartDefaults('a: [\n')).toEqual({});
+    });
+});
+
+describe('the values handed to Helm', () => {
+    it('reads the text as YAML 1.2, as the editor checks it, so yes stays a string and 010 is ten', () => {
+        expect(valuesForRender('enabled: yes\nport: 010\nmode: on\nreal: true\nname: ~\n')).toEqual({
+            values: { enabled: 'yes', port: 10, mode: 'on', real: true, name: null },
+        });
+    });
+
+    it('hands over values that survive JSON unchanged, anchors expanded', () => {
+        const values = valuesForRender('base: &b\n  tag: "1.0"\n  list: [1, 2]\ncopy: *b\n');
+        expect(values).toEqual({ values: { base: { tag: '1.0', list: [1, 2] }, copy: { tag: '1.0', list: [1, 2] } } });
+        if ('values' in values) expect(JSON.parse(JSON.stringify(values.values))).toEqual(values.values);
+    });
+
+    it('takes empty text, or comments alone, as no values', () => {
+        expect(valuesForRender('')).toEqual({ values: {} });
+        expect(valuesForRender('# defaults only\n')).toEqual({ values: {} });
+    });
+
+    it('hands nothing over for text that does not read, or a number JSON cannot carry', () => {
+        expect(valuesForRender('image: [\n')).toEqual({ problem: expect.stringMatching(/^The values are not YAML/) });
+        expect(valuesForRender('- a\n')).toEqual({ problem: expect.stringMatching(/mapping/) });
+        expect(valuesForRender('ratio: .inf\n')).toEqual({ problem: expect.stringMatching(/\.inf/) });
+        expect(valuesForRender('nested:\n  - .nan\n')).toEqual({ problem: expect.stringMatching(/\.nan/) });
     });
 });

@@ -89,8 +89,8 @@ letters, digits, dashes, dots or underscores), the URL, and an optional username
 row shows its source, how many charts its index holds, when it was last read, and buttons to
 refresh or remove it. Up to 50 can be added.
 
-In 0.5.0 these sources are read, checked and cached, but nothing installs from them: there is no
-Helm install or upgrade.
+A chart version from one of these sources can be
+[installed as a Helm release](/docs/operations/helm/#installing-a-chart); there is no upgrade.
 
 Chart sources are a fact about your install, not about the cluster you are pointed at, so a context
 switch leaves them alone. Three things are kept in step: the entry in settings, the cached index,

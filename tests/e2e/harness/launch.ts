@@ -18,7 +18,13 @@ export interface LaunchedApp {
  * code path that ignored settings could only reach the test cluster.
  */
 export async function launchApp(
-    options: { kubeconfigPath?: string; restoreContext?: boolean; args?: string[] } = {},
+    options: {
+        kubeconfigPath?: string;
+        restoreContext?: boolean;
+        args?: string[];
+        /** More settings sections, beside the ones every launch pins. */
+        settings?: Record<string, unknown>;
+    } = {},
 ): Promise<LaunchedApp> {
     const kubeconfigPath = options.kubeconfigPath ?? KUBECONFIG_PATH;
     // A spec about the file's own current-context must not have the remembered one restored over it.
@@ -30,6 +36,7 @@ export async function launchApp(
             version: 1,
             session: { lastContext: CONTEXT_NAME, lastNamespace: NAMESPACE, restoreOnLaunch },
             connection: { kubeconfigPath },
+            ...options.settings,
         }),
     );
     const app = await electron.launch({

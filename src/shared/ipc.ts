@@ -10,6 +10,14 @@ import {
     releaseUninstallInputSchema,
     releaseWriteResultSchema,
 } from './k8s/addons.js';
+import {
+    chartRenderInputSchema,
+    chartRenderOutcomeSchema,
+    chartVersionsInputSchema,
+    chartVersionsSchema,
+    releaseInstallInputSchema,
+    releaseInstallResultSchema,
+} from './chart-install.js';
 import { chartValuesSchema, chartVersionInputSchema } from './chart-values.js';
 import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
 import { deepLinkSchema } from './deep-link.js';
@@ -246,6 +254,7 @@ export const ipcSchemas = {
     'releases.resources': { input: releaseTargetSchema, output: z.array(releaseObjectSchema) },
     'releases.rollback': { input: releaseRollbackInputSchema, output: releaseWriteResultSchema },
     'releases.uninstall': { input: releaseUninstallInputSchema, output: releaseWriteResultSchema },
+    'releases.install': { input: releaseInstallInputSchema, output: releaseInstallResultSchema },
     'helmCharts.list': { input: noInput, output: z.array(helmChartSchema) },
     'chartRepositories.list': { input: noInput, output: z.array(chartRepositoryStatusSchema) },
     'chartRepositories.add': { input: chartRepositoryInputSchema, output: chartRepositoryStatusSchema },
@@ -253,6 +262,8 @@ export const ipcSchemas = {
     'chartRepositories.remove': { input: chartRepositoryNameInputSchema, output: chartRepositoryNameInputSchema },
     'helm.status': { input: noInput, output: helmStatusSchema },
     'charts.values': { input: chartVersionInputSchema, output: chartValuesSchema },
+    'charts.versions': { input: chartVersionsInputSchema, output: chartVersionsSchema },
+    'charts.render': { input: chartRenderInputSchema, output: chartRenderOutcomeSchema },
     'namespaces.detail': { input: namespaceDetailInputSchema, output: namespaceDetailSchema.nullable() },
     'customResources.list': { input: customResourceListInputSchema, output: customResourceListOutputSchema },
     'customResources.get': { input: customResourceGetInputSchema, output: customResourceGetOutputSchema },

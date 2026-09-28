@@ -28,11 +28,31 @@ export interface HelmReleaseData {
     name?: string;
     namespace?: string;
     version?: number;
-    info?: { status?: string; last_deployed?: string; description?: string };
-    chart?: { metadata?: { name?: string; version?: string; appVersion?: string } };
+    info?: {
+        status?: string;
+        first_deployed?: string;
+        last_deployed?: string;
+        description?: string;
+        notes?: string;
+    };
+    chart?: { metadata?: { name?: string; version?: string; appVersion?: string } } & Record<string, unknown>;
     config?: Record<string, unknown>;
     /** The rendered manifests of this revision, as one multi-document YAML string. */
     manifest?: string;
+    hooks?: HelmHookRecord[];
+}
+
+/** One hook as a release records it, in Helm's own field names. */
+export interface HelmHookRecord {
+    name: string;
+    kind: string;
+    path: string;
+    manifest: string;
+    events: string[];
+    /** Absent for a hook this revision never ran. */
+    last_run?: { started_at: string; completed_at: string; phase: 'Running' | 'Succeeded' | 'Failed' };
+    weight: number;
+    delete_policies: string[];
 }
 
 const HELM_STATUS: Record<string, ReleaseStatus> = {
@@ -252,14 +272,18 @@ export function manifestObjects(manifest: string | undefined, namespace: string)
                 !!object.metadata?.name
             );
         })
-        .map((object) => {
-            // Helm renders namespaced objects without a namespace and applies them into the
-            // release's own; a cluster-scoped kind is never given one.
-            if (!object.metadata.namespace && !isClusterScopedKindName(object.kind)) {
-                object.metadata = { ...object.metadata, namespace };
-            }
-            return object;
-        });
+        .map((object) => inReleaseNamespace(object, namespace));
+}
+
+/**
+ * Helm renders namespaced objects without a namespace and applies them into the release's own; a
+ * cluster-scoped kind is never given one.
+ */
+export function inReleaseNamespace<T extends RenderedObject>(object: T, namespace: string): T {
+    if (!object.metadata.namespace && !isClusterScopedKindName(object.kind)) {
+        object.metadata = { ...object.metadata, namespace };
+    }
+    return object;
 }
 
 /** Identity of one rendered object, so two revisions' manifests can be compared. */
@@ -289,8 +313,21 @@ async function releaseSecrets(name: string, namespace: string): Promise<{ secret
         .sort((a, b) => (b.data.version ?? 0) - (a.data.version ?? 0));
 }
 
+/**
+ * Whether any revision of a release by this name is recorded in the namespace. Helm refuses to
+ * install over one, whatever its status, so the lookup is by the labels Helm itself queries with.
+ */
+export async function hasRelease(name: string, namespace: string): Promise<boolean> {
+    const { items } = await apis().core.listNamespacedSecret({
+        namespace,
+        fieldSelector: `type=${HELM_SECRET_TYPE}`,
+        labelSelector: `owner=helm,name=${name}`,
+    });
+    return items.length > 0;
+}
+
 /** The Secret body for one revision, labelled the way Helm labels its own. */
-function releaseSecretBody(data: HelmReleaseData): V1Secret {
+export function releaseSecretBody(data: HelmReleaseData): V1Secret {
     return {
         apiVersion: 'v1',
         kind: 'Secret',

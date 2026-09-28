@@ -1,0 +1,4 @@
+# Read as YAML 1.2, as the values editor reads it, so this is the string "yes" rather than true.
+enabled: yes
+greeting: hello
+replicas: 1

@@ -161,3 +161,22 @@ export function removeChartRepository(name: string): Promise<{ name: string }> {
         return { name };
     });
 }
+
+/**
+ * The versions a source lists for one chart, newest first, from its cached index, which is read
+ * again once when it does not name the chart. An OCI registry publishes no index, so it answers null
+ * and the version is whichever one the screen was opened on.
+ */
+export function listChartVersions(source: string, chart: string): Promise<string[] | null> {
+    const op = 'charts.versions';
+    return classified(op, async () => {
+        const repository = findChartRepository(source, op);
+        if (repository.kind === 'oci') return null;
+        const credential = getCredential(repository.name);
+        const cached = readIndex(repository.name, repository.url)?.charts.find((one) => one.name === chart);
+        const summary =
+            cached ?? (await readSource(op, repository, credential)).charts.find((one) => one.name === chart);
+        if (!summary) throw new K8sError('notFound', `${repository.name} has no chart named "${chart}".`, op);
+        return summary.versions;
+    });
+}

@@ -20,6 +20,8 @@ type WriteChannel =
     | 'nodes.cordon'
     | 'releases.rollback'
     | 'releases.uninstall'
+    | 'releases.install'
+    | 'charts.render'
     | 'pods.evict'
     | 'jobs.retry'
     | 'cronJobs.trigger'
@@ -164,6 +166,24 @@ export function useUninstallRelease() {
     return useIpcMutation<'releases.uninstall', WriteVariables<'releases.uninstall'>>('releases.uninstall', {
         prepare: (variables, client) => stamp('releases.uninstall', variables, client),
         invalidates: releaseKeys,
+    });
+}
+
+/**
+ * Render a chart and dry-run what it renders, for the review an install writes. It writes nothing
+ * to the cluster, but it is stamped like a write: the review is bound to the context it checked.
+ */
+export function useRenderChart() {
+    return useIpcMutation<'charts.render', WriteVariables<'charts.render'>>('charts.render', {
+        prepare: (variables, client) => stamp('charts.render', variables, client),
+    });
+}
+
+/** Install the chart a review rendered. A failed install is recorded as a release too. */
+export function useInstallRelease() {
+    return useIpcMutation<'releases.install', WriteVariables<'releases.install'>>('releases.install', {
+        prepare: (variables, client) => stamp('releases.install', variables, client),
+        invalidates: () => [...releaseKeys(), ['releases.resources']],
     });
 }
 

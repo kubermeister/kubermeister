@@ -75,6 +75,12 @@ jobs:
           check-latest: true
           cache: npm
       - run: npm ci
+      # The app renders a chart with the user's own `helm`, and the chart install spec reads the
+      # release back with it, so the job needs one on the PATH. Pinned, so a Helm release cannot
+      # change what the suite renders between two runs of the same commit.
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v4.3.0
       - run: npm run build
       - run: xvfb-run --auto-servernum npm run test:e2e
       # A flake that passes on rerun leaves nothing behind but this: the traces, the window's state

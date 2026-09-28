@@ -1,0 +1,10 @@
+{{- /* Rendered for review there is no cluster to ask, so this finds nothing, as in helm template. */}}
+{{- $previous := lookup "v1" "ConfigMap" .Release.Namespace (printf "%s-settings" .Release.Name) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-settings
+data:
+  greeting: {{ required "a greeting is required" .Values.greeting | quote }}
+  enabled: {{ .Values.enabled | quote }}
+  seenBefore: {{ empty $previous | ternary "no" "yes" | quote }}
