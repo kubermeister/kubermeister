@@ -9,7 +9,7 @@ const credentials = {
     removeCredential: vi.fn(),
     hasCredential: vi.fn(),
 };
-const cache = { readIndex: vi.fn(), writeIndex: vi.fn(), removeIndex: vi.fn() };
+const cache = { readIndex: vi.fn(), writeIndex: vi.fn(), removeIndex: vi.fn(), removeArchives: vi.fn() };
 const registry = { pingRegistry: vi.fn() };
 vi.mock('../../../src/main/settings/store.js', () => store);
 vi.mock('../../../src/main/charts/credentials.js', () => credentials);
@@ -246,11 +246,12 @@ describe('chart repositories', () => {
     });
 
     describe('removeChartRepository', () => {
-        it('drops the repository, its cached index and its credential together', async () => {
+        it('drops the repository, its cached index, its archives and its credential together', async () => {
             store.getSettings.mockReturnValue(settingsWith([bitnami, ghcr]));
             await expect(removeChartRepository('bitnami')).resolves.toEqual({ name: 'bitnami' });
             expect(persisted()).toEqual([ghcr]);
             expect(cache.removeIndex).toHaveBeenCalledWith('bitnami');
+            expect(cache.removeArchives).toHaveBeenCalledWith('bitnami');
             expect(credentials.removeCredential).toHaveBeenCalledWith('bitnami', 'chartRepositories.remove');
         });
 

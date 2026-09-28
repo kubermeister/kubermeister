@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { indexUrl, isChartIndexDocument, parseChartIndex, readCappedText } from '../../../src/main/charts/index-file';
+import {
+    indexUrl,
+    isChartIndexDocument,
+    parseChartArchives,
+    parseChartIndex,
+    readCappedBytes,
+    readCappedText,
+    sha256Hex,
+} from '../../../src/main/charts/index-file';
 
 const index = {
     apiVersion: 'v1',
@@ -103,5 +111,83 @@ describe('isChartIndexDocument', () => {
         for (const raw of [undefined, null, '<html>404</html>', 42, [], {}, { entries: [] }, { entries: null }]) {
             expect(isChartIndexDocument(raw), JSON.stringify(raw)).toBe(false);
         }
+    });
+});
+
+describe('sha256Hex', () => {
+    const hex = 'ab'.repeat(32);
+
+    it('reads a SHA-256 digest with or without its prefix, in either case', () => {
+        expect(sha256Hex(hex)).toBe(hex);
+        expect(sha256Hex(`sha256:${hex}`)).toBe(hex);
+        expect(sha256Hex(` ${hex.toUpperCase()} `)).toBe(hex);
+    });
+
+    it('is null for anything that is not one', () => {
+        for (const value of [undefined, null, 42, '', 'ab', `sha512:${hex}`, `${hex}00`]) {
+            expect(sha256Hex(value), String(value)).toBeNull();
+        }
+    });
+});
+
+describe('parseChartArchives', () => {
+    const digest = 'cd'.repeat(32);
+
+    it("keeps each version's URLs as the index wrote them and its digest", () => {
+        const raw = {
+            entries: {
+                nginx: [
+                    {
+                        version: '2.0.0',
+                        urls: ['nginx-2.0.0.tgz', 'https://mirror.example.com/nginx-2.0.0.tgz'],
+                        digest,
+                    },
+                    { version: '1.0.0', urls: ['https://cdn.example.com/nginx-1.0.0.tgz'] },
+                ],
+            },
+        };
+        expect(parseChartArchives(raw)).toEqual({
+            nginx: {
+                '2.0.0': { urls: ['nginx-2.0.0.tgz', 'https://mirror.example.com/nginx-2.0.0.tgz'], digest },
+                '1.0.0': { urls: ['https://cdn.example.com/nginx-1.0.0.tgz'], digest: null },
+            },
+        });
+    });
+
+    it('skips a version with nowhere to download it from, and keeps the first of a duplicated version', () => {
+        const raw = {
+            entries: {
+                nginx: [
+                    { version: '1.0.0', urls: ['first.tgz'] },
+                    { version: '1.0.0', urls: ['second.tgz'] },
+                    { version: '0.9.0' },
+                    { version: '0.8.0', urls: [7, ''] },
+                    { urls: ['nameless.tgz'] },
+                ],
+                empty: [{ version: '1.0.0', urls: [] }],
+            },
+        };
+        expect(parseChartArchives(raw)).toEqual({ nginx: { '1.0.0': { urls: ['first.tgz'], digest: null } } });
+    });
+
+    it('is empty for anything that is not an index', () => {
+        for (const raw of [undefined, null, [], {}, { entries: [] }, { entries: { a: 'x' } }]) {
+            expect(parseChartArchives(raw), JSON.stringify(raw)).toEqual({});
+        }
+    });
+});
+
+describe('readCappedBytes', () => {
+    const OP = 'charts.fetch';
+
+    it('reads a binary body byte for byte', async () => {
+        const bytes = Buffer.from([0x1f, 0x8b, 0x00, 0xff]);
+        await expect(readCappedBytes(OP, new Response(bytes), 16)).resolves.toEqual(bytes);
+    });
+
+    it('refuses a body past the ceiling, announced or not', async () => {
+        await expect(readCappedBytes(OP, new Response('x'.repeat(64)), 16)).rejects.toMatchObject({ kind: 'invalid' });
+        const announced = new Response('x', { headers: { 'content-length': '64' } });
+        await expect(readCappedBytes(OP, announced, 16)).rejects.toMatchObject({ kind: 'invalid' });
     });
 });

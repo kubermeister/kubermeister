@@ -1,4 +1,4 @@
-import type { ChartSummary } from '../../shared/charts.js';
+import type { ChartArchiveLocations, ChartSummary } from '../../shared/charts.js';
 import { K8sError } from '../k8s/errors.js';
 
 /**
@@ -58,30 +58,65 @@ export function parseChartIndex(raw: unknown): ChartSummary[] {
     return charts.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** A SHA-256 digest as an index or a registry writes it, with or without its `sha256:` prefix. */
+const SHA256 = /^(?:sha256:)?([a-f0-9]{64})$/;
+
+/** The bare hex of a SHA-256 digest, or null for anything else. */
+export function sha256Hex(value: unknown): string | null {
+    return typeof value === 'string' ? (SHA256.exec(value.trim().toLowerCase())?.[1] ?? null) : null;
+}
+
 /**
- * The body as text, refusing anything past `max`. The announced length is checked first, and the
- * stream is then read a chunk at a time so a server that announces nothing cannot make the app hold
- * an unbounded response either.
+ * Where each version of each chart is published and what its archive must hash to. The URLs are
+ * kept as the index wrote them, relative ones included, because what they resolve against is the
+ * repository's address at the moment of the download, not at the moment of the refresh.
  */
-export async function readCappedText(op: string, response: Response, max = MAX_INDEX_BYTES): Promise<string> {
+export function parseChartArchives(raw: unknown): ChartArchiveLocations {
+    if (!isChartIndexDocument(raw)) return {};
+    const entries = (raw as { entries: Record<string, unknown> }).entries;
+    const archives: ChartArchiveLocations = {};
+    for (const [name, value] of Object.entries(entries)) {
+        if (!Array.isArray(value)) continue;
+        const versions: ChartArchiveLocations[string] = {};
+        for (const entry of value.filter(isRecord)) {
+            const version = text(entry.version);
+            const urls = Array.isArray(entry.urls) ? entry.urls.filter((url) => typeof url === 'string' && url) : [];
+            if (!version || urls.length === 0 || version in versions) continue;
+            versions[version] = { urls, digest: sha256Hex(entry.digest) };
+        }
+        if (Object.keys(versions).length > 0) archives[name] = versions;
+    }
+    return archives;
+}
+
+/**
+ * The body, refusing anything past `max`. The announced length is checked first, and the stream is
+ * then read a chunk at a time so a server that announces nothing cannot make the app hold an
+ * unbounded response either.
+ */
+export async function readCappedBytes(op: string, response: Response, max: number): Promise<Buffer> {
     const tooLarge = () => new K8sError('invalid', `The answer is larger than ${max / (1024 * 1024)} MB.`, op);
     const announced = Number(response.headers.get('content-length'));
     if (Number.isFinite(announced) && announced > max) throw tooLarge();
-    if (!response.body) return '';
-    const decoder = new TextDecoder();
+    if (!response.body) return Buffer.alloc(0);
     const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
     let size = 0;
-    let out = '';
     try {
         for (;;) {
             const { done, value } = await reader.read();
             if (done) break;
             size += value.byteLength;
             if (size > max) throw tooLarge();
-            out += decoder.decode(value, { stream: true });
+            chunks.push(value);
         }
     } finally {
         await reader.cancel().catch(() => {});
     }
-    return out + decoder.decode();
+    return Buffer.concat(chunks, size);
+}
+
+/** The body as text, capped as {@link readCappedBytes} caps it. */
+export async function readCappedText(op: string, response: Response, max = MAX_INDEX_BYTES): Promise<string> {
+    return (await readCappedBytes(op, response, max)).toString('utf8');
 }

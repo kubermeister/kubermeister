@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,6 +17,7 @@ const index: ChartIndex = {
     url: 'https://charts.example.com',
     refreshedAt: '2026-09-22T10:00:00.000Z',
     charts: [{ name: 'nginx', latestVersion: '1.0.0', appVersion: '1.27', description: 'x', versions: ['1.0.0'] }],
+    archives: { nginx: { '1.0.0': { urls: ['nginx-1.0.0.tgz'], digest: 'a'.repeat(64) } } },
 };
 
 const cacheFile = (name: string) => join(userData, 'chart-index', `${name}.json`);
@@ -40,6 +42,14 @@ describe('chart index cache', () => {
     it('has nothing for a repository that has never refreshed', async () => {
         const { readIndex } = await loadCache();
         expect(readIndex('bitnami', index.url)).toBeNull();
+    });
+
+    it('reads an index cached before archives were recorded as one that lists none', async () => {
+        const { readIndex } = await loadCache();
+        mkdirSync(join(userData, 'chart-index'), { recursive: true });
+        const { archives: _archives, ...older } = index;
+        writeFileSync(cacheFile('bitnami'), JSON.stringify(older));
+        expect(readIndex('bitnami', index.url)).toEqual({ ...older, archives: {} });
     });
 
     it('ignores a cache file left over from a different URL, which is no longer this repository', async () => {
@@ -82,5 +92,53 @@ describe('chart index cache', () => {
         const { writeIndex } = await loadCache();
         expect(() => writeIndex('bitnami', index)).not.toThrow();
         expect(logged).toHaveBeenCalledOnce();
+    });
+});
+
+describe('chart archive cache', () => {
+    const bytes = Buffer.from('an archive');
+    const digest = createHash('sha256').update(bytes).digest('hex');
+
+    beforeEach(() => {
+        userData = mkdtempSync(join(tmpdir(), 'km-charts-archives-'));
+    });
+
+    afterEach(() => {
+        rmSync(userData, { recursive: true, force: true });
+    });
+
+    it('keeps an archive under its repository, named by its digest, and reads it back', async () => {
+        const { readArchive, writeArchive } = await loadCache();
+        const path = writeArchive('bitnami', digest, bytes);
+        expect(path).toBe(join(userData, 'chart-cache', 'bitnami', `${digest}.tgz`));
+        expect(readArchive('bitnami', digest)?.equals(bytes)).toBe(true);
+        // Another repository's cache is its own, even for the same bytes.
+        expect(readArchive('other', digest)).toBeNull();
+    });
+
+    it('reads a file that no longer hashes to its name as a miss', async () => {
+        const { archivePath, readArchive, writeArchive } = await loadCache();
+        writeArchive('bitnami', digest, bytes);
+        writeFileSync(archivePath('bitnami', digest), 'cut short');
+        expect(readArchive('bitnami', digest)).toBeNull();
+    });
+
+    it('removes every archive of a repository, and removing none is not an error', async () => {
+        const { readArchive, removeArchives, writeArchive } = await loadCache();
+        writeArchive('bitnami', digest, bytes);
+        writeArchive('other', digest, bytes);
+        removeArchives('bitnami');
+        expect(existsSync(join(userData, 'chart-cache', 'bitnami'))).toBe(false);
+        expect(readArchive('other', digest)).not.toBeNull();
+        expect(() => removeArchives('bitnami')).not.toThrow();
+    });
+
+    it('refuses a name or a digest that could make a path outside the cache', async () => {
+        const { archivePath, removeArchives } = await loadCache();
+        expect(() => archivePath('../escape', digest)).toThrow();
+        expect(() => removeArchives('../escape')).toThrow();
+        for (const bad of ['../x', 'A'.repeat(64), 'a'.repeat(63), `sha256:${digest}`]) {
+            expect(() => archivePath('bitnami', bad), bad).toThrow();
+        }
     });
 });
