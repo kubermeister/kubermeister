@@ -63,6 +63,8 @@ const APP_LEVEL_CHANNELS = new Set<string>([
     'settingsFile.status',
     // Chart sources belong to this install, not to the cluster it happens to be pointed at.
     'chartRepositories.list',
+    // Whether Helm is installed is a fact about this machine.
+    'helm.status',
 ]);
 
 function isClusterQuery(queryKey: QueryKey): boolean {

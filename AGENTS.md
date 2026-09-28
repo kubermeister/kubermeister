@@ -517,7 +517,7 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   `IntOrString` accept a number whatever an older server publishes for them, and null is never
   wrong. Diagnostics carry the text they were found in, and the editor places none on another text.
 - **A request built by hand goes out through the client library's own sender**
-  (`IsomorphicFetchHttpLibrary`), as `clusterGet` in `src/main/k8s/openapi/index.ts` does. The
+  (`IsomorphicFetchHttpLibrary`), as `clusterGet` in `src/main/k8s/cluster-get.ts` does. The
   dispatcher the kubeconfig builds belongs to the `undici` package, and Node's global `fetch`
   refuses it ("invalid onRequestStart method"), which is what failed every schema lookup in 0.6.1;
   the unit tests make the global `fetch` throw so it cannot come back, and an end-to-end spec asks
@@ -712,6 +712,37 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   takes its archives too and one repository's credentialed download is never answered for another.
   A cached file is hashed again when read, so a damaged one downloads again.
 
+### Rendering a chart
+
+- **Helm is the one external tool the app calls, and only for `helm template`.** No JavaScript
+  implementation of Go templates, Sprig and Helm's own functions renders a chart faithfully, and
+  bundling Helm or compiling its engine to WebAssembly was turned down in #177 in favour of the
+  user's own. It never runs `install`, `upgrade` or any subcommand that reads a kubeconfig, and
+  `--validate` is never passed: every write still goes through the app's own write path.
+- `findHelm` (`src/main/charts/helm-cli.ts`) looks `helm` up on the PATH main adopted from the login
+  shell (an `.exe` only on Windows, which starts no `.cmd` without a shell) and asks it
+  `helm version --short`; Helm 3 and later count, anything older or unparseable is not found. The
+  answer is kept per binary (path, size, mtime) and a missing Helm is never kept, so one installed
+  while the app runs is found on the next ask. `helm.status` carries it to the renderer as a state,
+  not a failure: without Helm the screens that need it say so and nothing else changes.
+- **The child is isolated**: its environment is built from nothing (`isolatedHelmEnv`), so no
+  `HELM_*`, `KUBE*`, PATH or proxy variable of the app's reaches it; `KUBECONFIG` is an empty file and
+  `HELM_CACHE_HOME`, `HELM_CONFIG_HOME`, `HELM_DATA_HOME` and `HELM_PLUGINS` point at a throwaway
+  directory (`withHelmHome`) that also holds the values file and is removed afterwards. Flags come
+  before `--`, so neither the release name nor the archive path can be read as one. Each run has a
+  timeout and an output cap (`runHelm`).
+- `renderChart(archive, values, capabilities, release)` (`src/main/charts/render.ts`) takes the
+  archive's path or bytes and never throws: it answers the rendered documents split into objects,
+  hooks (events, weight and delete policy as written; Helm applies `before-hook-creation` itself when
+  there is none) and CRDs from a chart's or subchart's `crds/`, plus the objects' `manifest` as a
+  release Secret stores it, or an error carrying Helm's own sentence (`helmErrorMessage`).
+- **Capabilities come from the live cluster** through the app's own client
+  (`clusterCapabilities`, `src/main/k8s/capabilities.ts`): `--kube-version` is `/version`'s
+  `gitVersion` and `--api-versions` is the set Helm's discovery builds, every group-version plus
+  every `group-version/Kind`. A group-version whose resources cannot be listed keeps its version and
+  loses only its kinds, as in Helm. `lookup` returns nothing, as in any `helm template`, and
+  `usesLookup` says whether any template calls it so the review can say so.
+
 ### Container detail
 
 - A pod's containers come back as one ordered list carrying a `role` (init, app, ephemeral) rather
@@ -810,7 +841,8 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   authority, or Node's roots when it has none, is concatenated with the bundle into `caData`, the way
   `NODE_EXTRA_CA_CERTS` adds rather than replaces. A bundle that cannot be read changes nothing and
   is reported by the `network` startup check, since the connection is not altered behind the notice.
-- No `kubectl` dependency; the client library handles exec credential plugins itself. Two things
+- No `kubectl` dependency, and **Helm is the one external tool the app calls, only to render a
+  chart** (see Rendering a chart); the client library handles exec credential plugins itself. Two things
   make that work outside a terminal:
   - main adopts the login shell's PATH and proxy variables at startup (`src/main/shell-env.ts`),
     because a Finder or Dock launch inherits launchd's `/usr/bin:/bin:/usr/sbin:/sbin` and none of
