@@ -7,7 +7,7 @@ import { nameColumn, textColumn } from '@/components/templates/list-columns';
 import { useIpcQuery } from '@/lib/query';
 import { useRefreshIntervalMs } from '@/lib/settings';
 
-export const Route = createFileRoute('/addons/charts')({ component: ChartsPage });
+export const Route = createFileRoute('/helm/charts')({ component: ChartsPage });
 
 const columns: ColumnDef<HelmChart>[] = [
     nameColumn<HelmChart>(),
@@ -22,7 +22,7 @@ function ChartsPage() {
     return (
         <ResourceListPage
             icon={PackageIcon}
-            title="Helm charts"
+            title="Charts"
             columns={columns}
             query={charts}
             rowProps={(chart) => ({ 'data-chart': chart.name })}

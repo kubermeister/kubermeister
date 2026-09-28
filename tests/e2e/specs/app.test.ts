@@ -448,7 +448,7 @@ test('lists the cluster definitions and the seeded helm release', async () => {
     await window.getByRole('tab', { name: /Manifest/ }).click();
     await expect(page.getByTestId('release-manifest')).toContainText('demo-config');
 
-    await sidebar.getByRole('link', { name: 'Helm charts' }).click();
+    await sidebar.getByRole('link', { name: 'Charts', exact: true }).click();
     await expect(window.getByTestId('charts-table').locator('[data-chart="demo"]')).toContainText('3.0.0');
 });
 

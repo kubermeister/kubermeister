@@ -79,14 +79,14 @@ describe('Sidebar', () => {
             'Role Bindings',
             'Cluster Roles',
             'Cluster Role Bindings',
-            'Helm charts',
-            'Releases',
             'CRDs',
             'Mutating Webhooks',
             'Validating Webhooks',
             'Admission Policies',
             'API Services',
             'Flow Schemas',
+            'Releases',
+            'Charts',
             'SettingsCtrl+,',
         ]);
     });

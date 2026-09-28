@@ -8,10 +8,10 @@ import { useIpcQuery } from '@/lib/query';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { RELEASE_TONE } from '@/lib/status';
 
-export const Route = createFileRoute('/addons/releases/')({ component: ReleasesPage });
+export const Route = createFileRoute('/helm/releases/')({ component: ReleasesPage });
 
 const detailPath = (release: Pick<Release, 'namespace' | 'name'>) =>
-    `/addons/releases/${encodeURIComponent(release.namespace)}/${encodeURIComponent(release.name)}`;
+    `/helm/releases/${encodeURIComponent(release.namespace)}/${encodeURIComponent(release.name)}`;
 
 const columns: ColumnDef<Release>[] = [
     nameColumn<Release>({ href: detailPath }),

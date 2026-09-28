@@ -36,7 +36,7 @@ export function UninstallReleaseButton({ name, namespace }: { name: string; name
         toast.success(`Release “${done.name}” uninstalled`, {
             description: `${done.removed} object(s) removed${done.kept > 0 ? `, ${done.kept} kept by the chart` : ''}.`,
         });
-        navigateTo('/addons/releases');
+        navigateTo('/helm/releases');
     };
 
     return (

@@ -109,7 +109,7 @@ beforeEach(() => {
 
 describe('add-on lists', () => {
     it('lists the charts derived from the installed releases', async () => {
-        renderRoutes(routeTree, '/addons/charts');
+        renderRoutes(routeTree, '/helm/charts');
         const table = await screen.findByTestId('charts-table');
         const row = table.querySelector('[data-chart="traefik"]') as HTMLElement;
         expect(row).toHaveTextContent('28.0.0');
@@ -118,13 +118,13 @@ describe('add-on lists', () => {
     });
 
     it('lists releases with a toned status and definitions marking the cluster-scoped ones', async () => {
-        renderRoutes(routeTree, '/addons/releases');
+        renderRoutes(routeTree, '/helm/releases');
         const releases = await screen.findByTestId('releases-table');
         const releaseRow = releases.querySelector('[data-release="traefik"]') as HTMLElement;
         expect(within(releaseRow).getByText('Deployed')).toHaveAttribute('data-tone', 'ok');
         expect(within(releaseRow).getByRole('link', { name: 'traefik' })).toHaveAttribute(
             'href',
-            '/addons/releases/kube-system/traefik',
+            '/helm/releases/kube-system/traefik',
         );
 
         await userEvent.click(screen.getByRole('link', { name: 'CRDs' }));
@@ -136,7 +136,7 @@ describe('add-on lists', () => {
 
 describe('add-on details', () => {
     it('shows a release with its revision history and user-supplied values', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik/revisions');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik/revisions');
         const page = await screen.findByTestId('release-page');
         await waitFor(() => expect(page).toHaveTextContent('chart: traefik-28.0.0'));
         expect(page).toHaveTextContent('revision: 2');
@@ -149,7 +149,7 @@ describe('add-on details', () => {
     });
 
     it('opens on the objects the release rendered, naming the one that breaks it', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
         const table = await within(page).findByTestId('release-resources');
         expect(invoke).toHaveBeenCalledWith('releases.resources', { name: 'traefik', namespace: 'kube-system' });
@@ -183,7 +183,7 @@ describe('add-on details', () => {
             }
             return data[channel];
         });
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
         await waitFor(() =>
             expect(within(page).getByTestId('release-resources-state')).toHaveTextContent(
@@ -193,7 +193,7 @@ describe('add-on details', () => {
     });
 
     it('rolls back to an older revision, and offers no rollback for the one running', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik/revisions');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik/revisions');
         const page = await screen.findByTestId('release-page');
         const history = await within(page).findByTestId('release-revisions');
         await waitFor(() => expect(history).toHaveTextContent('#1'));
@@ -219,7 +219,7 @@ describe('add-on details', () => {
     });
 
     it('leaves the release alone when either dialog is dismissed', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik/revisions');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik/revisions');
         const page = await screen.findByTestId('release-page');
         const history = await within(page).findByTestId('release-revisions');
         await waitFor(() => expect(history).toHaveTextContent('#1'));
@@ -236,7 +236,7 @@ describe('add-on details', () => {
     });
 
     it('uninstalls a release, with the choice of keeping its history', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
         await waitFor(() => expect(page).toHaveTextContent('revision: 2'));
         await userEvent.click(within(page).getByRole('button', { name: 'Uninstall' }));
@@ -260,7 +260,7 @@ describe('add-on details', () => {
     });
 
     it('shows the objects a revision rendered on its Manifest tab', async () => {
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
         await waitFor(() => expect(page).toHaveTextContent('revision: 2'));
         await userEvent.click(within(page).getByRole('tab', { name: /Manifest/ }));
@@ -273,7 +273,7 @@ describe('add-on details', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'releases.get' ? { ...release, manifest: undefined } : data[channel],
         );
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
         await waitFor(() => expect(page).toHaveTextContent('revision: 2'));
         await userEvent.click(within(page).getByRole('tab', { name: /Manifest/ }));
@@ -285,7 +285,7 @@ describe('add-on details', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'releases.get' ? { ...release, values: undefined } : data[channel],
         );
-        renderRoutes(routeTree, '/addons/releases/kube-system/traefik');
+        renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
         await waitFor(() => expect(page).toHaveTextContent('revision: 2'));
         await userEvent.click(within(page).getByRole('tab', { name: /Values/ }));

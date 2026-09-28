@@ -13,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Helm has its own section at the bottom of the sidebar, with **Releases** and then **Charts**,
+  reached with `⌘7` or `Ctrl+7`; **Add-ons** keeps the CRDs, admission and API server screens, and
+  links to a release or the charts under the old Add-ons paths no longer open.
+
 ## [0.8.0] - 2026-09-28
 
 ### Added

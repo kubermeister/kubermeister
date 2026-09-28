@@ -17,7 +17,7 @@ In the tables, `⌘` is Command on macOS and `Ctrl` is Control on Windows and Li
 | Keys                                              | Does                                                                       |
 | ------------------------------------------------- | -------------------------------------------------------------------------- |
 | `⌘K`/`Ctrl+K`                                     | Opens the command palette, or closes it                                    |
-| `⌘1` … `⌘6` / `Ctrl+1` … `Ctrl+6`                 | Goes to Overview, Workloads, Network, Storage, Access or Add-ons           |
+| `⌘1` … `⌘7` / `Ctrl+1` … `Ctrl+7`                 | Goes to Overview, Workloads, Network, Storage, Access, Add-ons or Helm     |
 | `⌘[` / `⌘]` on macOS, `Alt+←` / `Alt+→` elsewhere | Goes back / forward; the mouse's back and forward buttons do the same      |
 | `⌘R`/`Ctrl+R`                                     | Refreshes the screen's data, as its **Refresh** button does                |
 | `/`, or `⌘F`/`Ctrl+F`                             | Puts the cursor in the screen's search box: a list's, or a log console's   |
@@ -30,7 +30,7 @@ In the tables, `⌘` is Command on macOS and `Ctrl` is Control on Windows and Li
 | `Return`                                          | Applies the replica count you typed in the **Scale** popover               |
 | `Return` / `Escape`                               | Saves a Settings text field, or puts back what was there                   |
 
-A number goes to the first screen of its domain: `⌘2` opens Pods, `⌘6` opens Charts. `⌘R` refreshes
+A number goes to the first screen of its domain: `⌘2` opens Pods, `⌘6` opens CRDs and `⌘7` opens Releases. `⌘R` refreshes
 only what the screen's own **Refresh** button would, and spins it; on a screen without one it
 re-reads everything the screen shows. It no longer reloads the window. `/` does nothing on a screen
 without a search box.
@@ -48,7 +48,7 @@ the last tab to the first.
   `Alt` chord is taken from it, so `Ctrl+R` searches the shell's history and `Ctrl+W` deletes a word.
   On macOS the `⌘` chords still act, since no shell reads them, and `Ctrl+K` goes to the shell.
 - **In the YAML editor**, its own keys win: `⌘F`/`Ctrl+F` opens its search, and `⌘[` / `⌘]` on
-  macOS and `Alt+←` / `Alt+→` elsewhere are its own. `⌘K`, `⌘R` and `⌘1` to `⌘6` still act.
+  macOS and `Alt+←` / `Alt+→` elsewhere are its own. `⌘K`, `⌘R` and `⌘1` to `⌘7` still act.
 - **With a dialog, a popover or a menu open**, it has `Escape` and its own keys first, and the app's
   shortcuts wait until it closes. `⌘K`/`Ctrl+K` closes the palette it opened.
 

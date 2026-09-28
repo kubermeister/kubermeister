@@ -273,7 +273,7 @@ test('crd-instances', async () => {
 
 test('helm-release', async () => {
     const { window } = launched;
-    await goto('/addons/releases/platform/platform-agent');
+    await goto('/helm/releases/platform/platform-agent');
     await expect(window.getByTestId('release-page')).toBeVisible({ timeout: 30_000 });
     await openTab(window, /Revisions/);
     await expect(window.getByTestId('release-revisions')).toBeVisible({ timeout: 30_000 });
