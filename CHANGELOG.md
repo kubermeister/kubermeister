@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-28
+
 ### Added
 
 - A Deployment's and a StatefulSet's detail page has **Scale** in its header, which sets the replica
@@ -377,7 +379,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/kubermeister/kubermeister/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/kubermeister/kubermeister/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/kubermeister/kubermeister/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/kubermeister/kubermeister/compare/v0.6.0...v0.6.1

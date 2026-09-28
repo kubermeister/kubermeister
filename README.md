@@ -73,6 +73,7 @@ Download the installer for your platform from the
 | Windows  | `win-x64.exe`                                            | In the app                              |
 | Linux    | `linux-x86_64.AppImage` or `linux-arm64.AppImage`        | In the app                              |
 | Linux    | `linux-amd64.deb` or `linux-arm64.deb`                   | Install the new `.deb`                  |
+| Linux    | `linux-x86_64.rpm` or `linux-aarch64.rpm`                | Install the new `.rpm`                  |
 
 Or from a terminal:
 
@@ -86,6 +87,9 @@ chmod +x Kubermeister-*-linux-x86_64.AppImage && ./Kubermeister-*-linux-x86_64.A
 
 # Debian and Ubuntu
 sudo apt install ./Kubermeister-*-linux-amd64.deb
+
+# Fedora and RHEL
+sudo dnf install ./Kubermeister-*-linux-x86_64.rpm
 ```
 
 The macOS builds are signed and notarized. The Windows installer is not signed yet, so SmartScreen
