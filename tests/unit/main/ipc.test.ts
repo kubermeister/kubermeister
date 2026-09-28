@@ -73,6 +73,7 @@ const chartsMod = {
     refreshChartRepository: vi.fn(),
     removeChartRepository: vi.fn(),
 };
+const helmCliMod = { helmStatus: vi.fn() };
 const manifestMod = { getObjectYaml: vi.fn() };
 const exportMod = { exportManifests: vi.fn() };
 const fsMod = { writeFile: vi.fn() };
@@ -118,6 +119,7 @@ vi.mock('../../../src/main/k8s/resources/overview.js', () => overviewMod);
 vi.mock('../../../src/main/k8s/resources/network.js', () => networkMod);
 vi.mock('../../../src/main/k8s/resources/helm.js', () => helmMod);
 vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
+vi.mock('../../../src/main/charts/helm-cli.js', () => helmCliMod);
 vi.mock('../../../src/main/k8s/resources/manifest.js', () => manifestMod);
 vi.mock('../../../src/main/k8s/resources/export.js', () => exportMod);
 vi.mock('node:fs/promises', () => fsMod);
@@ -816,6 +818,17 @@ describe('registerHandlers', () => {
         await expect(invoke('releases.get', { name: '', namespace: 'kube-system' })).rejects.toThrow();
         // A release is looked up where its screen says it is, so the namespace is not optional.
         await expect(invoke('releases.get', { name: 'traefik' })).rejects.toThrow();
+    });
+
+    it('answers whether Helm was found, and a missing one as a state rather than a failure', async () => {
+        helmCliMod.helmStatus.mockResolvedValueOnce({ found: true, path: '/opt/homebrew/bin/helm', version: '3.15.1' });
+        await expect(invoke('helm.status', {})).resolves.toEqual({
+            found: true,
+            path: '/opt/homebrew/bin/helm',
+            version: '3.15.1',
+        });
+        helmCliMod.helmStatus.mockResolvedValueOnce({ found: false });
+        await expect(invoke('helm.status', {})).resolves.toEqual({ found: false });
     });
 
     it('forwards the chart repository calls and refuses an input the contract does not allow', async () => {

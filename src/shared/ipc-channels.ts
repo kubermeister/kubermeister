@@ -73,6 +73,7 @@ export const IPC_CHANNELS = [
     'chartRepositories.add',
     'chartRepositories.refresh',
     'chartRepositories.remove',
+    'helm.status',
     'namespaces.detail',
     'customResources.list',
     'customResources.get',

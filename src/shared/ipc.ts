@@ -12,6 +12,7 @@ import {
 } from './k8s/addons.js';
 import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
 import { deepLinkSchema } from './deep-link.js';
+import { helmStatusSchema } from './helm-tool.js';
 import { kubeContextSchema } from './k8s/contexts.js';
 import {
     manifestExportInputSchema,
@@ -249,6 +250,7 @@ export const ipcSchemas = {
     'chartRepositories.add': { input: chartRepositoryInputSchema, output: chartRepositoryStatusSchema },
     'chartRepositories.refresh': { input: chartRepositoryNameInputSchema, output: chartRepositoryStatusSchema },
     'chartRepositories.remove': { input: chartRepositoryNameInputSchema, output: chartRepositoryNameInputSchema },
+    'helm.status': { input: noInput, output: helmStatusSchema },
     'namespaces.detail': { input: namespaceDetailInputSchema, output: namespaceDetailSchema.nullable() },
     'customResources.list': { input: customResourceListInputSchema, output: customResourceListOutputSchema },
     'customResources.get': { input: customResourceGetInputSchema, output: customResourceGetOutputSchema },
