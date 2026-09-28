@@ -93,6 +93,25 @@ function pathForLine(above: (Line | null)[], prefix: string): PathStep[] | null 
     return path;
 }
 
+/** What a schema says about one field, in the terms completion and the description over a field use. */
+export interface FieldShape {
+    types: string[];
+    description?: string;
+    enum?: unknown[];
+    required: string[];
+    /** The fields a mapping here may hold, when the schema names them. */
+    properties: string[];
+}
+
+/**
+ * A schema read along a path from the document's root. The editor asks nothing else of one, which
+ * is what lets a kind's OpenAPI schema and a chart's JSON Schema drive the same completion.
+ */
+export interface SchemaLens {
+    /** The field at the end of a path, or null where the schema has nothing to say. */
+    fieldAt(path: PathStep[]): FieldShape | null;
+}
+
 /** The schema at the end of a path, or null where the schema has nothing to say. */
 function schemaAt(schema: KindSchema, path: PathStep[]): Resolved | null {
     let node: SchemaNode | undefined = schema.definitions[schema.name];
@@ -106,6 +125,24 @@ function schemaAt(schema: KindSchema, path: PathStep[]): Resolved | null {
         if (!node) return null;
     }
     return resolve(node, schema.definitions);
+}
+
+/** A kind's schema as the cluster publishes it, read as a lens. */
+export function kindLens(schema: KindSchema): SchemaLens {
+    return {
+        fieldAt(path) {
+            const field = schemaAt(schema, path);
+            return (
+                field && {
+                    types: field.types,
+                    description: field.description,
+                    enum: field.enum,
+                    required: field.required,
+                    properties: Object.keys(field.properties),
+                }
+            );
+        },
+    };
 }
 
 /**
@@ -153,7 +190,7 @@ function lineStart(text: string, offset: number): number {
 }
 
 /** What may follow the cursor at `offset`: the fields of the mapping it is in, or the values a field allows. */
-export function completionsAt(text: string, offset: number, schema: KindSchema): Completions | null {
+export function completionsAt(text: string, offset: number, schema: SchemaLens): Completions | null {
     const start = lineStart(text, offset);
     const end = text.indexOf('\n', offset);
     const before = text.slice(start, offset);
@@ -164,7 +201,7 @@ export function completionsAt(text: string, offset: number, schema: KindSchema):
     const valueMatch = /^(\s*(?:-\s+)*)([A-Za-z0-9_.\-/]+):\s+(\S*)$/.exec(before);
     if (valueMatch) {
         const path = pathForLine(above, valueMatch[1]!);
-        const field = path && schemaAt(schema, [...path, { key: valueMatch[2]! }]);
+        const field = path && schema.fieldAt([...path, { key: valueMatch[2]! }]);
         if (!field) return null;
         const values = field.enum ?? (field.types.includes('boolean') ? [true, false] : []);
         if (values.length === 0) return null;
@@ -183,15 +220,15 @@ export function completionsAt(text: string, offset: number, schema: KindSchema):
     if (!keyMatch || (end !== -1 ? text.slice(offset, end) : text.slice(offset)).includes(':')) return null;
     const prefix = keyMatch[1]!;
     const path = pathForLine(above, prefix);
-    const mapping = path && schemaAt(schema, path);
-    if (!mapping?.hasProperties) return null;
+    const mapping = path && schema.fieldAt(path);
+    if (!path || !mapping || mapping.properties.length === 0) return null;
     // A marker opens a new item, which has no keys yet; otherwise the mapping's own are left out.
     const present = /-\s*$/.test(prefix) ? new Set<string>() : siblings(lines, index, prefix.length);
     const required = new Set(mapping.required);
-    const options = Object.entries(mapping.properties)
-        .filter(([key]) => !present.has(key))
-        .map(([key, node]): CompletionItem => {
-            const field = resolve(node, schema.definitions);
+    const options = mapping.properties
+        .filter((key) => !present.has(key))
+        .map((key): CompletionItem => {
+            const field = schema.fieldAt([...path, { key }]) ?? { types: [], required: [], properties: [] };
             const nested = field.types.includes('object') || field.types.includes('array');
             const detail = [
                 required.has(key) ? 'required' : null,
@@ -219,7 +256,7 @@ export interface FieldDescription {
 }
 
 /** What the field whose name is under `offset` is, for the tooltip over it. */
-export function describeAt(text: string, offset: number, schema: KindSchema): FieldDescription | null {
+export function describeAt(text: string, offset: number, schema: SchemaLens): FieldDescription | null {
     const start = lineStart(text, offset);
     const end = text.indexOf('\n', offset);
     const raw = text.slice(start, end === -1 ? text.length : end);
@@ -233,9 +270,9 @@ export function describeAt(text: string, offset: number, schema: KindSchema): Fi
     const parent = pathForLine(above, raw.slice(0, line.column));
     if (!parent) return null;
     const path: PathStep[] = [...parent, { key: line.key }];
-    const field = schemaAt(schema, path);
+    const field = schema.fieldAt(path);
     if (!field) return null;
-    const required = schemaAt(schema, path.slice(0, -1))?.required.includes(line.key) ?? false;
+    const required = schema.fieldAt(path.slice(0, -1))?.required.includes(line.key) ?? false;
     return {
         from: keyFrom,
         to: keyTo,

@@ -74,6 +74,7 @@ const chartsMod = {
     removeChartRepository: vi.fn(),
 };
 const helmCliMod = { helmStatus: vi.fn() };
+const chartValuesMod = { readChartValues: vi.fn() };
 const manifestMod = { getObjectYaml: vi.fn() };
 const exportMod = { exportManifests: vi.fn() };
 const fsMod = { writeFile: vi.fn() };
@@ -120,6 +121,7 @@ vi.mock('../../../src/main/k8s/resources/network.js', () => networkMod);
 vi.mock('../../../src/main/k8s/resources/helm.js', () => helmMod);
 vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
 vi.mock('../../../src/main/charts/helm-cli.js', () => helmCliMod);
+vi.mock('../../../src/main/charts/values.js', () => chartValuesMod);
 vi.mock('../../../src/main/k8s/resources/manifest.js', () => manifestMod);
 vi.mock('../../../src/main/k8s/resources/export.js', () => exportMod);
 vi.mock('node:fs/promises', () => fsMod);
@@ -829,6 +831,24 @@ describe('registerHandlers', () => {
         });
         helmCliMod.helmStatus.mockResolvedValueOnce({ found: false });
         await expect(invoke('helm.status', {})).resolves.toEqual({ found: false });
+    });
+
+    it('reads a chart version’s values and schema, refusing a source name the contract does not allow', async () => {
+        const values = {
+            valuesYaml: 'replicaCount: 1\n',
+            schema: { type: 'object' },
+            schemaProblem: null,
+            subcharts: ['postgresql'],
+        };
+        chartValuesMod.readChartValues.mockResolvedValue(values);
+        await expect(invoke('charts.values', { source: 'bitnami', chart: 'nginx', version: '1.0.0' })).resolves.toEqual(
+            values,
+        );
+        expect(chartValuesMod.readChartValues).toHaveBeenCalledWith('bitnami', 'nginx', '1.0.0');
+        await expect(
+            invoke('charts.values', { source: '../escape', chart: 'nginx', version: '1.0.0' }),
+        ).rejects.toThrow();
+        expect(chartValuesMod.readChartValues).toHaveBeenCalledOnce();
     });
 
     it('forwards the chart repository calls and refuses an input the contract does not allow', async () => {

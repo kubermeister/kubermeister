@@ -230,6 +230,37 @@ describe('helmErrorMessage', () => {
         );
         expect(helmErrorMessage('')).toBe('Helm exited without saying why.');
     });
+
+    it('keeps the lines after the first, where a schema failure lists the values it refuses', () => {
+        expect(
+            helmErrorMessage(
+                [
+                    "Error: values don't meet the specifications of the schema(s) in the following chart(s):",
+                    'demo:',
+                    "- at '/replicaCount': got string, want integer",
+                    "- at '/image': validation failed",
+                    "  - at '/image': missing property 'repository'",
+                    '',
+                ].join('\n'),
+            ),
+        ).toBe(
+            [
+                "values don't meet the specifications of the schema(s) in the following chart(s):",
+                'demo:',
+                "- at '/replicaCount': got string, want integer",
+                "- at '/image': validation failed",
+                "- at '/image': missing property 'repository'",
+            ].join('\n'),
+        );
+        expect(
+            helmErrorMessage(
+                'Error: demo/templates/x.yaml:1:13\n  executing "demo/templates/x.yaml" at <.Values.a.b>:\n    nil pointer evaluating interface {}.b\n\nUse --debug flag to render out invalid YAML\n',
+            ),
+        ).toBe(
+            'demo/templates/x.yaml:1:13\nexecuting "demo/templates/x.yaml" at <.Values.a.b>:\nnil pointer evaluating interface {}.b',
+        );
+        expect(helmErrorMessage('WARNING: x\nno error line\n')).toBe('WARNING: x no error line');
+    });
 });
 
 describe('usesLookup', () => {

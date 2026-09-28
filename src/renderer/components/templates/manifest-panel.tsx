@@ -305,7 +305,7 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
                 onValueChange={setEdits}
                 readOnly={!editing}
                 diagnostics={checks.diagnostics}
-                schema={checks.schema}
+                schema={checks.lens}
                 aria-label={`${liveKind} manifest`}
                 className="min-h-0 flex-1"
             />

@@ -32,8 +32,8 @@ const configMapSchema: KindSchema = {
 const MANIFEST = 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app\ndata:\n  port: 8080\n';
 
 function Checked({ text, enabled = true }: { text: string; enabled?: boolean }) {
-    const { diagnostics, schema } = useManifestChecks(text, enabled);
-    return <YamlEditor value={text} onValueChange={() => {}} diagnostics={diagnostics} schema={schema} />;
+    const { diagnostics, lens } = useManifestChecks(text, enabled);
+    return <YamlEditor value={text} onValueChange={() => {}} diagnostics={diagnostics} schema={lens} />;
 }
 
 const marked = (container: HTMLElement, severity: 'error' | 'warning') =>
