@@ -696,6 +696,21 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   is why the row shows no chart count.
 - A password is refused for a plaintext `http` URL (`sendsCredentialsInClear`); such a repository is
   still usable anonymously.
+- **A chart archive is fetched by `fetchChart` (`src/main/charts/fetch.ts`) and checked whole before
+  it is cached.** A classic version comes from the `urls` its index entry lists, which the cached
+  index keeps beside the summaries (`archives`, resolved against the repository URL at download
+  time), and must hash to the entry's `digest`; the repository's credential goes only to its own
+  origin, as `helm pull` does. An OCI version comes from the manifest at its tag (`+` written `_`)
+  and the layer of Helm's chart media type (`oci.ts`), through `registryClient`, which answers the
+  challenge for the scope it names and keeps the token for the blob. A version the cached index
+  does not list refreshes it once before it is reported missing.
+- The archive is read in memory by `archive.ts`, a tar reader written here rather than a runtime
+  dependency: 16 MB downloaded and 100 MB expanded at most, and one entry with an absolute path, a
+  `..`, a link or a place outside the chart's directory refuses the whole archive, as does a
+  `Chart.yaml` naming another chart or version. Only then is it written to
+  `userData/chart-cache/<repository>/<sha256>.tgz`: one directory per repository, so removing it
+  takes its archives too and one repository's credentialed download is never answered for another.
+  A cached file is hashed again when read, so a damaged one downloads again.
 
 ### Container detail
 

@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHART_REPOSITORY_NAME, chartIndexSchema, type ChartIndex } from '../../shared/charts.js';
@@ -52,4 +53,52 @@ export function writeIndex(name: string, index: ChartIndex): void {
 
 export function removeIndex(name: string): void {
     rmSync(indexPath(name), { force: true });
+}
+
+/**
+ * Downloaded chart archives, one directory per repository under `chart-cache` and one file per
+ * archive named by its SHA-256. An archive is immutable once its digest is known, so a cached one is
+ * never refreshed, only checked; the directory per repository is what lets removing a repository
+ * take everything it downloaded with it, and what keeps an archive fetched with one repository's
+ * credential from being answered for another's.
+ */
+
+const SHA256_HEX = /^[a-f0-9]{64}$/;
+
+function archiveDir(name: string): string {
+    if (!CHART_REPOSITORY_NAME.test(name)) throw new Error(`"${name}" is not a chart repository name`);
+    return join(app.getPath('userData'), 'chart-cache', name);
+}
+
+export function archivePath(name: string, digest: string): string {
+    if (!SHA256_HEX.test(digest)) throw new Error(`"${digest}" is not a SHA-256 digest`);
+    return join(archiveDir(name), `${digest}.tgz`);
+}
+
+/**
+ * The cached archive with this digest, or null. The bytes are hashed again on the way out: a file
+ * cut short by a crash or changed on disk is a miss that downloads again, never a chart that is not
+ * the one its digest names.
+ */
+export function readArchive(name: string, digest: string): Buffer | null {
+    try {
+        const bytes = readFileSync(archivePath(name, digest));
+        return createHash('sha256').update(bytes).digest('hex') === digest ? bytes : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Cache an archive whose digest the caller has checked; answers where it now lives. */
+export function writeArchive(name: string, digest: string, bytes: Buffer): string {
+    const path = archivePath(name, digest);
+    mkdirSync(archiveDir(name), { recursive: true });
+    const tmp = `${path}.tmp`;
+    writeFileSync(tmp, bytes);
+    renameSync(tmp, path);
+    return path;
+}
+
+export function removeArchives(name: string): void {
+    rmSync(archiveDir(name), { recursive: true, force: true });
 }

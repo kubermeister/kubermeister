@@ -1,6 +1,8 @@
 import { load as loadYaml } from 'js-yaml';
 import {
     MAX_CHART_REPOSITORIES,
+    type ChartArchiveLocations,
+    type ChartIndex,
     type ChartRepository,
     type ChartRepositoryInput,
     type ChartRepositoryStatus,
@@ -8,9 +10,9 @@ import {
 } from '../../shared/charts.js';
 import { K8sError, toK8sError } from '../k8s/errors.js';
 import { getSettings, updateSettings } from '../settings/store.js';
-import { readIndex, removeIndex, writeIndex } from './cache.js';
+import { readIndex, removeArchives, removeIndex, writeIndex } from './cache.js';
 import { getCredential, hasCredential, removeCredential, setCredential } from './credentials.js';
-import { indexUrl, isChartIndexDocument, parseChartIndex, readCappedText } from './index-file.js';
+import { indexUrl, isChartIndexDocument, parseChartArchives, parseChartIndex, readCappedText } from './index-file.js';
 import { basicAuth, httpFailure, pingRegistry, type RegistryCredential } from './registry.js';
 
 /**
@@ -36,7 +38,7 @@ function configured(): ChartRepository[] {
     return getSettings().charts.repositories;
 }
 
-function find(name: string, op: string): ChartRepository {
+export function findChartRepository(name: string, op: string): ChartRepository {
     const repository = configured().find((candidate) => candidate.name === name);
     if (!repository) throw new K8sError('notFound', `No chart repository is named "${name}".`, op);
     return repository;
@@ -65,26 +67,35 @@ async function fetchCharts(op: string, repository: ChartRepository, credential: 
     if (!isChartIndexDocument(document)) {
         throw new K8sError('invalid', 'That address does not serve a Helm repository index.', op);
     }
-    return parseChartIndex(document);
+    return { charts: parseChartIndex(document), archives: parseChartArchives(document) };
 }
 
 /**
  * Read a source and cache what it answered. A classic repository answers with its index; an OCI
  * registry publishes none, so all that can be read is that it answers and accepts the credential —
  * the same check `helm registry login` makes. The cache file is written either way, since it is
- * also what records when the source was last reached.
+ * also what records when the source was last reached. The index is answered as read rather than
+ * read back, so a cache write that failed costs the next launch a refresh and nothing now.
  */
-async function readSource(
+export async function readSource(
     op: string,
     repository: ChartRepository,
     credential: RegistryCredential | null,
-): Promise<ChartRepositoryStatus> {
+): Promise<ChartIndex> {
     let charts: ChartSummary[] = [];
+    let archives: ChartArchiveLocations = {};
     if (repository.kind === 'oci') await pingRegistry(op, repository.url, credential);
-    else charts = await fetchCharts(op, repository, credential);
-    const refreshedAt = new Date().toISOString();
-    writeIndex(repository.name, { url: repository.url, refreshedAt, charts });
-    return toStatus(repository, { chartCount: repository.kind === 'oci' ? null : charts.length, refreshedAt });
+    else ({ charts, archives } = await fetchCharts(op, repository, credential));
+    const index = { url: repository.url, refreshedAt: new Date().toISOString(), charts, archives };
+    writeIndex(repository.name, index);
+    return index;
+}
+
+function statusAfterRead(repository: ChartRepository, index: ChartIndex): ChartRepositoryStatus {
+    return toStatus(repository, {
+        chartCount: repository.kind === 'oci' ? null : index.charts.length,
+        refreshedAt: index.refreshedAt,
+    });
 }
 
 export function listChartRepositories(): Promise<ChartRepositoryStatus[]> {
@@ -119,7 +130,7 @@ export function addChartRepository(input: ChartRepositoryInput): Promise<ChartRe
         const credential = username !== undefined && password !== undefined ? { username, password } : null;
         if (credential) setCredential(repository.name, credential, op);
         try {
-            const status = await readSource(op, repository, credential);
+            const status = statusAfterRead(repository, await readSource(op, repository, credential));
             updateSettings({ charts: { repositories: [...existing, repository] } });
             return status;
         } catch (error) {
@@ -133,18 +144,19 @@ export function addChartRepository(input: ChartRepositoryInput): Promise<ChartRe
 export function refreshChartRepository(name: string): Promise<ChartRepositoryStatus> {
     const op = 'chartRepositories.refresh';
     return classified(op, async () => {
-        const repository = find(name, op);
-        return readSource(op, repository, getCredential(name));
+        const repository = findChartRepository(name, op);
+        return statusAfterRead(repository, await readSource(op, repository, getCredential(name)));
     });
 }
 
-/** Forget a source: its entry, its cached index and its credential all go together. */
+/** Forget a source: its entry, its cached index, the archives fetched from it and its credential all go together. */
 export function removeChartRepository(name: string): Promise<{ name: string }> {
     const op = 'chartRepositories.remove';
     return classified(op, async () => {
-        find(name, op);
+        findChartRepository(name, op);
         updateSettings({ charts: { repositories: configured().filter((candidate) => candidate.name !== name) } });
         removeIndex(name);
+        removeArchives(name);
         removeCredential(name, op);
         return { name };
     });

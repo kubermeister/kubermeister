@@ -92,6 +92,19 @@ export const chartSummarySchema = z.object({
 });
 
 /**
+ * Where one chart version's archive is published, as its index entry says: the URLs to try in
+ * order, possibly relative to the repository, and the SHA-256 the archive must hash to, when the
+ * index gives one.
+ */
+export const chartArchiveLocationSchema = z.object({
+    urls: z.array(z.string()).min(1),
+    digest: z.string().nullable(),
+});
+
+/** Every published archive of a repository, by chart name and then by version. */
+export const chartArchiveLocationsSchema = z.record(z.string(), z.record(z.string(), chartArchiveLocationSchema));
+
+/**
  * A repository's index as it is cached on disk. The URL it came from is kept with it, so a cache
  * file left behind by a repository that has since been re-pointed is not read as the new one's.
  */
@@ -99,6 +112,12 @@ export const chartIndexSchema = z.object({
     url: z.string(),
     refreshedAt: z.string(),
     charts: z.array(chartSummarySchema),
+    /**
+     * Kept beside the summaries rather than inside them, since the summaries are what a chart list
+     * shows and these are only what a download needs. A file cached before archives were recorded
+     * has none, which reads as a version that has to be looked up by refreshing the index.
+     */
+    archives: chartArchiveLocationsSchema.default({}),
 });
 
 export const chartRepositoryNameInputSchema = z.object({ name: chartRepositoryNameSchema });
@@ -109,3 +128,5 @@ export type ChartRepositoryInput = z.infer<typeof chartRepositoryInputSchema>;
 export type ChartRepositoryStatus = z.infer<typeof chartRepositoryStatusSchema>;
 export type ChartSummary = z.infer<typeof chartSummarySchema>;
 export type ChartIndex = z.infer<typeof chartIndexSchema>;
+export type ChartArchiveLocation = z.infer<typeof chartArchiveLocationSchema>;
+export type ChartArchiveLocations = z.infer<typeof chartArchiveLocationsSchema>;

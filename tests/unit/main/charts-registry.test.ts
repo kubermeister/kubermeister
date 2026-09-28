@@ -31,6 +31,14 @@ describe('parseAuthChallenge', () => {
         });
     });
 
+    it('reads the scope a challenge for a repository names', () => {
+        expect(
+            parseAuthChallenge(
+                'Bearer realm="https://ghcr.io/token",service="ghcr.io",scope="repository:org/nginx:pull"',
+            ),
+        ).toEqual({ realm: 'https://ghcr.io/token', service: 'ghcr.io', scope: 'repository:org/nginx:pull' });
+    });
+
     it('is nothing for a challenge with no realm, another scheme, or no header at all', () => {
         expect(parseAuthChallenge(null)).toBeNull();
         expect(parseAuthChallenge('Basic realm="registry"')).toBeNull();
