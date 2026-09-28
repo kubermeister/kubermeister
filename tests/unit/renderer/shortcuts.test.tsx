@@ -121,7 +121,9 @@ describe('the shortcut dispatcher', () => {
         await userEvent.keyboard('{Control>}2{/Control}');
         await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/pods'));
         await userEvent.keyboard('{Control>}6{/Control}');
-        await waitFor(() => expect(router.state.location.pathname).toBe('/addons/charts'));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/addons/crds'));
+        await userEvent.keyboard('{Control>}7{/Control}');
+        await waitFor(() => expect(router.state.location.pathname).toBe('/helm/releases'));
         // user-event's key map has no Comma, so the key is named by its position.
         await userEvent.keyboard('{Control>}[Comma]{/Control}');
         await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));

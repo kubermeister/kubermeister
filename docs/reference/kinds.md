@@ -119,8 +119,7 @@ A CRD's instances are reached from its detail page, through **View instances**.
 
 ## Helm
 
-**Add-ons › Releases** lists Helm releases, which are decoded from the Secrets Helm stores rather
+**Helm › Releases** lists Helm releases, which are decoded from the Secrets Helm stores rather
 than being a kind of their own; each opens on the objects it rendered, read live, beside its
-revisions, values and manifest. **Add-ons › Helm
-charts** lists the charts those releases were installed from, with no detail page. See
+revisions, values and manifest. **Helm › Charts** lists the charts those releases were installed from, with no detail page. See
 [Helm releases](/docs/operations/helm/).

@@ -11,7 +11,7 @@ Kubermeister 0.5.0 **reads, rolls back and uninstalls** Helm releases. It does *
 upgrade** them, and it cannot browse a chart repository: use the Helm CLI for those, and the release
 shows up here as soon as Helm has written it.
 
-Both screens are under **Add-ons** in the sidebar: **Helm charts** and **Releases**.
+Both screens have a section of their own in the sidebar, **Helm**: **Releases** and **Charts**.
 
 ## Where releases come from
 
@@ -140,7 +140,7 @@ and the app counts them back to you so you know what was left behind.
 
 ## Helm charts
 
-**Helm charts** lists the charts your installed releases use, derived from the same release Secrets,
+**Helm › Charts** lists the charts your installed releases use, derived from the same release Secrets,
 because a cluster holds no chart index of its own. Each chart appears once, with Name, Repository,
 Latest version, App version and Description. It follows the namespace selection like **Releases**
 does.
@@ -158,5 +158,5 @@ There is no chart detail page and nothing on this screen installs a chart.
 
 Chart repositories can be added, refreshed and removed under **Settings › Charts**, and they live in
 app settings rather than in the cluster, so they survive a context switch. In 0.5.0 no screen
-installs from them yet, and the **Helm charts** page does not use them. See
+installs from them yet, and the **Charts** page does not use them. See
 [settings](/docs/reference/settings/).

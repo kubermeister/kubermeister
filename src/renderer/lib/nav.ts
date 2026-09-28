@@ -244,11 +244,7 @@ export const DOMAINS: Domain[] = [
         groups: [
             {
                 label: null,
-                items: [
-                    { id: 'charts', label: 'Helm charts', path: '/addons/charts', icon: PackageIcon },
-                    { id: 'releases', label: 'Releases', path: '/addons/releases', icon: RocketIcon },
-                    { id: 'crds', label: 'CRDs', path: '/addons/crds', icon: CodeIcon },
-                ],
+                items: [{ id: 'crds', label: 'CRDs', path: '/addons/crds', icon: CodeIcon }],
             },
             {
                 label: 'ADMISSION',
@@ -278,6 +274,21 @@ export const DOMAINS: Domain[] = [
                 items: [
                     { id: 'apiservices', label: 'API Services', path: '/addons/apiservices', icon: PlugIcon },
                     { id: 'flowschemas', label: 'Flow Schemas', path: '/addons/flowschemas', icon: WavesIcon },
+                ],
+            },
+        ],
+    },
+    {
+        id: 'helm',
+        label: 'Helm',
+        icon: PackageIcon,
+        basePath: '/helm',
+        groups: [
+            {
+                label: null,
+                items: [
+                    { id: 'releases', label: 'Releases', path: '/helm/releases', icon: RocketIcon },
+                    { id: 'charts', label: 'Charts', path: '/helm/charts', icon: PackageIcon },
                 ],
             },
         ],

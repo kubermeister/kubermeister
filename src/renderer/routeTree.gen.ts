@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
 import { Route as CreateRouteImport } from './routes/create';
 import { Route as SettingsRouteImport } from './routes/settings';
-import { Route as AddonsChartsRouteImport } from './routes/addons/charts';
+import { Route as HelmChartsRouteImport } from './routes/helm/charts';
 import { Route as OverviewEventsRouteImport } from './routes/overview/events';
 import { Route as OverviewLimitsRouteImport } from './routes/overview/limits';
 import { Route as OverviewNamespacesRouteImport } from './routes/overview/namespaces';
@@ -29,8 +29,8 @@ import { Route as AddonsApiservicesIndexRouteImport } from './routes/addons/apis
 import { Route as AddonsCrdsIndexRouteImport } from './routes/addons/crds/index';
 import { Route as AddonsFlowschemasIndexRouteImport } from './routes/addons/flowschemas/index';
 import { Route as AddonsMutatingwebhooksIndexRouteImport } from './routes/addons/mutatingwebhooks/index';
-import { Route as AddonsReleasesIndexRouteImport } from './routes/addons/releases/index';
 import { Route as AddonsValidatingwebhooksIndexRouteImport } from './routes/addons/validatingwebhooks/index';
+import { Route as HelmReleasesIndexRouteImport } from './routes/helm/releases/index';
 import { Route as NetworkEndpointsIndexRouteImport } from './routes/network/endpoints/index';
 import { Route as NetworkIngressclassesIndexRouteImport } from './routes/network/ingressclasses/index';
 import { Route as NetworkIngressesIndexRouteImport } from './routes/network/ingresses/index';
@@ -79,7 +79,7 @@ import { Route as StorageVolumesNameChar123TabChar125RouteImport } from './route
 import { Route as AccessRolebindingsNamespaceNameChar123TabChar125RouteImport } from './routes/access/rolebindings/$namespace.$name.{-$tab}';
 import { Route as AccessRolesNamespaceNameChar123TabChar125RouteImport } from './routes/access/roles/$namespace.$name.{-$tab}';
 import { Route as AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport } from './routes/access/serviceaccounts/$namespace.$name.{-$tab}';
-import { Route as AddonsReleasesNamespaceNameChar123TabChar125RouteImport } from './routes/addons/releases/$namespace.$name.{-$tab}';
+import { Route as HelmReleasesNamespaceNameChar123TabChar125RouteImport } from './routes/helm/releases/$namespace.$name.{-$tab}';
 import { Route as NetworkEndpointsNamespaceNameChar123TabChar125RouteImport } from './routes/network/endpoints/$namespace.$name.{-$tab}';
 import { Route as NetworkIngressesNamespaceNameChar123TabChar125RouteImport } from './routes/network/ingresses/$namespace.$name.{-$tab}';
 import { Route as NetworkNetworkpoliciesNamespaceNameChar123TabChar125RouteImport } from './routes/network/networkpolicies/$namespace.$name.{-$tab}';
@@ -117,9 +117,9 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any);
-const AddonsChartsRoute = AddonsChartsRouteImport.update({
-  id: '/addons/charts',
-  path: '/addons/charts',
+const HelmChartsRoute = HelmChartsRouteImport.update({
+  id: '/helm/charts',
+  path: '/helm/charts',
   getParentRoute: () => rootRouteImport,
 } as any);
 const OverviewEventsRoute = OverviewEventsRouteImport.update({
@@ -206,17 +206,17 @@ const AddonsMutatingwebhooksIndexRoute =
     path: '/addons/mutatingwebhooks/',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AddonsReleasesIndexRoute = AddonsReleasesIndexRouteImport.update({
-  id: '/addons/releases/',
-  path: '/addons/releases/',
-  getParentRoute: () => rootRouteImport,
-} as any);
 const AddonsValidatingwebhooksIndexRoute =
   AddonsValidatingwebhooksIndexRouteImport.update({
     id: '/addons/validatingwebhooks/',
     path: '/addons/validatingwebhooks/',
     getParentRoute: () => rootRouteImport,
   } as any);
+const HelmReleasesIndexRoute = HelmReleasesIndexRouteImport.update({
+  id: '/helm/releases/',
+  path: '/helm/releases/',
+  getParentRoute: () => rootRouteImport,
+} as any);
 const NetworkEndpointsIndexRoute = NetworkEndpointsIndexRouteImport.update({
   id: '/network/endpoints/',
   path: '/network/endpoints/',
@@ -490,10 +490,10 @@ const AccessServiceaccountsNamespaceNameChar123TabChar125Route =
     path: '/access/serviceaccounts/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
-const AddonsReleasesNamespaceNameChar123TabChar125Route =
-  AddonsReleasesNamespaceNameChar123TabChar125RouteImport.update({
-    id: '/addons/releases/$namespace/$name/{-$tab}',
-    path: '/addons/releases/$namespace/$name/{-$tab}',
+const HelmReleasesNamespaceNameChar123TabChar125Route =
+  HelmReleasesNamespaceNameChar123TabChar125RouteImport.update({
+    id: '/helm/releases/$namespace/$name/{-$tab}',
+    path: '/helm/releases/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
 const NetworkEndpointsNamespaceNameChar123TabChar125Route =
@@ -629,7 +629,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/create': typeof CreateRoute;
   '/settings': typeof SettingsRoute;
-  '/addons/charts': typeof AddonsChartsRoute;
+  '/helm/charts': typeof HelmChartsRoute;
   '/overview/events': typeof OverviewEventsRoute;
   '/overview/limits': typeof OverviewLimitsRoute;
   '/overview/namespaces': typeof OverviewNamespacesRoute;
@@ -646,8 +646,8 @@ export interface FileRoutesByFullPath {
   '/addons/crds/': typeof AddonsCrdsIndexRoute;
   '/addons/flowschemas/': typeof AddonsFlowschemasIndexRoute;
   '/addons/mutatingwebhooks/': typeof AddonsMutatingwebhooksIndexRoute;
-  '/addons/releases/': typeof AddonsReleasesIndexRoute;
   '/addons/validatingwebhooks/': typeof AddonsValidatingwebhooksIndexRoute;
+  '/helm/releases/': typeof HelmReleasesIndexRoute;
   '/network/endpoints/': typeof NetworkEndpointsIndexRoute;
   '/network/ingressclasses/': typeof NetworkIngressclassesIndexRoute;
   '/network/ingresses/': typeof NetworkIngressesIndexRoute;
@@ -696,7 +696,7 @@ export interface FileRoutesByFullPath {
   '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
   '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
-  '/addons/releases/$namespace/$name/{-$tab}': typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  '/helm/releases/$namespace/$name/{-$tab}': typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
   '/network/networkpolicies/$namespace/$name/{-$tab}': typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
@@ -723,7 +723,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/create': typeof CreateRoute;
   '/settings': typeof SettingsRoute;
-  '/addons/charts': typeof AddonsChartsRoute;
+  '/helm/charts': typeof HelmChartsRoute;
   '/overview/events': typeof OverviewEventsRoute;
   '/overview/limits': typeof OverviewLimitsRoute;
   '/overview/namespaces': typeof OverviewNamespacesRoute;
@@ -740,8 +740,8 @@ export interface FileRoutesByTo {
   '/addons/crds': typeof AddonsCrdsIndexRoute;
   '/addons/flowschemas': typeof AddonsFlowschemasIndexRoute;
   '/addons/mutatingwebhooks': typeof AddonsMutatingwebhooksIndexRoute;
-  '/addons/releases': typeof AddonsReleasesIndexRoute;
   '/addons/validatingwebhooks': typeof AddonsValidatingwebhooksIndexRoute;
+  '/helm/releases': typeof HelmReleasesIndexRoute;
   '/network/endpoints': typeof NetworkEndpointsIndexRoute;
   '/network/ingressclasses': typeof NetworkIngressclassesIndexRoute;
   '/network/ingresses': typeof NetworkIngressesIndexRoute;
@@ -790,7 +790,7 @@ export interface FileRoutesByTo {
   '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
   '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
-  '/addons/releases/$namespace/$name/{-$tab}': typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  '/helm/releases/$namespace/$name/{-$tab}': typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
   '/network/networkpolicies/$namespace/$name/{-$tab}': typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
@@ -818,7 +818,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute;
   '/create': typeof CreateRoute;
   '/settings': typeof SettingsRoute;
-  '/addons/charts': typeof AddonsChartsRoute;
+  '/helm/charts': typeof HelmChartsRoute;
   '/overview/events': typeof OverviewEventsRoute;
   '/overview/limits': typeof OverviewLimitsRoute;
   '/overview/namespaces': typeof OverviewNamespacesRoute;
@@ -835,8 +835,8 @@ export interface FileRoutesById {
   '/addons/crds/': typeof AddonsCrdsIndexRoute;
   '/addons/flowschemas/': typeof AddonsFlowschemasIndexRoute;
   '/addons/mutatingwebhooks/': typeof AddonsMutatingwebhooksIndexRoute;
-  '/addons/releases/': typeof AddonsReleasesIndexRoute;
   '/addons/validatingwebhooks/': typeof AddonsValidatingwebhooksIndexRoute;
+  '/helm/releases/': typeof HelmReleasesIndexRoute;
   '/network/endpoints/': typeof NetworkEndpointsIndexRoute;
   '/network/ingressclasses/': typeof NetworkIngressclassesIndexRoute;
   '/network/ingresses/': typeof NetworkIngressesIndexRoute;
@@ -885,7 +885,7 @@ export interface FileRoutesById {
   '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
   '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
-  '/addons/releases/$namespace/$name/{-$tab}': typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  '/helm/releases/$namespace/$name/{-$tab}': typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
   '/network/networkpolicies/$namespace/$name/{-$tab}': typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
@@ -914,7 +914,7 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/settings'
-    | '/addons/charts'
+    | '/helm/charts'
     | '/overview/events'
     | '/overview/limits'
     | '/overview/namespaces'
@@ -931,8 +931,8 @@ export interface FileRouteTypes {
     | '/addons/crds/'
     | '/addons/flowschemas/'
     | '/addons/mutatingwebhooks/'
-    | '/addons/releases/'
     | '/addons/validatingwebhooks/'
+    | '/helm/releases/'
     | '/network/endpoints/'
     | '/network/ingressclasses/'
     | '/network/ingresses/'
@@ -981,7 +981,7 @@ export interface FileRouteTypes {
     | '/access/rolebindings/$namespace/$name/{-$tab}'
     | '/access/roles/$namespace/$name/{-$tab}'
     | '/access/serviceaccounts/$namespace/$name/{-$tab}'
-    | '/addons/releases/$namespace/$name/{-$tab}'
+    | '/helm/releases/$namespace/$name/{-$tab}'
     | '/network/endpoints/$namespace/$name/{-$tab}'
     | '/network/ingresses/$namespace/$name/{-$tab}'
     | '/network/networkpolicies/$namespace/$name/{-$tab}'
@@ -1008,7 +1008,7 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/settings'
-    | '/addons/charts'
+    | '/helm/charts'
     | '/overview/events'
     | '/overview/limits'
     | '/overview/namespaces'
@@ -1025,8 +1025,8 @@ export interface FileRouteTypes {
     | '/addons/crds'
     | '/addons/flowschemas'
     | '/addons/mutatingwebhooks'
-    | '/addons/releases'
     | '/addons/validatingwebhooks'
+    | '/helm/releases'
     | '/network/endpoints'
     | '/network/ingressclasses'
     | '/network/ingresses'
@@ -1075,7 +1075,7 @@ export interface FileRouteTypes {
     | '/access/rolebindings/$namespace/$name/{-$tab}'
     | '/access/roles/$namespace/$name/{-$tab}'
     | '/access/serviceaccounts/$namespace/$name/{-$tab}'
-    | '/addons/releases/$namespace/$name/{-$tab}'
+    | '/helm/releases/$namespace/$name/{-$tab}'
     | '/network/endpoints/$namespace/$name/{-$tab}'
     | '/network/ingresses/$namespace/$name/{-$tab}'
     | '/network/networkpolicies/$namespace/$name/{-$tab}'
@@ -1102,7 +1102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/settings'
-    | '/addons/charts'
+    | '/helm/charts'
     | '/overview/events'
     | '/overview/limits'
     | '/overview/namespaces'
@@ -1119,8 +1119,8 @@ export interface FileRouteTypes {
     | '/addons/crds/'
     | '/addons/flowschemas/'
     | '/addons/mutatingwebhooks/'
-    | '/addons/releases/'
     | '/addons/validatingwebhooks/'
+    | '/helm/releases/'
     | '/network/endpoints/'
     | '/network/ingressclasses/'
     | '/network/ingresses/'
@@ -1169,7 +1169,7 @@ export interface FileRouteTypes {
     | '/access/rolebindings/$namespace/$name/{-$tab}'
     | '/access/roles/$namespace/$name/{-$tab}'
     | '/access/serviceaccounts/$namespace/$name/{-$tab}'
-    | '/addons/releases/$namespace/$name/{-$tab}'
+    | '/helm/releases/$namespace/$name/{-$tab}'
     | '/network/endpoints/$namespace/$name/{-$tab}'
     | '/network/ingresses/$namespace/$name/{-$tab}'
     | '/network/networkpolicies/$namespace/$name/{-$tab}'
@@ -1197,7 +1197,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   CreateRoute: typeof CreateRoute;
   SettingsRoute: typeof SettingsRoute;
-  AddonsChartsRoute: typeof AddonsChartsRoute;
+  HelmChartsRoute: typeof HelmChartsRoute;
   OverviewEventsRoute: typeof OverviewEventsRoute;
   OverviewLimitsRoute: typeof OverviewLimitsRoute;
   OverviewNamespacesRoute: typeof OverviewNamespacesRoute;
@@ -1214,8 +1214,8 @@ export interface RootRouteChildren {
   AddonsCrdsIndexRoute: typeof AddonsCrdsIndexRoute;
   AddonsFlowschemasIndexRoute: typeof AddonsFlowschemasIndexRoute;
   AddonsMutatingwebhooksIndexRoute: typeof AddonsMutatingwebhooksIndexRoute;
-  AddonsReleasesIndexRoute: typeof AddonsReleasesIndexRoute;
   AddonsValidatingwebhooksIndexRoute: typeof AddonsValidatingwebhooksIndexRoute;
+  HelmReleasesIndexRoute: typeof HelmReleasesIndexRoute;
   NetworkEndpointsIndexRoute: typeof NetworkEndpointsIndexRoute;
   NetworkIngressclassesIndexRoute: typeof NetworkIngressclassesIndexRoute;
   NetworkIngressesIndexRoute: typeof NetworkIngressesIndexRoute;
@@ -1264,7 +1264,7 @@ export interface RootRouteChildren {
   AccessRolebindingsNamespaceNameChar123TabChar125Route: typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   AccessRolesNamespaceNameChar123TabChar125Route: typeof AccessRolesNamespaceNameChar123TabChar125Route;
   AccessServiceaccountsNamespaceNameChar123TabChar125Route: typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
-  AddonsReleasesNamespaceNameChar123TabChar125Route: typeof AddonsReleasesNamespaceNameChar123TabChar125Route;
+  HelmReleasesNamespaceNameChar123TabChar125Route: typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   NetworkEndpointsNamespaceNameChar123TabChar125Route: typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   NetworkIngressesNamespaceNameChar123TabChar125Route: typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
   NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route: typeof NetworkNetworkpoliciesNamespaceNameChar123TabChar125Route;
@@ -1311,11 +1311,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/charts': {
-      id: '/addons/charts';
-      path: '/addons/charts';
-      fullPath: '/addons/charts';
-      preLoaderRoute: typeof AddonsChartsRouteImport;
+    '/helm/charts': {
+      id: '/helm/charts';
+      path: '/helm/charts';
+      fullPath: '/helm/charts';
+      preLoaderRoute: typeof HelmChartsRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/overview/events': {
@@ -1430,18 +1430,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsMutatingwebhooksIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/releases/': {
-      id: '/addons/releases/';
-      path: '/addons/releases';
-      fullPath: '/addons/releases/';
-      preLoaderRoute: typeof AddonsReleasesIndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/addons/validatingwebhooks/': {
       id: '/addons/validatingwebhooks/';
       path: '/addons/validatingwebhooks';
       fullPath: '/addons/validatingwebhooks/';
       preLoaderRoute: typeof AddonsValidatingwebhooksIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/helm/releases/': {
+      id: '/helm/releases/';
+      path: '/helm/releases';
+      fullPath: '/helm/releases/';
+      preLoaderRoute: typeof HelmReleasesIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/network/endpoints/': {
@@ -1780,11 +1780,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/addons/releases/$namespace/$name/{-$tab}': {
-      id: '/addons/releases/$namespace/$name/{-$tab}';
-      path: '/addons/releases/$namespace/$name/{-$tab}';
-      fullPath: '/addons/releases/$namespace/$name/{-$tab}';
-      preLoaderRoute: typeof AddonsReleasesNamespaceNameChar123TabChar125RouteImport;
+    '/helm/releases/$namespace/$name/{-$tab}': {
+      id: '/helm/releases/$namespace/$name/{-$tab}';
+      path: '/helm/releases/$namespace/$name/{-$tab}';
+      fullPath: '/helm/releases/$namespace/$name/{-$tab}';
+      preLoaderRoute: typeof HelmReleasesNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/network/endpoints/$namespace/$name/{-$tab}': {
@@ -1941,7 +1941,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreateRoute: CreateRoute,
   SettingsRoute: SettingsRoute,
-  AddonsChartsRoute: AddonsChartsRoute,
+  HelmChartsRoute: HelmChartsRoute,
   OverviewEventsRoute: OverviewEventsRoute,
   OverviewLimitsRoute: OverviewLimitsRoute,
   OverviewNamespacesRoute: OverviewNamespacesRoute,
@@ -1958,8 +1958,8 @@ const rootRouteChildren: RootRouteChildren = {
   AddonsCrdsIndexRoute: AddonsCrdsIndexRoute,
   AddonsFlowschemasIndexRoute: AddonsFlowschemasIndexRoute,
   AddonsMutatingwebhooksIndexRoute: AddonsMutatingwebhooksIndexRoute,
-  AddonsReleasesIndexRoute: AddonsReleasesIndexRoute,
   AddonsValidatingwebhooksIndexRoute: AddonsValidatingwebhooksIndexRoute,
+  HelmReleasesIndexRoute: HelmReleasesIndexRoute,
   NetworkEndpointsIndexRoute: NetworkEndpointsIndexRoute,
   NetworkIngressclassesIndexRoute: NetworkIngressclassesIndexRoute,
   NetworkIngressesIndexRoute: NetworkIngressesIndexRoute,
@@ -2028,8 +2028,8 @@ const rootRouteChildren: RootRouteChildren = {
     AccessRolesNamespaceNameChar123TabChar125Route,
   AccessServiceaccountsNamespaceNameChar123TabChar125Route:
     AccessServiceaccountsNamespaceNameChar123TabChar125Route,
-  AddonsReleasesNamespaceNameChar123TabChar125Route:
-    AddonsReleasesNamespaceNameChar123TabChar125Route,
+  HelmReleasesNamespaceNameChar123TabChar125Route:
+    HelmReleasesNamespaceNameChar123TabChar125Route,
   NetworkEndpointsNamespaceNameChar123TabChar125Route:
     NetworkEndpointsNamespaceNameChar123TabChar125Route,
   NetworkIngressesNamespaceNameChar123TabChar125Route:

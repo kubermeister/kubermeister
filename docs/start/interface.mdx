@@ -13,7 +13,7 @@ object's detail. The app opens on **Overview › Cluster summary**.
 
 ## The sidebar
 
-The sidebar holds six domains. Each one collapses; they all start open, and navigating to a screen
+The sidebar holds seven domains. Each one collapses; they all start open, and navigating to a screen
 inside a collapsed domain opens it again so the current item is never hidden.
 
 | Domain        | What it holds                                                                                                                                                                        |
@@ -23,7 +23,8 @@ inside a collapsed domain opens it again so the current item is never hidden.
 | **Network**   | TRAFFIC: Services, Ingresses, Endpoints, Ingress Classes. POLICY: Network Policies                                                                                                   |
 | **Storage**   | Volumes, Claims, Storage Classes, Snapshots. CSI: CSI Drivers, CSI Nodes, Storage Capacity                                                                                           |
 | **Access**    | IDENTITY: Service Accounts. ROLES: Roles, Role Bindings, Cluster Roles, Cluster Role Bindings                                                                                        |
-| **Add-ons**   | Helm charts, Releases, CRDs. ADMISSION: Mutating Webhooks, Validating Webhooks, Admission Policies. API SERVER: API Services, Flow Schemas                                           |
+| **Add-ons**   | CRDs. ADMISSION: Mutating Webhooks, Validating Webhooks, Admission Policies. API SERVER: API Services, Flow Schemas                                                                  |
+| **Helm**      | Releases, Charts                                                                                                                                                                     |
 
 The footer holds **Quick actions**, which opens the command palette, and **Settings**.
 [Supported resource kinds](/docs/reference/kinds/) maps every kind to its place here.
@@ -71,7 +72,7 @@ switch also stops every port forward.
   caption="Contexts and namespaces come first, then the actions, then every screen by domain."
 />
 
-`?` opens a cheat sheet of the app's own keys: `⌘1` to `⌘6` (`Ctrl+1` to `Ctrl+6`) for the six
+`?` opens a cheat sheet of the app's own keys: `⌘1` to `⌘7` (`Ctrl+1` to `Ctrl+7`) for the seven
 domains, `⌘R` or `Ctrl+R` to refresh the screen, `/` for its search box, and back and forward. Those
 and the keys of the tab rail and the editors are listed under
 [keyboard shortcuts](/docs/reference/shortcuts/), and moving through the window with `Tab` or a

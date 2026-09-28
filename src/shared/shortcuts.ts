@@ -62,10 +62,10 @@ export type ShortcutId =
     | 'quit';
 
 /**
- * The domains `Mod+1` to `Mod+6` go to, in the sidebar's order. The renderer's `DOMAINS` is the
+ * The domains `Mod+1` to `Mod+7` go to, in the sidebar's order. The renderer's `DOMAINS` is the
  * authority on that order; a test holds this list to it.
  */
-export const DOMAIN_SHORTCUT_IDS = ['overview', 'workloads', 'network', 'storage', 'access', 'addons'] as const;
+export const DOMAIN_SHORTCUT_IDS = ['overview', 'workloads', 'network', 'storage', 'access', 'addons', 'helm'] as const;
 export type DomainShortcutId = (typeof DOMAIN_SHORTCUT_IDS)[number];
 
 export interface Shortcut {
@@ -109,7 +109,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
         handler: 'renderer',
     },
     ...DOMAIN_SHORTCUT_IDS.map((id, index) =>
-        domainShortcut(id, index, ['Overview', 'Workloads', 'Network', 'Storage', 'Access', 'Add-ons'][index]!),
+        domainShortcut(id, index, ['Overview', 'Workloads', 'Network', 'Storage', 'Access', 'Add-ons', 'Helm'][index]!),
     ),
     {
         id: 'back',

@@ -12,7 +12,7 @@ import { useIpcQuery } from '@/lib/query';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { RELEASE_TONE } from '@/lib/status';
 
-export const Route = createFileRoute('/addons/releases/$namespace/$name/{-$tab}')({ component: ReleaseDetailPage });
+export const Route = createFileRoute('/helm/releases/$namespace/$name/{-$tab}')({ component: ReleaseDetailPage });
 
 function ReleaseDetailPage() {
     const { namespace, name } = Route.useParams();
@@ -135,7 +135,7 @@ function ReleaseDetailPage() {
             title={name}
             kind="Helm release"
             namespace={namespace}
-            backTo="/addons/releases"
+            backTo="/helm/releases"
             query={query}
             found={!!release}
             status={release ? { label: release.status, tone: RELEASE_TONE[release.status] } : undefined}
