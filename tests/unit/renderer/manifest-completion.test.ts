@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { completionsAt, describeAt } from '@/lib/manifest-completion';
-import { deployment } from './schema-fixture';
+import { completionsAt, describeAt, kindLens } from '@/lib/manifest-completion';
+import { deployment as deploymentSchema } from './schema-fixture';
+
+const deployment = kindLens(deploymentSchema);
 
 /** Complete where `|` stands in the text, which is where the cursor is. */
 function at(marked: string) {

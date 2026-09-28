@@ -1,0 +1,203 @@
+import { describe, expect, it } from 'vitest';
+import type { JsonSchema } from '../../../src/shared/chart-values';
+import { chartDefaults, readValues, validateValues } from '@/lib/values-validation';
+import { WEB_DEFAULTS, webChart } from './values-schema-fixture';
+
+const defaults = chartDefaults(WEB_DEFAULTS);
+
+/** What each diagnostic covers in the text, with its severity and message. */
+function marks(text: string, schema: JsonSchema | null = webChart, chartValues: unknown = defaults) {
+    return validateValues(text, schema, chartValues).map((mark) => ({
+        at: text.slice(mark.from, mark.to),
+        severity: mark.severity,
+        message: mark.message,
+    }));
+}
+
+describe('reading values', () => {
+    it('takes empty text as no values, and a mapping as values', () => {
+        expect(readValues('').diagnostics).toEqual([]);
+        expect(readValues('# nothing set\n').diagnostics).toEqual([]);
+        expect(readValues('replicaCount: 2\n').doc).not.toBeNull();
+    });
+
+    it('refuses what Helm cannot read as values: bad YAML, a list or a scalar, a second document', () => {
+        expect(readValues('image: [\n').diagnostics[0]).toMatchObject({ severity: 'error' });
+        expect(readValues('- a\n- b\n').diagnostics).toEqual([
+            expect.objectContaining({ message: 'Values are a YAML mapping of keys to values.' }),
+        ]);
+        expect(readValues('just text\n').diagnostics).toHaveLength(1);
+        expect(readValues('a: 1\n---\nb: 2\n').diagnostics).toEqual([
+            expect.objectContaining({ message: 'Values are a single YAML document; Helm reads only the first.' }),
+        ]);
+    });
+
+    it('checks the YAML even for a chart that ships no schema', () => {
+        expect(marks('a: 1\n', null)).toEqual([]);
+        expect(marks('- a\n', null)).toHaveLength(1);
+    });
+});
+
+describe('checking values against the chart’s schema', () => {
+    it('accepts the chart’s own defaults', () => {
+        expect(marks(WEB_DEFAULTS)).toEqual([]);
+    });
+
+    it('marks a wrong type on the value, following a $ref into definitions', () => {
+        expect(marks('replicaCount: two\nimage:\n  repository: 5\n')).toEqual([
+            { at: 'two', severity: 'error', message: 'Expected a whole number, found a string.' },
+            {
+                at: '5',
+                severity: 'error',
+                message: 'Expected a string, found a whole number. Quote the value to keep it a string.',
+            },
+        ]);
+    });
+
+    it('reads a list of types, an enum and a const', () => {
+        expect(marks('service:\n  port: http\n')).toEqual([]);
+        expect(marks('service:\n  port: 80\n  type: Internal\n')).toEqual([
+            {
+                at: 'Internal',
+                severity: 'error',
+                message: 'Must be one of "ClusterIP", "NodePort", "LoadBalancer".',
+            },
+        ]);
+        expect(marks('mode: fast\n')).toEqual([{ at: 'fast', severity: 'error', message: 'Must be "standard".' }]);
+        expect(marks('mode: standard\n')).toEqual([]);
+    });
+
+    it('refuses a key a closed object does not allow, naming the one probably meant', () => {
+        expect(marks('service:\n  prt: 80\n')).toEqual([
+            { at: 'prt', severity: 'error', message: '"prt" is not allowed here. Did you mean "port"?' },
+        ]);
+    });
+
+    it('checks additionalProperties and patternProperties against the keys they cover', () => {
+        expect(marks('env:\n  A: x\n  B: 2\n')).toEqual([
+            {
+                at: '2',
+                severity: 'error',
+                message: 'Expected a string, found a whole number. Quote the value to keep it a string.',
+            },
+        ]);
+        expect(marks('labels:\n  app.tier: 1\n  other: 1\n')).toEqual([
+            expect.objectContaining({ at: '1', severity: 'error' }),
+        ]);
+    });
+
+    it('holds every half of an allOf, and items through a $ref into $defs', () => {
+        // Read as YAML 1.2, where `yes` is a string rather than true.
+        expect(marks('ingress:\n  enabled: yes\n')).toEqual([
+            { at: 'ingress', severity: 'error', message: 'Missing required value "hosts".' },
+            { at: 'yes', severity: 'error', message: 'Expected true or false, found a string.' },
+        ]);
+        expect(marks('ingress:\n  enabled: true\n  hosts:\n    - host: a.example\n    - paths: [/]\n')).toEqual([
+            { at: 'paths', severity: 'error', message: 'Missing required value "host".' },
+        ]);
+    });
+
+    it('accepts a value matching one branch of a oneOf, and marks it when it matches none', () => {
+        expect(marks('resources: small\n')).toEqual([]);
+        expect(marks('resources:\n  cpu: 100m\n')).toEqual([]);
+        // Only the object branch takes an object, so its own complaint is the one to show.
+        expect(marks('resources:\n  cpu: 1\n')).toEqual([
+            {
+                at: '1',
+                severity: 'error',
+                message: 'Expected a string, found a whole number. Quote the value to keep it a string.',
+            },
+        ]);
+        expect(marks('resources: medium\n')).toEqual([
+            { at: 'medium', severity: 'error', message: 'Must be one of "small", "large".' },
+        ]);
+        expect(marks('resources: 3\n')).toEqual([
+            {
+                at: '3',
+                severity: 'error',
+                message: 'Matches none of the forms allowed here: a string or an object.',
+            },
+        ]);
+    });
+
+    it('checks a tuple position by position, and true and false schemas as everything and nothing', () => {
+        expect(marks('pair: [a, 1]\n')).toEqual([]);
+        expect(marks('pair: [a, b]\n')).toEqual([expect.objectContaining({ at: 'b', severity: 'error' })]);
+        expect(marks('extra:\n  anything: [1, 2]\n')).toEqual([]);
+        expect(marks('forbidden: 1\n')).toEqual([
+            { at: '1', severity: 'error', message: 'The chart’s schema allows no value here.' },
+        ]);
+    });
+
+    it('lets a reference outside the file and null through, as nothing it can check', () => {
+        expect(marks('remote: 12\n')).toEqual([]);
+        expect(marks('replicaCount:\nservice:\n  type: ~\n')).toEqual([]);
+    });
+
+    it('counts a required value the chart’s defaults still supply, but not one nulled out', () => {
+        // Helm merges the edited values over the chart's own, so a key left out keeps its default.
+        expect(marks('replicaCount: 2\n')).toEqual([]);
+        expect(marks('image:\n  tag: v1\n')).toEqual([]);
+        // A null deletes the default it stands over, which Helm then reports as missing.
+        expect(marks('image:\n  repository: null\n')).toEqual([
+            { at: 'image', severity: 'error', message: 'Missing required value "repository".' },
+        ]);
+        expect(marks('replicaCount: 2\n', webChart, {})).toEqual([
+            { at: 'replicaCount', severity: 'error', message: 'Missing required value "image".' },
+        ]);
+        expect(marks('', webChart, {})).toEqual([
+            { at: '', severity: 'error', message: 'Missing required value "image".' },
+        ]);
+    });
+
+    it('warns about a key neither the schema nor the chart’s values name, since Helm passes it on unread', () => {
+        expect(marks('replicaCont: 2\n')).toEqual([
+            {
+                at: 'replicaCont',
+                severity: 'warning',
+                message: '"replicaCont" is not a value this chart names. Did you mean "replicaCount"?',
+            },
+        ]);
+        // A key the chart's own values carry is the chart's, whatever the schema lists.
+        expect(
+            marks('image:\n  repository: a\n  digest: sha\n', webChart, chartDefaults('image:\n  digest: ""\n')),
+        ).toEqual([]);
+        // `global` is Helm's, and a subchart's section is checked against the subchart's own schema.
+        expect(marks('global:\n  domain: x\npostgresql:\n  auth: {}\n', webChart, defaults)).toEqual([
+            expect.objectContaining({ at: 'postgresql', severity: 'warning' }),
+        ]);
+        expect(
+            validateValues('global:\n  domain: x\npostgresql:\n  auth: {}\n', webChart, defaults, ['postgresql']),
+        ).toEqual([]);
+        // An object the schema leaves open says nothing about the keys it has not listed.
+        expect(marks('extra:\n  anything: 1\nenv:\n  ANY: x\n')).toEqual([]);
+    });
+
+    it('survives a schema whose keywords are the wrong shape, and one that refers to itself', () => {
+        const odd = { type: 7, properties: [], required: 'image', enum: 'x', allOf: {}, items: 'no' } as JsonSchema;
+        expect(marks('a: 1\n', odd)).toEqual([]);
+        const loop: JsonSchema = { $ref: '#/definitions/a', definitions: { a: { $ref: '#/definitions/a' } } };
+        expect(marks('a: 1\n', loop)).toEqual([]);
+        const tree: JsonSchema = {
+            $ref: '#/definitions/node',
+            definitions: {
+                node: {
+                    type: 'object',
+                    properties: { value: { type: 'integer' }, child: { $ref: '#/definitions/node' } },
+                },
+            },
+        };
+        expect(marks('child:\n  child:\n    value: x\n', tree)).toEqual([
+            expect.objectContaining({ at: 'x', severity: 'error' }),
+        ]);
+    });
+});
+
+describe('chartDefaults', () => {
+    it('reads the chart’s values.yaml, and anything unreadable as no defaults', () => {
+        expect(chartDefaults('a: 1\nb:\n  c: true\n')).toEqual({ a: 1, b: { c: true } });
+        expect(chartDefaults('')).toEqual({});
+        expect(chartDefaults('- a\n')).toEqual({});
+        expect(chartDefaults('a: [\n')).toEqual({});
+    });
+});

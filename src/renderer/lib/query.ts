@@ -65,6 +65,8 @@ const APP_LEVEL_CHANNELS = new Set<string>([
     'chartRepositories.list',
     // Whether Helm is installed is a fact about this machine.
     'helm.status',
+    // A chart's values come from its archive, which no cluster has a say in.
+    'charts.values',
 ]);
 
 function isClusterQuery(queryKey: QueryKey): boolean {

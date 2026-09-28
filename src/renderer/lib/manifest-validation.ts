@@ -31,17 +31,17 @@ export interface ReadManifest {
     diagnostics: ManifestDiagnostic[];
 }
 
-type Range = readonly [number, number];
+export type Range = readonly [number, number];
 
-function rangeOf(node: Node | null | undefined, fallback: Range): Range {
+export function rangeOf(node: Node | null | undefined, fallback: Range): Range {
     return node?.range ? [node.range[0], node.range[1]] : fallback;
 }
 
-function firstLine(message: string): string {
+export function firstLine(message: string): string {
     return message.split('\n')[0]?.trim() ?? message;
 }
 
-function stringKey(node: unknown): string | null {
+export function stringKey(node: unknown): string | null {
     return isScalar(node) && typeof node.value === 'string' ? node.value : null;
 }
 
@@ -207,7 +207,7 @@ function alternatives(node: SchemaNode, definitions: KindSchema['definitions'], 
     return [...new Set(branches.flat())];
 }
 
-function actualType(node: Node): string | null {
+export function actualType(node: Node): string | null {
     if (isMap(node)) return 'object';
     if (isSeq(node)) return 'array';
     if (!isScalar(node)) return null;
@@ -229,7 +229,7 @@ const TYPE_WORDS: Record<string, string> = {
     boolean: 'true or false',
 };
 
-function typeMatches(expected: string[], actual: string): boolean {
+export function typeMatches(expected: string[], actual: string): boolean {
     if (expected.length === 0) return true;
     return expected.includes(actual) || (actual === 'integer' && expected.includes('number'));
 }
@@ -253,7 +253,7 @@ function distance(a: string, b: string): number {
     return row[b.length]!;
 }
 
-function suggestion(key: string, known: string[]): string | null {
+export function suggestion(key: string, known: string[]): string | null {
     const lower = key.toLowerCase();
     const exact = known.find((candidate) => candidate.toLowerCase() === lower);
     if (exact) return exact;

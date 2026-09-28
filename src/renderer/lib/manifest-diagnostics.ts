@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo } from 'react';
 import type { KindSchema } from '../../shared/k8s/openapi';
+import { kindLens, type SchemaLens } from './manifest-completion';
 import { diagnose, readManifest, type ManifestDiagnostic } from './manifest-validation';
 import { useIpcQuery } from './query';
 
@@ -16,6 +17,8 @@ export interface ManifestChecks {
     diagnostics: EditorDiagnostics | null;
     /** The schema of the kind the text names, for completion and descriptions; null while there is none. */
     schema: KindSchema | null;
+    /** The same schema as the editor reads it for completion. */
+    lens: SchemaLens | null;
 }
 
 /**
@@ -39,5 +42,6 @@ export function useManifestChecks(text: string, enabled = true): ManifestChecks 
         () => (read ? { text: deferred, items: diagnose(read, current) } : null),
         [read, deferred, current],
     );
-    return { diagnostics, schema: current };
+    const lens = useMemo(() => (current ? kindLens(current) : null), [current]);
+    return { diagnostics, schema: current, lens };
 }

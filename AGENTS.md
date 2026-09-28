@@ -527,7 +527,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   and `- ` markers of the lines above rather than from a parse, since text mid-edit rarely parses,
   and for the same reason `readManifest` still names the kind of a document that does not. Both
   indentation styles for lists are read, kubectl's flush one included. `YamlEditor` takes the schema
-  as a prop read through a ref, so one editor follows the kind the text names.
+  as a prop read through a ref, so one editor follows the kind the text names. That prop is a
+  `SchemaLens` (a field shape per path, `kindLens` for a kind), so a chart's JSON Schema drives the
+  same completion through `valuesLens`.
 - A manifest opened from a file is text like any other: the shell takes the drop wherever it lands,
   stages it (`src/renderer/lib/manifest-import.ts`) and opens the Create screen on it, which applies
   it through the same create path and the same namespace checks as one typed in. Both a file and a
@@ -742,6 +744,34 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   every `group-version/Kind`. A group-version whose resources cannot be listed keeps its version and
   loses only its kinds, as in Helm. `lookup` returns nothing, as in any `helm template`, and
   `usesLookup` says whether any template calls it so the review can say so.
+
+### Chart values
+
+- **The values editor starts from the chart's own `values.yaml`** and checks it against the chart's
+  `values.schema.json` (`charts.values`, `src/main/charts/values.ts`, read from the archive
+  `fetchChart` checked, so what is edited is the chart that renders). A chart without a schema is
+  plain YAML, and one whose schema is not JSON says so and is checked as YAML only; Helm refuses it
+  at render time in its own words.
+- The schema is JSON Schema, not the cluster's OpenAPI, so it has its own pure walker
+  (`src/renderer/lib/values-schema.ts`, `values-validation.ts`), tested on fixture schemas: `$ref`
+  within the file, `allOf`, `anyOf`/`oneOf`, `type` as a name or a list, `enum`, `const`,
+  `required`, `properties`, `additionalProperties`, `patternProperties`, `items` as a schema or a
+  tuple, `true`/`false` schemas. The file is the chart author's, so a keyword of the wrong shape is
+  read as absent and a `$ref` outside the file as a schema saying nothing. Keywords that constrain
+  rather than say what a value is (`pattern`, `minimum`, formats) are Helm's to check when it renders.
+- **Helm checks the merged values**, the edited ones over the chart's defaults, so a required value
+  the defaults supply is present and one set to null (which deletes the default) is missing. A
+  `oneOf` is satisfied by any matching form, since the walk checks only some keywords and cannot
+  claim two forms are ambiguous. A key neither the schema nor the defaults name is a warning, never
+  for `global` or a subchart's section (`subcharts`, from `Chart.yaml`), whose schema is not this one.
+- The values are read as YAML 1.2, as main reads a manifest, so `yes` is a string; Helm reading a
+  values file itself would take it as true.
+- **A failed render is laid over the values** (`values-render-error.ts`, pure, tested on Helm's own
+  messages). `helmErrorMessage` keeps every line after `Error:`, since that is where a schema failure
+  lists each value by path (Helm 4's JSON Pointers, Helm 3's dotted fields, a subchart's under its
+  section) and where a template names the `.Values` it failed on. Each is marked on the nearest key
+  the text holds; a `required` or `fail` names no value and is a note beside the editor with its
+  template and line. The marks stand only while the text is the one Helm refused.
 
 ### Container detail
 

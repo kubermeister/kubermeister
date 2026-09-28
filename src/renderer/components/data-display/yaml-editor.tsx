@@ -8,8 +8,7 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, hoverTooltip, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { basicSetup } from 'codemirror';
-import type { KindSchema } from '../../../shared/k8s/openapi';
-import { completionsAt, describeAt } from '@/lib/manifest-completion';
+import { completionsAt, describeAt, type SchemaLens } from '@/lib/manifest-completion';
 import type { EditorDiagnostics } from '@/lib/manifest-diagnostics';
 import { cn } from '@/lib/utils';
 
@@ -68,11 +67,12 @@ function toDiagnostics(items: EditorDiagnostics['items'], length: number): Diagn
 const COMPLETION_WORD = /^[\w.\-/]*$/;
 
 /**
- * Completion and the description over a field, both from the kind's schema. The schema is read
- * through `schemaRef` at the moment each is asked for, so the one editor follows the kind the text
- * names as it changes, and offers nothing while there is none.
+ * Completion and the description over a field, both from the schema of what is being edited: a
+ * kind's, or a chart's values. The schema is read through `schemaRef` at the moment each is asked
+ * for, so the one editor follows the kind the text names as it changes, and offers nothing while
+ * there is none.
  */
-function schemaExtensions(schemaRef: { current: KindSchema | null | undefined }) {
+function schemaExtensions(schemaRef: { current: SchemaLens | null | undefined }) {
     const complete = (context: CompletionContext): CompletionResult | null => {
         const schema = schemaRef.current;
         if (!schema) return null;
@@ -151,10 +151,11 @@ export function YamlEditor({
      */
     diagnostics?: EditorDiagnostics | null;
     /**
-     * The schema of the kind the text names, which completes fields and values and describes the
-     * field under the pointer. Passing the prop at all turns both on; null offers nothing.
+     * The schema of what the text is — the kind it names, a chart's values — which completes fields
+     * and values and describes the field under the pointer. Passing the prop at all turns both on;
+     * null offers nothing.
      */
-    schema?: KindSchema | null;
+    schema?: SchemaLens | null;
     'aria-label'?: string;
 }) {
     const containerRef = useRef<HTMLDivElement>(null);

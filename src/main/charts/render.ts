@@ -200,16 +200,18 @@ export function splitRendered(output: string): Omit<ChartRender, 'usesLookup'> {
 }
 
 /**
- * Helm's own sentence for a failed render — a `required` value, a template that does not parse —
+ * Helm's own words for a failed render — a `required` value, a template that does not parse —
  * without the `Error:` it prefixes and the advice about `--debug`, which is no use to somebody
- * editing values in a form.
+ * editing values in a form. The lines after `Error:` are kept, one per line: a schema failure lists
+ * every value it refuses there, and a template that fails on a value names it there, which is what
+ * lets the values editor put each on the value it is about.
  */
 export function helmErrorMessage(stderr: string): string {
     const lines = stderr.split('\n').map((line) => line.trim());
-    const error = lines.find((line) => line.startsWith('Error:'));
-    const message = error
-        ? error.slice('Error:'.length).trim()
-        : lines.filter((line) => line && !line.startsWith('Use --debug')).join(' ');
+    const start = lines.findIndex((line) => line.startsWith('Error:'));
+    const kept = (start === -1 ? lines : lines.slice(start)).filter((line) => line && !line.startsWith('Use --debug'));
+    if (start !== -1) kept[0] = kept[0]!.slice('Error:'.length).trim();
+    const message = kept.filter(Boolean).join(start === -1 ? ' ' : '\n');
     return message || 'Helm exited without saying why.';
 }
 

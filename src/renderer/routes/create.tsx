@@ -179,7 +179,7 @@ function CreateResourcePage() {
                     value={text}
                     onValueChange={setText}
                     diagnostics={checks.diagnostics}
-                    schema={checks.schema}
+                    schema={checks.lens}
                     placeholder={
                         'Paste a manifest, drop a file on the window, or insert a template.\n\napiVersion: apps/v1\nkind: Deployment\n…'
                     }

@@ -59,6 +59,7 @@ import {
     removeChartRepository,
 } from '../charts/repositories.js';
 import { helmStatus } from '../charts/helm-cli.js';
+import { readChartValues } from '../charts/values.js';
 import { getIngressRules, getServiceEndpoints, getServicePorts } from '../k8s/resources/network.js';
 import { listLimits, listQuotas } from '../k8s/resources/overview.js';
 import {
@@ -325,6 +326,7 @@ const handlers: Handlers = {
     'chartRepositories.refresh': ({ name }) => refreshChartRepository(name),
     'chartRepositories.remove': ({ name }) => removeChartRepository(name),
     'helm.status': () => helmStatus(),
+    'charts.values': ({ source, chart, version }) => readChartValues(source, chart, version),
     'namespaces.detail': ({ name }) => getNamespaceDetail(name),
     'customResources.list': ({ crd, namespace }) => listCustomResourceInstances(crd, namespace),
     'customResources.get': ({ crd, name, namespace }) => getCustomResourceInstance(crd, name, namespace),
