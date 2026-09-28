@@ -805,6 +805,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   write recording the failure. A failure once the Secret exists marks it `failed` with Helm's
   description and answers `status: 'failed'` rather than an error, so the screen offers **Uninstall**;
   a context switch mid-install writes nothing more and says the release was left pending.
+- **Every object an install writes carries Helm's ownership metadata** (`withHelmOwnership` in
+  `helm.ts`: the `app.kubernetes.io/managed-by: Helm` label and the `meta.helm.sh/release-name` and
+  `release-namespace` annotations), as Helm stamps it; hooks and CRDs are not stamped, and the stored
+  manifest stays the render without it. Helm 4.3 `uninstall` leaves an object without it in place as
+  "not owned by this release", which the end-to-end spec asserts against.
 - The Secret holds what the Helm CLI decodes: Helm's `Chart` JSON (`helmChartRecord`,
   `src/main/charts/release-chart.ts`: metadata read with every scalar a string so `1.10` survives,
   templates, default values, schema and other files base64, no subcharts), `info` with no `deleted`

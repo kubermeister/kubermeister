@@ -346,6 +346,26 @@ describe('installRelease', () => {
         expect(deleted).toContain('seed');
     });
 
+    it('stamps the objects with the ownership Helm checks before it uninstalls or upgrades them', async () => {
+        const reviewId = await reviewed();
+        await install.installRelease({ context: 'alpha', reviewId });
+        const written = (name: string) =>
+            objects.create.mock.calls
+                .map(([object]) => object as Named & { metadata: { labels?: object; annotations?: object } })
+                .find((object) => object.metadata.name === name)!.metadata;
+        for (const name of ['web', 'web-reader', 'w']) {
+            expect(written(name).labels).toEqual({ 'app.kubernetes.io/managed-by': 'Helm' });
+            expect(written(name).annotations).toEqual({
+                'meta.helm.sh/release-name': 'web',
+                'meta.helm.sh/release-namespace': 'team-a',
+            });
+        }
+        // Helm stamps neither its hooks nor the CRDs, and stores the manifest as rendered.
+        expect(written('seed').labels).toBeUndefined();
+        expect(written('widgets.demo.test').labels).toBeUndefined();
+        expect(helmReads(secret!).manifest).not.toContain('meta.helm.sh');
+    });
+
     it('spends a review, so a second install of it is refused', async () => {
         const reviewId = await reviewed();
         await install.installRelease({ context: 'alpha', reviewId });

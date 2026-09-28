@@ -172,8 +172,11 @@ test('installs a chart through a reviewed render, and the Helm CLI reads the rel
         window.getByText(`A release named "${RELEASE}" already exists in namespace ${NAMESPACE}.`),
     ).toBeVisible();
 
-    // And the Helm CLI can act on the release, not only read it.
-    helm(['uninstall', RELEASE, '--namespace', NAMESPACE]);
+    // And the Helm CLI can act on the release, not only read it: it deletes only what carries the
+    // ownership metadata it stamps, so an object left behind is one the app did not stamp. `--wait`
+    // returns once the objects are gone rather than once their deletion was accepted.
+    const uninstalled = helm(['uninstall', RELEASE, '--namespace', NAMESPACE, '--wait', '--timeout', '60s']);
+    expect(uninstalled).not.toContain('not owned by this release');
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'deployment', `${RELEASE}-web`, '--ignore-not-found'])).toBe('');
     clusterKubectl(['-n', NAMESPACE, 'delete', 'configmap', `${RELEASE}-installed`, '--ignore-not-found']);
 });

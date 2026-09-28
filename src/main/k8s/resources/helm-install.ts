@@ -23,6 +23,7 @@ import { K8sError, toK8sError, withK8s } from '../errors.js';
 import {
     hasRelease,
     inReleaseNamespace,
+    withHelmOwnership,
     releaseSecretBody,
     releaseSecretName,
     type HelmHookRecord,
@@ -538,7 +539,9 @@ export async function installRelease(input: ReleaseInstallInput): Promise<Releas
     try {
         await runHooks(context, hooksFor(entry.render.hooks, 'pre-install'), runs);
         for (const { object } of entry.render.objects) {
-            await step(context, () => apis().objects.create(structuredClone(object)));
+            await step(context, () =>
+                apis().objects.create(withHelmOwnership(structuredClone(object), name, namespace)),
+            );
         }
         await runHooks(context, hooksFor(entry.render.hooks, 'post-install'), runs);
         await write({

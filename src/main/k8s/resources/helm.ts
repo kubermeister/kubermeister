@@ -276,6 +276,28 @@ export function manifestObjects(manifest: string | undefined, namespace: string)
 }
 
 /**
+ * The metadata Helm stamps on every object it installs for a release, and reads back before it will
+ * touch one: `helm uninstall` leaves an object without it in place as "not owned by this release",
+ * and `helm upgrade` refuses to adopt it. The stored manifest is the render without it, as Helm
+ * stores it; only the object written to the cluster carries it. Hooks and CRDs are not stamped.
+ */
+export function withHelmOwnership<T extends RenderedObject>(object: T, release: string, namespace: string): T {
+    const metadata = object.metadata as T['metadata'] & { labels?: Record<string, string> };
+    return {
+        ...object,
+        metadata: {
+            ...metadata,
+            labels: { ...metadata.labels, 'app.kubernetes.io/managed-by': 'Helm' },
+            annotations: {
+                ...metadata.annotations,
+                'meta.helm.sh/release-name': release,
+                'meta.helm.sh/release-namespace': namespace,
+            },
+        },
+    };
+}
+
+/**
  * Helm renders namespaced objects without a namespace and applies them into the release's own; a
  * cluster-scoped kind is never given one.
  */
