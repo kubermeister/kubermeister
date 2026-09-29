@@ -17,6 +17,7 @@ vi.mock('@/lib/ipc', async () => ({
 // eight route renders in this file, and their budget was how fast the runner was. That the Charts
 // section carries this card is asserted once, on the screen itself, in `settings.test.tsx`.
 const { ChartRepositoriesCard } = await import('@/components/settings/chart-repositories-card');
+const { IpcError } = await import('@/lib/ipc');
 
 const bitnami = {
     name: 'bitnami',
@@ -130,6 +131,34 @@ describe('the chart repositories card', () => {
                 password: 'hunter2',
             }),
         );
+    });
+
+    it('keeps the dialog and what was typed when main refuses the source', async () => {
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'chartRepositories.list') return repositories;
+            if (channel === 'chartRepositories.add')
+                throw new IpcError({ kind: 'invalid', detail: 'No chart index there.', op: 'chartRepositories.add' });
+            return undefined;
+        });
+        renderInRouter(<ChartRepositoriesCard />);
+        const dialog = await addRepository({ name: 'bitnami', url: 'https://charts.example.com/login' });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('chartRepositories.add', expect.anything()));
+        await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Add' })).toBeEnabled());
+        expect(screen.getByRole('alertdialog')).toBe(dialog);
+        expect(within(dialog).getByLabelText('Repository URL')).toHaveValue('https://charts.example.com/login');
+    });
+
+    it('closes the dialog once the source is added', async () => {
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'chartRepositories.list') return repositories;
+            if (channel === 'chartRepositories.add') return bitnami;
+            return undefined;
+        });
+        renderInRouter(<ChartRepositoriesCard />);
+        const dialog = await addRepository({ name: 'bitnami', url: 'https://charts.example.com' });
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     });
 
     it('will not submit a URL the chosen kind is never published under', async () => {
