@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiException } from '@kubernetes/client-node';
 import type { StreamController, StreamSend } from '../../../src/shared/streams';
 
 type IpcListener = (event: { sender: FakeSender }, arg: unknown) => Promise<unknown> | unknown;
@@ -13,6 +14,7 @@ vi.mock('../../../src/main/k8s/watch.js', () => ({
     startResourceWatch: (input: unknown, send: StreamSend) => handler(input, send),
 }));
 
+const { K8sError } = await import('../../../src/main/k8s/errors.js');
 const { registerStreamHandlers, activeStreamCount, stopAllStreams, endAllStreams } =
     await import('../../../src/main/ipc/streams.js');
 
@@ -91,6 +93,26 @@ describe('stream registry', () => {
         });
         expect(sender.send).toHaveBeenNthCalledWith(2, 'sub.stream:resources.watch:1', { type: 'end' });
         expect(activeStreamCount()).toBe(0);
+    });
+
+    it("sends a classified failure's own sentence, not its kind prefix", async () => {
+        const sender = new FakeSender(1);
+        handler.mockRejectedValue(new K8sError('invalid', 'container "web" is waiting to start', 'pods.logs'));
+        await start(sender);
+        expect(sender.send).toHaveBeenNthCalledWith(1, 'sub.stream:resources.watch:1', {
+            type: 'error',
+            message: 'container "web" is waiting to start',
+        });
+    });
+
+    it('classifies an unclassified failure like any other cluster call', async () => {
+        const sender = new FakeSender(1);
+        handler.mockRejectedValue(new ApiException(400, 'HTTP-Code: 400\nHeaders: {}', { message: 'bad request' }, {}));
+        await start(sender);
+        expect(sender.send).toHaveBeenNthCalledWith(1, 'sub.stream:resources.watch:1', {
+            type: 'error',
+            message: 'bad request',
+        });
     });
 
     it('tears down a stream that was stopped while still starting', async () => {

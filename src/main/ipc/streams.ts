@@ -9,6 +9,7 @@ import {
 } from '../../shared/streams.js';
 import { startNodeDrain } from '../k8s/drain.js';
 import { startPodExecStream } from '../k8s/exec.js';
+import { toK8sError } from '../k8s/errors.js';
 import { startPodLogStream } from '../k8s/logs.js';
 import { startPodPortForward } from '../k8s/port-forward.js';
 import { startResourceWatch } from '../k8s/watch.js';
@@ -142,7 +143,9 @@ export function registerStreamHandlers(): void {
             // A cancelled start was already ended; its subId may belong to a newer stream by now.
             if (entry.cancelled) return;
             stop(key);
-            send({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+            // Classified like any other cluster call, so the console reads the server's sentence
+            // rather than the client library's HTTP dump.
+            send({ type: 'error', message: toK8sError(channel, error).detail });
             send({ type: 'end' });
         }
     });

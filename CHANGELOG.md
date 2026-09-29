@@ -71,6 +71,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   opened from a link, rather than showing empty pickers or "No differences".
 - Choosing the context already in use from the command palette no longer reconnects to it, so port
   forwards, log follows and shells keep running and the open page stays where it is.
+- A log follow the cluster refuses, such as one on a container still starting, shows the cluster's
+  reason instead of a dump of the response headers.
 
 ## [0.9.1] - 2026-09-29
 
