@@ -101,7 +101,8 @@ export function clearUpgradeReviews(): void {
  * The revision an upgrade starts from and the number it records, as Helm's `prepareUpgrade` chooses
  * them: the newest revision when it is deployed, else the deployed one under it, else a newest that
  * failed or was superseded. The number always follows the newest. A revision another operation holds
- * pending is refused, as Helm refuses it, and an uninstalled release is installed again, not upgraded.
+ * pending is refused, as Helm refuses it. A release with no deployed revision cannot be installed over
+ * either, since its kept history holds the name, so the refusal says to remove that history first.
  */
 export function upgradeBase(
     revisions: Revision[],
@@ -126,7 +127,7 @@ export function upgradeBase(
     if (!current) {
         throw new K8sError(
             'invalid',
-            `Release "${name}" is ${status || 'not deployed'} and has no deployed revision to upgrade; install it again instead.`,
+            `Release "${name}" is ${status || 'not deployed'} and has no deployed revision to upgrade. Its kept history also blocks installing it again: Uninstall it without keeping its history, then install it.`,
             op,
         );
     }

@@ -302,7 +302,9 @@ editor goes back to the chart's default, as it would with `helm upgrade -f` and 
 **Review** renders the chosen version as an upgrade of the release (`.Release.IsUpgrade` is true)
 and shows what the upgrade changes before anything is written. A render Helm refuses is marked on
 the values, as for an install, and a release another operation holds pending (`pending-install`,
-`pending-upgrade` or `pending-rollback`) or one that was uninstalled is refused.
+`pending-upgrade` or `pending-rollback`) or one that was uninstalled is refused. A release
+uninstalled with its history kept cannot be installed again either, since that history still holds
+the name: **Uninstall** it once more with **Keep the release history** off, then install it.
 
 - **Values**: the current revision's values against the new ones, line by line.
 - **Objects**: every object the new revision renders, marked **Created**, **Changed** or

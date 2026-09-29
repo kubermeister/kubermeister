@@ -425,6 +425,12 @@ describe('upgradeBase', () => {
         expect(base.next).toBe(2);
     });
 
+    it('points an uninstalled release with kept history at removing that history, since an install is refused too', () => {
+        const refusal = () => upgrade.upgradeBase(secretList([revision(1, 'uninstalled')]), 'web', 'team-a');
+        expect(refusal).toThrow(/Uninstall .*without keeping its history.* then install/);
+        expect(refusal).not.toThrow(/install it again instead/);
+    });
+
     it('refuses a release another operation holds pending, one uninstalled, and one that does not exist', () => {
         expect(() =>
             upgrade.upgradeBase(secretList([revision(1, 'deployed'), revision(2, 'pending-upgrade')]), 'web', 'team-a'),
