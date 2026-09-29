@@ -21,6 +21,7 @@ vi.mock('sonner', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
+const { EditorView } = await import('@codemirror/view');
 
 const PATH = '/helm/charts/install/fixture/km-demo/0.1.0';
 
@@ -218,6 +219,37 @@ describe('installing a chart', () => {
         await userEvent.type(name, 'Demo_1');
         expect(screen.getByTestId('install-name-problem')).toHaveTextContent('Lowercase letters');
         expect(await reviewButton()).toBeDisabled();
+    });
+
+    it('carries an edit over to another version’s defaults rather than pinning the old ones', async () => {
+        const chartValues = (valuesYaml: string) => ({ valuesYaml, schema: null, schemaProblem: null, subcharts: [] });
+        const byVersion: Record<string, unknown> = {
+            '0.1.0': chartValues('replicaCount: 1\nimage:\n  tag: "1.0"\n'),
+            '0.2.0': chartValues('replicaCount: 1\nimage:\n  tag: "2.0"\n'),
+        };
+        invoke.mockImplementation(async (channel: string, input: { version?: string }) =>
+            channel === 'charts.values' ? byVersion[input.version ?? ''] : data[channel],
+        );
+        const { container } = renderRoutes(routeTree, PATH);
+        await waitFor(() => expect(container.querySelector('.cm-content')).toHaveTextContent('"1.0"'));
+        const view = EditorView.findFromDOM(container.querySelector('.cm-content') as HTMLElement)!;
+        const at = view.state.doc.toString().indexOf('1');
+        view.dispatch({ changes: { from: at, to: at + 1, insert: '3' } });
+
+        await userEvent.click(await screen.findByRole('combobox', { name: 'Chart version' }));
+        await userEvent.click(await screen.findByRole('option', { name: '0.2.0' }));
+        await waitFor(() => {
+            const shown = EditorView.findFromDOM(container.querySelector('.cm-content') as HTMLElement)!;
+            expect(shown.state.doc.toString()).toBe('replicaCount: 3\nimage:\n  tag: "2.0"\n');
+        });
+        await waitFor(async () => expect(await reviewButton()).toBeEnabled());
+        await userEvent.click(await reviewButton());
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith(
+                'charts.render',
+                expect.objectContaining({ version: '0.2.0', values: { replicaCount: 3 } }),
+            ),
+        );
     });
 
     it('switches the version in place, reading that version’s values and keeping what was typed', async () => {

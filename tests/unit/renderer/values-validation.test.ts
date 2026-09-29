@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonSchema } from '../../../src/shared/chart-values';
-import { chartDefaults, readValues, validateValues, valueOverrides, valuesForRender } from '@/lib/values-validation';
+import {
+    chartDefaults,
+    readValues,
+    rebaseValues,
+    validateValues,
+    valueOverrides,
+    valuesForRender,
+} from '@/lib/values-validation';
 import { WEB_DEFAULTS, webChart } from './values-schema-fixture';
 
 const defaults = chartDefaults(WEB_DEFAULTS);
@@ -283,5 +290,48 @@ describe('the overrides handed to Helm', () => {
     it('hands over every value when the defaults do not read, since there is nothing to leave to them', () => {
         expect(overrides('enabled: yes\n', 'enabled: [\n')).toEqual({ enabled: 'yes' });
         expect(overrides('enabled: yes\n', '- a\n')).toEqual({ enabled: 'yes' });
+    });
+});
+
+describe('carrying an edit to another chart version', () => {
+    const old = 'replicaCount: 1\nimage:\n  repository: nginx\n  tag: "1.0"\n';
+    const next = '# how many\nreplicaCount: 1\nimage:\n  repository: nginx\n  tag: "2.0" # the app\n';
+
+    it('takes the new defaults for everything the edit left alone', () => {
+        const rebased = rebaseValues(old.replace('replicaCount: 1', 'replicaCount: 3'), old, next);
+        expect(rebased).toBe('# how many\nreplicaCount: 3\nimage:\n  repository: nginx\n  tag: "2.0" # the app\n');
+        const parsed = valuesForRender(rebased!);
+        if ('problem' in parsed) throw new Error(parsed.problem);
+        expect(valueOverrides(parsed.values, next)).toEqual({ replicaCount: 3 });
+    });
+
+    it('keeps a value the user changed even where the new defaults changed it too', () => {
+        const rebased = rebaseValues(old.replace('"1.0"', '"1.5"'), old, next);
+        expect(valuesForRender(rebased!)).toEqual({
+            values: { replicaCount: 1, image: { repository: 'nginx', tag: '1.5' } },
+        });
+    });
+
+    it('carries added keys, nulls, lists and values of another shape whole', () => {
+        const text = 'replicaCount: 1\nimage: busybox\nextra:\n  a: [1, 2]\ngreeting: null\n';
+        const from = 'replicaCount: 1\nimage:\n  tag: "1.0"\ngreeting: hello\n';
+        const to = 'replicaCount: 2\nimage:\n  tag: "2.0"\ngreeting: hi\n';
+        expect(valuesForRender(rebaseValues(text, from, to)!)).toEqual({
+            values: { replicaCount: 2, image: 'busybox', extra: { a: [1, 2] }, greeting: null },
+        });
+    });
+
+    it('writes into a mapping the new version holds and over a value of another shape', () => {
+        const text = 'image:\n  tag: "1.5"\n';
+        expect(valuesForRender(rebaseValues(text, 'image:\n  tag: "1.0"\n', 'image: nginx\n')!)).toEqual({
+            values: { image: { tag: '1.5' } },
+        });
+        expect(rebaseValues(text, 'image:\n  tag: "1.0"\n', '# none yet\n')).toBe(text);
+    });
+
+    it('has nothing to carry when the text or either file does not read', () => {
+        expect(rebaseValues('image: [\n', old, next)).toBeNull();
+        expect(rebaseValues(old, 'image: [\n', next)).toBeNull();
+        expect(rebaseValues(old, old, '- a\n')).toBeNull();
     });
 });
