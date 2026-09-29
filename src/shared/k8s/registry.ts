@@ -288,27 +288,27 @@ export type RestartKind = (typeof RESTARTABLE_KINDS)[number];
  * Cluster-scoped kinds the app does not model but still meets: nodes have bespoke channels, the
  * rest may arrive in a manifest a user applies from the editor. The one list every scope decision
  * (namespace stamping, event lookup) consults, so two call sites can never disagree about a kind.
+ * Each names its API group, since a custom resource may reuse the kind name (Longhorn's `Node`).
  */
-export const CLUSTER_SCOPED_EXTRA_KINDS: readonly string[] = [
-    'Namespace',
-    'Node',
-    'VolumeAttachment',
-    'VolumeSnapshotClass',
+export const CLUSTER_SCOPED_EXTRA_KINDS: readonly { group: string; kind: string }[] = [
+    { group: '', kind: 'Namespace' },
+    { group: '', kind: 'Node' },
+    { group: 'storage.k8s.io', kind: 'VolumeAttachment' },
+    { group: 'snapshot.storage.k8s.io', kind: 'VolumeSnapshotClass' },
 ];
 
 const CLUSTER_SCOPED_KIND_NAMES: ReadonlySet<string> = new Set([
     ...KINDS.filter((kind) => KIND_REGISTRY[kind].clusterScoped).map((kind) => KIND_REGISTRY[kind].kind),
-    ...CLUSTER_SCOPED_EXTRA_KINDS,
+    ...CLUSTER_SCOPED_EXTRA_KINDS.map((extra) => extra.kind),
 ]);
 
-/** Whether a manifest `kind` is known to live outside any namespace. Unknown kinds answer false. */
+/**
+ * Whether a bare `kind` name is known to live outside any namespace, for the one caller that has no
+ * `apiVersion` to go by (an event's involved object). Anything holding a manifest asks
+ * `knownKindScope` instead, which matches the API group too.
+ */
 export function isClusterScopedKindName(kind: string): boolean {
     return CLUSTER_SCOPED_KIND_NAMES.has(kind);
-}
-
-/** Whether a manifest `kind` names a kind the app knows at all, registered or in the extras list. */
-export function isKnownKindName(kind: string): boolean {
-    return CLUSTER_SCOPED_KIND_NAMES.has(kind) || KINDS.some((k) => KIND_REGISTRY[k].kind === kind);
 }
 
 /** The API group of an `apiVersion`: `apps` for `apps/v1`, the empty core group for `v1`. */
@@ -330,4 +330,23 @@ export function registeredKindOf(apiVersion: string, kind: string): Kind | undef
         (candidate) =>
             KIND_REGISTRY[candidate].kind === kind && apiGroupOf(KIND_REGISTRY[candidate].apiVersion) === group,
     );
+}
+
+/**
+ * The scope of a manifest's `apiVersion` and `kind` when the app knows the kind, matched on the API
+ * group as well as the name, or undefined when only the API server's discovery can say: Longhorn's
+ * namespaced `longhorn.io` `Node` is not the core one, and OpenShift's cluster-scoped
+ * `config.openshift.io` `Ingress` is not the networking one.
+ */
+export function knownKindScope(apiVersion: string, kind: string): 'cluster' | 'namespaced' | undefined {
+    const registered = registeredKindOf(apiVersion, kind);
+    if (registered) return KIND_REGISTRY[registered].clusterScoped ? 'cluster' : 'namespaced';
+    const group = apiGroupOf(apiVersion);
+    const extra = CLUSTER_SCOPED_EXTRA_KINDS.some((candidate) => candidate.kind === kind && candidate.group === group);
+    return extra ? 'cluster' : undefined;
+}
+
+/** Whether a manifest's `apiVersion` and `kind` name a kind the app knows to be cluster-scoped. */
+export function isClusterScopedKind(apiVersion: string, kind: string): boolean {
+    return knownKindScope(apiVersion, kind) === 'cluster';
 }

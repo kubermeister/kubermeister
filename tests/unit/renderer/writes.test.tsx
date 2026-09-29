@@ -55,7 +55,7 @@ const data: Record<string, unknown> = {
     'cluster.active': null,
     'events.forObject': [],
     'configMaps.entries': [],
-    'resources.getYaml': { yaml: YAML, kind: 'ConfigMap', namespace: 'team-a' },
+    'resources.getYaml': { yaml: YAML, apiVersion: 'v1', kind: 'ConfigMap', namespace: 'team-a' },
     'resources.replace': { kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
     'resources.delete': { kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
     'resources.scale': { kind: 'Deployment', name: 'web', namespace: 'team-a' },
@@ -103,7 +103,7 @@ describe('manifest editing', () => {
             expect(invoke).toHaveBeenCalledWith('resources.replace', {
                 context: 'alpha',
                 manifest: YAML,
-                expect: { kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
+                expect: { apiVersion: 'v1', kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
             }),
         );
         expect(toasts.success).toHaveBeenCalledWith('ConfigMap “app-config” updated');
@@ -121,11 +121,36 @@ describe('manifest editing', () => {
             expect(invoke).toHaveBeenCalledWith('resources.replace', {
                 context: 'alpha',
                 manifest: YAML,
-                expect: { kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
+                expect: { apiVersion: 'v1', kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
             }),
         );
         expect(toasts.success).toHaveBeenCalledWith('ConfigMap “app-config” updated');
         expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    });
+
+    it('pins a custom resource to its own apiVersion, which tells it from a same-named built-in kind', async () => {
+        const nodeYaml = YAML.replace('kind: ConfigMap', 'kind: Node');
+        invoke.mockImplementation(async (channel: string) =>
+            channel === 'customResources.getYaml'
+                ? { yaml: nodeYaml, apiVersion: 'longhorn.io/v1beta2', kind: 'Node', namespace: 'longhorn-system' }
+                : data[channel],
+        );
+        renderInRouter(<ManifestPanel crd="nodes.longhorn.io" name="worker-1" namespace="longhorn-system" />);
+        await screen.findByTestId('manifest-panel');
+        await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('resources.replace', {
+                context: 'alpha',
+                manifest: nodeYaml,
+                expect: {
+                    apiVersion: 'longhorn.io/v1beta2',
+                    kind: 'Node',
+                    name: 'worker-1',
+                    namespace: 'longhorn-system',
+                },
+            }),
+        );
     });
 
     it('checks a manifest without writing it on a dry run', async () => {
@@ -138,7 +163,7 @@ describe('manifest editing', () => {
                 context: 'alpha',
                 manifest: YAML,
                 dryRun: true,
-                expect: { kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
+                expect: { apiVersion: 'v1', kind: 'ConfigMap', name: 'app-config', namespace: 'team-a' },
             }),
         );
         expect(toasts.success).toHaveBeenCalledWith('Dry run passed', expect.anything());

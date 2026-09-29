@@ -193,6 +193,17 @@ describe('IPC contract', () => {
             manifest.safeParse({ context: 'alpha', manifest: 'kind: Pod', expect: { kind: 'Pod', name: 'web' } })
                 .success,
         ).toBe(false);
+        // The identity's apiVersion decides whose scope applies: a custom resource named like a
+        // built-in kind has its own, which only its definition knows.
+        const identity = (expect: Record<string, string>) =>
+            manifest.safeParse({ context: 'alpha', manifest: 'kind: Node', expect }).success;
+        expect(
+            identity({ apiVersion: 'longhorn.io/v1beta2', kind: 'Node', name: 'n', namespace: 'longhorn-system' }),
+        ).toBe(true);
+        expect(identity({ apiVersion: 'config.openshift.io/v1', kind: 'Ingress', name: 'cluster' })).toBe(true);
+        expect(identity({ apiVersion: 'v1', kind: 'Node', name: 'n', namespace: 'longhorn-system' })).toBe(false);
+        expect(identity({ apiVersion: 'networking.k8s.io/v1', kind: 'Ingress', name: 'web' })).toBe(false);
+        expect(identity({ kind: 'Node', name: 'n', namespace: 'longhorn-system' })).toBe(false);
     });
 
     it('startupChecks output only knows the two check ids and three statuses', () => {

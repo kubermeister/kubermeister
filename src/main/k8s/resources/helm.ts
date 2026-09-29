@@ -8,7 +8,7 @@ import type {
     ReleaseUninstallInput,
     ReleaseWriteResult,
 } from '../../../shared/k8s/addons.js';
-import { isClusterScopedKindName } from '../../../shared/k8s/registry.js';
+import { isClusterScopedKind } from '../../../shared/k8s/registry.js';
 import { apis, listItems } from '../client.js';
 import { K8sError, withK8s } from '../errors.js';
 import { ago } from '../format.js';
@@ -299,7 +299,7 @@ export function ownedByRelease(object: KubernetesObject, release: string, namesp
  * cluster-scoped kind is never given one.
  */
 export function inReleaseNamespace<T extends RenderedObject>(object: T, namespace: string): T {
-    if (!object.metadata.namespace && !isClusterScopedKindName(object.kind)) {
+    if (!object.metadata.namespace && !isClusterScopedKind(object.apiVersion, object.kind)) {
         object.metadata = { ...object.metadata, namespace };
     }
     return object;

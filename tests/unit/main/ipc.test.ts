@@ -980,7 +980,12 @@ describe('registerHandlers', () => {
     });
 
     it('forwards the manifest read and rejects an unknown kind', async () => {
-        manifestMod.getObjectYaml.mockResolvedValue({ yaml: 'kind: Pod\n', kind: 'Pod', namespace: 'team-a' });
+        manifestMod.getObjectYaml.mockResolvedValue({
+            yaml: 'kind: Pod\n',
+            apiVersion: 'v1',
+            kind: 'Pod',
+            namespace: 'team-a',
+        });
         await expect(
             invoke('resources.getYaml', { kind: 'Pod', name: 'web-1', namespace: 'team-a' }),
         ).resolves.toMatchObject({ kind: 'Pod' });

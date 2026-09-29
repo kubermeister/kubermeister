@@ -33,7 +33,8 @@ new cluster, no matter how long the window sat open.
 - A create or replace whose manifest names no namespace takes the active one — and with **All
   namespaces** selected, is refused rather than guessed at: "… needs a namespace: select one or add
   metadata.namespace." A cluster-scoped kind never gets a namespace, even if the manifest gives it
-  one; for a custom resource the app asks the API server which it is.
+  one; for a custom resource the app asks the API server which it is, even one that shares a
+  built-in kind's name.
 - Single-object reads follow the same rule: with no namespace named and none selected, you get "not
   found", never the first same-named object found across the cluster.
 

@@ -1,14 +1,15 @@
 import type { KubernetesObject, V1APIResource, V1Scale } from '@kubernetes/client-node';
 import { load as loadYaml } from 'js-yaml';
 import { isClusterScopedManifestKind, type ManifestKind } from '../../../shared/k8s/manifest.js';
-import { isClusterScopedKindName, isKnownKindName, KIND_REGISTRY, type Kind } from '../../../shared/k8s/registry.js';
-import type {
-    DeleteInput,
-    ManifestIdentity,
-    ManifestWrite,
-    RestartInput,
-    ScaleInput,
-    WriteResult,
+import { apiGroupOf, KIND_REGISTRY, knownKindScope, type Kind } from '../../../shared/k8s/registry.js';
+import {
+    identityKind,
+    type DeleteInput,
+    type ManifestIdentity,
+    type ManifestWrite,
+    type RestartInput,
+    type ScaleInput,
+    type WriteResult,
 } from '../../../shared/k8s/write.js';
 import { activeContextName, apis, getActiveNamespace } from '../client.js';
 import { K8sError, withK8s } from '../errors.js';
@@ -69,14 +70,15 @@ export function assertContext(expected: string, op: string): void {
 
 /**
  * Whether a manifest kind lives in a namespace. Registered kinds and the known cluster-scoped
- * extras answer from the registry; anything else, a custom resource typically, is asked of the API
+ * extras answer from the registry when their API group matches as well as their name; anything
+ * else, a custom resource typically, even one named like a built-in kind, is asked of the API
  * server's discovery so a cluster-scoped CR is never stamped with a namespace and a namespaced one
  * never slips through without.
  */
 async function isNamespacedKind(spec: KubernetesObject, op: string): Promise<boolean> {
     const kind = spec.kind!;
-    if (isClusterScopedKindName(kind)) return false;
-    if (isKnownKindName(kind)) return true;
+    const scope = knownKindScope(spec.apiVersion!, kind);
+    if (scope) return scope === 'namespaced';
     const resource = await discoverResource(spec.apiVersion!, kind);
     if (!resource) throw new K8sError('invalid', `The API server does not know ${spec.apiVersion} ${kind}.`, op);
     return resource.namespaced;
@@ -138,11 +140,16 @@ export function createResource(input: ManifestWrite): Promise<WriteResult> {
 /** The manifest must still describe the object the editor was opened on, or the save is aimed elsewhere. */
 function assertIdentity(spec: KubernetesObject, expect: ManifestIdentity, op: string): void {
     // A custom resource has no registry entry, and its own kind is already the canonical name.
-    const kind = isKnownKindName(expect.kind) ? factsFor(expect.kind as ManifestKind).kind : expect.kind;
-    const actual = `${spec.kind} "${spec.metadata?.namespace ? `${spec.metadata.namespace}/` : ''}${spec.metadata?.name}"`;
-    const wanted = `${kind} "${expect.namespace ? `${expect.namespace}/` : ''}${expect.name}"`;
+    const known = identityKind(expect);
+    const kind = known ? factsFor(known).kind : expect.kind;
+    // Any version of the group may be written back, but not another group's same-named kind.
+    const sameGroup = expect.apiVersion === undefined || apiGroupOf(spec.apiVersion!) === apiGroupOf(expect.apiVersion);
+    const typeOf = (apiVersion: string | undefined, name: string | undefined) =>
+        sameGroup ? name : `${apiVersion} ${name}`;
+    const actual = `${typeOf(spec.apiVersion, spec.kind)} "${spec.metadata?.namespace ? `${spec.metadata.namespace}/` : ''}${spec.metadata?.name}"`;
+    const wanted = `${typeOf(expect.apiVersion, kind)} "${expect.namespace ? `${expect.namespace}/` : ''}${expect.name}"`;
     const sameNamespace = (spec.metadata?.namespace || undefined) === expect.namespace;
-    if (spec.kind !== kind || spec.metadata?.name !== expect.name || !sameNamespace) {
+    if (!sameGroup || spec.kind !== kind || spec.metadata?.name !== expect.name || !sameNamespace) {
         throw new K8sError(
             'invalid',
             `The manifest describes ${actual}, but this editor is for ${wanted}. Restore the kind, name and namespace, or use Create resource for a new object.`,

@@ -136,8 +136,9 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
 
     // The object this panel was opened on. Main refuses a manifest that names any other object, so
     // an edited name or a removed namespace line cannot turn a save into a write elsewhere. A
-    // custom resource pins the kind the read came back with, since only its definition knows it.
-    const expect = { kind: kind ?? query.data?.kind ?? '', name, namespace };
+    // custom resource pins the kind the read came back with, since only its definition knows it, and
+    // the apiVersion tells one named like a built-in kind (Longhorn's Node) from the built-in.
+    const expect = { apiVersion: query.data?.apiVersion, kind: kind ?? query.data?.kind ?? '', name, namespace };
 
     const handleSave = async () => {
         // The global mutation toast already reports the failure; a conflict additionally arms the banner.

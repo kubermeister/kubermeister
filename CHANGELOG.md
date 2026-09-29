@@ -31,6 +31,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   object keeps the edit without asking to discard it.
 - A live list whose credentials can no longer be renewed, such as after an SSO session ends, says the
   watch failed and keeps retrying, instead of showing its last rows as live without a word.
+- A custom resource named like a built-in kind, such as Longhorn's `Node` or OpenShift's `Ingress`,
+  is created and saved in the scope its own definition gives it rather than the built-in kind's, so
+  it no longer lands in the `default` namespace or is refused from the editor.
 
 ## [0.9.1] - 2026-09-29
 

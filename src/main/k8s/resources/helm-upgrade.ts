@@ -15,7 +15,7 @@ import {
     type RemovedObject,
     type UpgradedObject,
 } from '../../../shared/chart-upgrade.js';
-import { isClusterScopedKindName } from '../../../shared/k8s/registry.js';
+import { isClusterScopedKind } from '../../../shared/k8s/registry.js';
 import { fetchChart } from '../../charts/fetch.js';
 import { helmChartRecord, type HelmChartRecord } from '../../charts/release-chart.js';
 import { renderChart, type ChartRender, type RenderedHook, type RenderedManifest } from '../../charts/render.js';
@@ -147,7 +147,7 @@ function upgradeHooks(hooks: RenderedHook[]): RenderedHook[] {
 }
 
 const namespaceOf = (object: RenderedObject): string | null =>
-    isClusterScopedKindName(object.kind) ? null : (object.metadata.namespace ?? null);
+    isClusterScopedKind(object.apiVersion, object.kind) ? null : (object.metadata.namespace ?? null);
 
 /**
  * What the upgrade will do to one rendered object, checked by a server-side dry run of the very apply

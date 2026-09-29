@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { namespaceNameSchema } from './names.js';
-import { KIND_REGISTRY, KINDS } from './registry.js';
+import { apiGroupOf, KIND_REGISTRY, KINDS, registeredKindOf } from './registry.js';
 
 /**
  * Kinds whose live manifest can be read. Nodes and namespaces are not in the kind registry (they
@@ -15,6 +15,15 @@ export type ManifestKind = z.infer<typeof manifestKindSchema>;
 /** Whether a kind string names a kind whose object can be read through the manifest channels. */
 export function isManifestKind(kind: string | undefined): kind is ManifestKind {
     return !!kind && manifestKindSchema.safeParse(kind).success;
+}
+
+/**
+ * The manifest kind a manifest's `apiVersion` and `kind` name, matched on the API group as well as
+ * the name, so a custom resource calling itself `Node` answers undefined rather than the core kind.
+ */
+export function manifestKindOf(apiVersion: string, kind: string): ManifestKind | undefined {
+    if ((kind === 'Node' || kind === 'Namespace') && apiGroupOf(apiVersion) === '') return kind;
+    return registeredKindOf(apiVersion, kind);
 }
 
 export function isClusterScopedManifestKind(kind: ManifestKind): boolean {
@@ -62,6 +71,8 @@ export const manifestInputSchema = z
 
 export const manifestSchema = z.object({
     yaml: z.string(),
+    /** The object's own apiVersion, which is what tells a custom resource from a same-named built-in kind. */
+    apiVersion: z.string(),
     kind: z.string(),
     namespace: z.string().optional(),
 });

@@ -13,7 +13,7 @@ import {
     type ReviewedHook,
     type ReviewedObject,
 } from '../../../shared/chart-install.js';
-import { isClusterScopedKindName } from '../../../shared/k8s/registry.js';
+import { isClusterScopedKind } from '../../../shared/k8s/registry.js';
 import { fetchChart } from '../../charts/fetch.js';
 import { helmChartRecord, type HelmChartRecord } from '../../charts/release-chart.js';
 import { renderChart, type ChartRender, type RenderedHook, type RenderedManifest } from '../../charts/render.js';
@@ -228,7 +228,7 @@ function reviewed(rendered: RenderedManifest, check: DryRunCheck): ReviewedObjec
         apiVersion: object.apiVersion,
         kind: object.kind,
         name: object.metadata.name,
-        namespace: isClusterScopedKindName(object.kind) ? null : (object.metadata.namespace ?? null),
+        namespace: isClusterScopedKind(object.apiVersion, object.kind) ? null : (object.metadata.namespace ?? null),
         source: rendered.source,
         manifest: rendered.manifest,
         check,
