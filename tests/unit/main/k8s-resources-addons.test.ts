@@ -424,6 +424,39 @@ describe('helm writes', () => {
             );
         });
 
+        it('stamps Helm ownership on what it creates and replaces, and stores the render without it', async () => {
+            // One object the rollback creates, one it finds already there and replaces.
+            const twoObjects = [CONFIG_MAP, '---', 'apiVersion: v1', 'kind: ConfigMap', 'metadata:', '  name: other'];
+            const target = { ...v1, manifest: twoObjects.join('\n') };
+            core.listNamespacedSecret.mockResolvedValue({ items: [releaseSecret(target), releaseSecret(v2)] });
+            objects.create.mockResolvedValueOnce({}).mockRejectedValueOnce(new ApiException(409, 'exists', null, {}));
+            await helm.rollbackRelease({ ...ON_ALPHA, revision: 1 });
+
+            // Helm 4.3's uninstall leaves an object without this metadata behind as not its own.
+            const owned = expect.objectContaining({
+                labels: expect.objectContaining({ 'app.kubernetes.io/managed-by': 'Helm' }),
+                annotations: expect.objectContaining({
+                    'meta.helm.sh/release-name': 'demo',
+                    'meta.helm.sh/release-namespace': 'team-a',
+                }),
+            });
+            expect(objects.create.mock.calls[0][0]).toMatchObject({ metadata: { name: 'demo-config' } });
+            expect(objects.create.mock.calls[0][0].metadata).toEqual(owned);
+            expect(objects.replace).toHaveBeenCalledTimes(1);
+            expect(objects.replace.mock.calls[0][0].metadata).toEqual(
+                expect.objectContaining({ name: 'other', resourceVersion: '7' }),
+            );
+            expect(objects.replace.mock.calls[0][0].metadata).toEqual(owned);
+
+            // The new revision records the render as the target stored it, as Helm stores it.
+            const created = core.createNamespacedSecret.mock.calls[0][0].body;
+            const stored = helm.decodeRelease({
+                type: 'helm.sh/release.v1',
+                data: { release: Buffer.from(created.stringData.release).toString('base64') },
+            });
+            expect(stored?.manifest).toBe(target.manifest);
+        });
+
         it('removes an object the target revision never rendered', async () => {
             // Roll back from a revision that added an unkept object.
             const withExtra = {

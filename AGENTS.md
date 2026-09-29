@@ -651,7 +651,10 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   status words — so a release this app rolls back stays one the Helm CLI can read and act on.
 - A rollback re-applies the target revision's objects, removes what that revision never had,
   records the result as a **new** revision (Helm numbers forward, it never rewinds) and marks the
-  previous one superseded.
+  previous one superseded. Every object it creates or replaces carries Helm's ownership metadata
+  (`withHelmOwnership`, as an install stamps it), because a replace sends the whole object and the
+  stored manifest has none; the new revision stores the render without it. The end-to-end spec has
+  the Helm CLI uninstall the rolled-back release.
 - An uninstall deletes the current revision's objects and either forgets the history or marks it
   uninstalled.
 - Objects annotated `helm.sh/resource-policy: keep` are never deleted by either, and are counted
@@ -805,7 +808,7 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   write recording the failure. A failure once the Secret exists marks it `failed` with Helm's
   description and answers `status: 'failed'` rather than an error, so the screen offers **Uninstall**;
   a context switch mid-install writes nothing more and says the release was left pending.
-- **Every object an install writes carries Helm's ownership metadata** (`withHelmOwnership` in
+- **Every object an install or a rollback writes carries Helm's ownership metadata** (`withHelmOwnership` in
   `helm.ts`: the `app.kubernetes.io/managed-by: Helm` label and the `meta.helm.sh/release-name` and
   `release-namespace` annotations), as Helm stamps it; hooks and CRDs are not stamped, and the stored
   manifest stays the render without it. Helm 4.3 `uninstall` leaves an object without it in place as

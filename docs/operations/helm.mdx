@@ -112,7 +112,8 @@ removed.
 A rollback then does what Helm does:
 
 1. Applies every object the target revision rendered: created if it is missing, replaced if it is
-   there.
+   there. Each one carries the label and annotations Helm marks its own objects with, so a later
+   `helm uninstall` removes it rather than leaving it behind as not owned by the release.
 2. Deletes the objects the current revision has and the target never had, except those the chart
    marked to be kept.
 3. Writes a **new** revision, numbered one above the current, marked deployed and described

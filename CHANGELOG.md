@@ -27,6 +27,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   reached with `⌘7` or `Ctrl+7`; **Add-ons** keeps the CRDs, admission and API server screens, and
   links to a release or the charts under the old Add-ons paths no longer open.
 
+### Fixed
+
+- A Helm release rolled back from the app keeps Helm's ownership label and annotations on every
+  object it applies, so a later `helm uninstall` with Helm 4.3 or newer removes those objects instead
+  of leaving them behind as not owned by the release.
+
 ## [0.8.0] - 2026-09-28
 
 ### Added
