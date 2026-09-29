@@ -1,12 +1,24 @@
-import { Metrics } from '@kubernetes/client-node';
+import type { NodeMetricsList, PodMetricsList } from '@kubernetes/client-node';
 import type { Usage } from '../../shared/k8s/metrics.js';
-import { kubeConfig } from './client.js';
+import { clusterGet } from './cluster-get.js';
 import { cpuToMillicores, memToMi } from './format.js';
 
 /**
  * Pod usage from metrics.k8s.io keyed by `namespace/name`. metrics-server is optional: when the API
  * group is absent or unreachable the map is empty and lists still render with zero usage.
  */
+const OP = 'metrics';
+
+/**
+ * The library's `Metrics` class sends with a `fetch` of its own and takes no signal, so a read that
+ * never answers would outlive every ceiling. `clusterGet` puts the current call's signal on the
+ * request, and a 404 (no metrics-server) comes back as null.
+ */
+async function metricsGet<T extends PodMetricsList | NodeMetricsList>(path: string): Promise<T['items']> {
+    const list = (await clusterGet(`/apis/metrics.k8s.io/v1beta1/${path}`, OP)) as T | null;
+    return list?.items ?? [];
+}
+
 export async function readPodUsage(): Promise<Map<string, Usage>> {
     return (await readUsage()).pods;
 }
@@ -25,8 +37,7 @@ export async function readUsage(): Promise<{ pods: Map<string, Usage>; container
     const pods = new Map<string, Usage>();
     const containers = new Map<string, Usage>();
     try {
-        const res = await new Metrics(kubeConfig()).getPodMetrics();
-        for (const item of res.items) {
+        for (const item of await metricsGet<PodMetricsList>('pods')) {
             // One item missing `containers` or `usage` must not truncate the map mid-loop.
             const inPod = item.containers ?? [];
             const namespace = item.metadata.namespace;
@@ -52,8 +63,7 @@ export async function readUsage(): Promise<{ pods: Map<string, Usage>; container
 export async function readNodeUsage(): Promise<Map<string, Usage>> {
     const out = new Map<string, Usage>();
     try {
-        const res = await new Metrics(kubeConfig()).getNodeMetrics();
-        for (const item of res.items) {
+        for (const item of await metricsGet<NodeMetricsList>('nodes')) {
             out.set(item.metadata.name, { cpu: cpuToMillicores(item.usage?.cpu), mem: memToMi(item.usage?.memory) });
         }
     } catch {

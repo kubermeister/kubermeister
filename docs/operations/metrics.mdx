@@ -14,7 +14,9 @@ cluster to get it, and it needs no Prometheus.
 
 Every 12 seconds the sampler reads pod usage, node usage and the node list. This interval is fixed;
 the **Live data refresh** setting decides how often screens re-read what the sampler holds, not how
-often it samples.
+often it samples. A sample the cluster has not answered within the **Cluster reads** timeout
+([**Settings › General**](/docs/reference/settings/#general)) is abandoned, along with the credential plugin
+it started, and the next one is taken on schedule.
 
 It keeps bounded ring buffers of 100 points each, about 20 minutes at that interval:
 
