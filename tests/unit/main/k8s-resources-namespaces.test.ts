@@ -59,6 +59,18 @@ describe('namespace transforms', () => {
         ).toEqual({ cpu: 0, mem: 0 });
     });
 
+    it('leaves finished pods out of the requests, as the scheduler and quotas do', () => {
+        const finished = (name: string, phase: string): V1Pod => ({
+            ...pod(name, { cpu: '2', memory: '2Gi' }),
+            status: { phase },
+        });
+        const running = { ...pod('live', { cpu: '250m', memory: '128Mi' }), status: { phase: 'Running' } };
+        const pending = { ...pod('queued', { cpu: '100m', memory: '64Mi' }), status: { phase: 'Pending' } };
+        expect(
+            namespaces.podRequests([running, pending, finished('done', 'Succeeded'), finished('crashed', 'Failed')]),
+        ).toEqual({ cpu: 350, mem: 192 });
+    });
+
     it('counts nothing used for pods the sampler has no sample for', () => {
         sampler.podUsage.mockReturnValueOnce(undefined as never);
         expect(namespaces.podUsageTotal([pod('a')])).toEqual({ cpu: 0, mem: 0 });

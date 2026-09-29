@@ -78,7 +78,8 @@ apply to them.
 **Overview › Namespaces** lists them, with a **New namespace** button. A namespace does nothing by
 itself, so its detail page is a roll-up: the **Contents** tab counts what lives in it, each count
 linking to that kind's list; **Budgets** holds the quotas and limit ranges it carries; and
-**Overview** sets the usage of its pods against what they requested.
+**Overview** sets the usage of its pods against what they requested, leaving out pods that have
+finished, as the scheduler does.
 
 <Figure
   name="namespace-detail"

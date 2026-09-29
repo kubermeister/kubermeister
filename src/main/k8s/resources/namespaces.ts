@@ -19,11 +19,15 @@ export function namespacePhase(ns: V1Namespace): NamespacePhase {
     return ns.status?.phase === 'Terminating' ? 'Terminating' : 'Active';
 }
 
-/** What a namespace's pods asked for, summed, which is what its usage should be read against. */
+/**
+ * What a namespace's pods asked for, summed, which is what its usage should be read against. A pod
+ * that has finished holds nothing any more, so the scheduler and quotas no longer count it.
+ */
 export function podRequests(pods: V1Pod[]): { cpu: number; mem: number } {
     let cpu = 0;
     let mem = 0;
     for (const pod of pods) {
+        if (pod.status?.phase === 'Succeeded' || pod.status?.phase === 'Failed') continue;
         for (const container of pod.spec?.containers ?? []) {
             cpu += cpuToMillicores(container.resources?.requests?.cpu);
             mem += memToMi(container.resources?.requests?.memory);

@@ -57,6 +57,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A custom resource named like a built-in kind, such as Longhorn's `Node` or OpenShift's `Ingress`,
   is created and saved in the scope its own definition gives it rather than the built-in kind's, so
   it no longer lands in the `default` namespace or is refused from the editor.
+- A namespace's Overview leaves finished pods, such as completed Job pods, out of what its pods
+  requested, so usage is read against what the scheduler still holds for them.
 - Switching a chart's version after editing its values keeps your changes and takes the new version's
   defaults for the rest, instead of installing the old version's defaults as values you set.
 - Changing the proxy, the bypass list or the CA bundle keeps the context and namespace the app is on instead of switching back to the one it opened on.
