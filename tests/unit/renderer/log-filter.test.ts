@@ -35,6 +35,24 @@ describe('searching logs', () => {
         expect(isBrokenPattern(NO_SEARCH)).toBe(false);
     });
 
+    it('reads a pattern exactly as typed, spaces included', () => {
+        // Trimmed, `^ ` would be `^` and match every line.
+        const leadingSpace = matcherFor({ ...NO_SEARCH, query: '^ ', regex: true })!;
+        expect(leadingSpace(line(' indented'))).toBe(true);
+        expect(leadingSpace(line('flush'))).toBe(false);
+        // Trimmed, ` +` would be `+`, which is no pattern at all.
+        expect(matcherFor({ ...NO_SEARCH, query: 'a +b', regex: true })!(line('a  b'))).toBe(true);
+        expect(matcherFor({ ...NO_SEARCH, query: ' +', regex: true })!(line('a b'))).toBe(true);
+        expect(isBrokenPattern({ ...NO_SEARCH, query: ' +', regex: true })).toBe(false);
+    });
+
+    it('calls a pattern broken exactly when it gives no filter', () => {
+        for (const query of ['+', ' +', '(', ' (', 'a(']) {
+            const search = { ...NO_SEARCH, query, regex: true };
+            expect(isBrokenPattern(search)).toBe(matcherFor(search) === null);
+        }
+    });
+
     it('has no matcher at all for an empty search', () => {
         expect(matcherFor(NO_SEARCH)).toBeNull();
         expect(matcherFor({ ...NO_SEARCH, query: '   ' })).toBeNull();
@@ -86,6 +104,19 @@ describe('marking matches inside a line', () => {
         expect(matchRanges('anything', { ...NO_SEARCH, query: 'x*', regex: true })).toEqual([]);
         expect(matchRanges('anything', { ...NO_SEARCH, query: 'x(', regex: true })).toEqual([]);
         expect(matchRanges('anything', NO_SEARCH)).toEqual([]);
+    });
+
+    it('skips an empty match rather than stopping at it', () => {
+        expect(matchRanges('id 123', { ...NO_SEARCH, query: '\\d*', regex: true })).toEqual([[3, 6]]);
+        expect(matchRanges('a1b22', { ...NO_SEARCH, query: '\\d*', regex: true })).toEqual([
+            [1, 2],
+            [3, 5],
+        ]);
+    });
+
+    it('marks a pattern exactly as typed, spaces included', () => {
+        expect(matchRanges(' indented', { ...NO_SEARCH, query: '^ ', regex: true })).toEqual([[0, 1]]);
+        expect(matchRanges('a  b', { ...NO_SEARCH, query: ' +', regex: true })).toEqual([[1, 3]]);
     });
 
     it('stops marking after fifty matches in one line', () => {

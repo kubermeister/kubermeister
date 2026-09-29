@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A CronJob's **Run now** pressed twice in the same minute starts a second run instead of failing as
   already existing, and a Job's **Run again** keeps waiting for the old run to go when a read fails
   on the way, instead of creating over it.
+- A log search written as a regular expression is used exactly as typed, so a leading or trailing
+  space no longer changes what it matches, and highlighting marks every match of a pattern that can
+  also match nothing, such as `\d*`.
 - Usage charts and pod and node usage keep updating when a metrics read hangs on a cluster that never
   answers or a credential plugin waiting for a sign-in, and after a context switch they no longer
   start with a point from the cluster just left.

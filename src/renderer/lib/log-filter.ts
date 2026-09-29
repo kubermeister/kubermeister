@@ -21,12 +21,20 @@ export interface LogSearch {
 export const NO_SEARCH: LogSearch = { query: '', regex: false, caseSensitive: false, highlight: false };
 
 /**
+ * What the search looks for. Stray spaces around text are trimmed, but a pattern is taken as typed:
+ * a space in one is part of it, and trimmed `^ ` would match every line and ` +` would stop being one.
+ */
+function queryOf(search: LogSearch): string {
+    return search.regex ? search.query : search.query.trim();
+}
+
+/**
  * The matcher for one search, or null when the search is empty or its expression is not valid. An
  * unfinished regular expression is a state people type through, so it reads as "no filter yet"
  * rather than as an error that empties the console mid-keystroke.
  */
 export function matcherFor(search: LogSearch): ((line: LogLine) => boolean) | null {
-    const query = search.query.trim();
+    const query = queryOf(search);
     if (!query) return null;
     if (search.regex) {
         try {
@@ -43,9 +51,10 @@ export function matcherFor(search: LogSearch): ((line: LogLine) => boolean) | nu
 
 /** True when the query is meant as a regular expression and is not one yet. */
 export function isBrokenPattern(search: LogSearch): boolean {
-    if (!search.regex || !search.query.trim()) return false;
+    const query = queryOf(search);
+    if (!search.regex || !query) return false;
     try {
-        new RegExp(search.query);
+        new RegExp(query);
         return false;
     } catch {
         return true;
@@ -64,7 +73,7 @@ export function visibleLines<T extends LogLine>(lines: T[], search: LogSearch): 
 
 /** Where a search matched inside one message, for marking it in place. */
 export function matchRanges(message: string, search: LogSearch): [number, number][] {
-    const query = search.query.trim();
+    const query = queryOf(search);
     if (!query) return [];
     const flags = search.caseSensitive ? 'g' : 'gi';
     let pattern: RegExp;
@@ -76,8 +85,9 @@ export function matchRanges(message: string, search: LogSearch): [number, number
     const ranges: [number, number][] = [];
     for (const found of message.matchAll(pattern)) {
         const start = found.index ?? 0;
-        // A pattern that can match nothing would otherwise mark every position forever.
-        if (found[0].length === 0) break;
+        // `matchAll` steps past an empty match itself, so skipping one cannot loop, and a line that
+        // matched only emptily somewhere still has its real matches further on to mark.
+        if (found[0].length === 0) continue;
         ranges.push([start, start + found[0].length]);
         if (ranges.length >= 50) break;
     }
