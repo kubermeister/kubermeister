@@ -46,6 +46,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Reloading the window, closing it, a renderer crash or a context switch while a shell, a port forward,
   a log follow or a drain is still connecting now ends it, so no exec session stays open and no local
   port stays bound, and a forward or follow cut short by a context switch says why instead of going quiet.
+- Memory and CPU amounts written with a lower-case `k` or an `m` suffix, as the API server often
+  stores them, are read at their real size, so limits, namespace requests and quota usage no longer
+  come out a thousand times too small or too large.
 
 ## [0.9.1] - 2026-09-29
 

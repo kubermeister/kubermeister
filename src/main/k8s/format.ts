@@ -57,46 +57,48 @@ function parseQuantity(quantity?: string | null): { value: number; suffix: strin
     return { value, suffix: match[2] ?? '' };
 }
 
-/** Parse a Kubernetes CPU quantity ("250m", "1", "1500000000n", "2u", "1e3") to millicores. */
-export function cpuToMillicores(quantity?: string | null): number {
-    const parsed = parseQuantity(quantity);
-    if (!parsed) return 0;
-    const { value, suffix } = parsed;
-    switch (suffix) {
-        case 'n':
-            return Math.round(value / 1e6);
-        case 'u':
-            return Math.round(value / 1e3);
-        case 'm':
-            return Math.round(value);
-        default:
-            // No suffix (whole/fractional cores) or an unexpected one — treat the value as cores.
-            return Math.round(value * 1000);
-    }
-}
-
-const MEM_SUFFIX_BYTES: Record<string, number> = {
+/**
+ * The multiplier of every suffix a Kubernetes quantity may carry: the decimal SI ones (lower-case
+ * `k` is kilo, `m` milli) and the binary ones. Anything else is not a quantity, so it reads as
+ * `null` rather than as a plain number.
+ */
+const QUANTITY_SUFFIX: Record<string, number> = {
+    '': 1,
+    n: 1e-9,
+    u: 1e-6,
+    m: 1e-3,
+    k: 1e3,
+    M: 1e6,
+    G: 1e9,
+    T: 1e12,
+    P: 1e15,
+    E: 1e18,
     Ki: 1024,
     Mi: 1024 ** 2,
     Gi: 1024 ** 3,
     Ti: 1024 ** 4,
     Pi: 1024 ** 5,
     Ei: 1024 ** 6,
-    K: 1e3,
-    M: 1e6,
-    G: 1e9,
-    T: 1e12,
-    P: 1e15,
-    E: 1e18,
 };
 
-/** Parse a Kubernetes memory quantity ("512Mi", "1Gi", "536870912", "129e6") to bytes. */
-export function memToBytes(quantity?: string | null): number {
+/** A quantity in its base unit (cores, bytes, objects), or `null` when it is not a quantity. */
+function quantityValue(quantity?: string | null): number | null {
     const parsed = parseQuantity(quantity);
-    if (!parsed) return 0;
-    const { value, suffix } = parsed;
-    if (!suffix) return Math.round(value);
-    return Math.round(value * (MEM_SUFFIX_BYTES[suffix] ?? 1));
+    if (!parsed) return null;
+    const multiplier = QUANTITY_SUFFIX[parsed.suffix];
+    return multiplier === undefined ? null : parsed.value * multiplier;
+}
+
+/** Parse a Kubernetes CPU quantity ("250m", "1", "1500000000n", "2u", "1e3", "1k") to millicores. */
+export function cpuToMillicores(quantity?: string | null): number {
+    const cores = quantityValue(quantity);
+    return cores === null ? 0 : Math.round(cores * 1000);
+}
+
+/** Parse a Kubernetes memory quantity ("512Mi", "1Gi", "1500k", "536870912", "129e6") to bytes. */
+export function memToBytes(quantity?: string | null): number {
+    const bytes = quantityValue(quantity);
+    return bytes === null ? 0 : Math.round(bytes);
 }
 
 /** Memory quantity → whole MiB (used for pod usage figures). */
@@ -158,7 +160,7 @@ export function quantityToNumber(resource: string, value?: string | null): numbe
     if (!value) return 0;
     if (resource.includes('cpu')) return cpuToMillicores(value);
     if (resource.includes('memory') || resource.includes('storage')) return memToBytes(value);
-    return Number(value) || 0;
+    return Math.round(quantityValue(value) ?? 0);
 }
 
 /**
