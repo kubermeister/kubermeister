@@ -5,6 +5,7 @@ import { toPod } from './resources/pods.js';
 import { toClaim } from './resources/storage.js';
 import { toJob } from './resources/workloads.js';
 import { nodeReady } from './resources/cluster.js';
+import { age } from './format.js';
 
 /**
  * Alerts derived from cluster state without Prometheus. Each source is best-effort so a locked-down
@@ -26,6 +27,26 @@ export const RECENT_BACKOFF_MS = 10 * 60_000;
 function eventTime(event: CoreV1Event): number {
     const stamp = event.lastTimestamp ?? event.eventTime ?? event.metadata?.creationTimestamp;
     return stamp ? new Date(stamp).getTime() : 0;
+}
+
+/**
+ * When an event's series began. `count` is the series' lifetime total, so it is only a count "in
+ * the window" when the series began inside it. A series of one began when it last fired.
+ */
+function eventStart(event: CoreV1Event): number | undefined {
+    if (event.firstTimestamp) return new Date(event.firstTimestamp).getTime();
+    return (event.count ?? 1) <= 1 ? eventTime(event) : undefined;
+}
+
+/**
+ * How many back-offs the events say, over the span they actually cover: an event that has been
+ * counting for days speaks for days, not for the last ten minutes.
+ */
+function backoffDetail(count: number, start: number | undefined, now: number): string {
+    const noun = `${count} back-off${count === 1 ? '' : 's'}`;
+    if (start === undefined) return `${noun}, the latest in the last 10 min`;
+    if (now - start <= RECENT_BACKOFF_MS) return `${noun} in the last 10 min`;
+    return `${noun} in the last ${age(new Date(start), now)}`;
 }
 
 /**
@@ -76,21 +97,24 @@ export async function podAlerts(now = Date.now()): Promise<Alert[]> {
         report(where, { tone: 'danger', title: `Pod failed: ${pod.name}`, detail: where });
     }
     const recent = backoffs.items.filter((event) => now - eventTime(event) <= RECENT_BACKOFF_MS);
-    const byPod = new Map<string, { event: CoreV1Event; count: number }>();
+    const byPod = new Map<string, { event: CoreV1Event; count: number; start: number | undefined }>();
     for (const event of recent) {
         const obj = event.involvedObject;
         if (!obj?.name) continue;
         const where = `${obj.namespace ?? ''}/${obj.name}`;
         const entry = byPod.get(where);
         const count = event.count ?? 1;
-        // The newest event speaks for the pod; the count sums every back-off in the window.
-        if (!entry || eventTime(event) > eventTime(entry.event)) {
-            byPod.set(where, { event, count: (entry?.count ?? 0) + count });
-        } else {
-            entry.count += count;
+        const start = eventStart(event);
+        if (!entry) {
+            byPod.set(where, { event, count, start });
+            continue;
         }
+        // The newest event speaks for the pod; the count sums every event, over the span of the oldest.
+        if (eventTime(event) > eventTime(entry.event)) entry.event = event;
+        entry.count += count;
+        entry.start = entry.start === undefined || start === undefined ? undefined : Math.min(entry.start, start);
     }
-    for (const [where, { event, count }] of byPod) {
+    for (const [where, { event, count, start }] of byPod) {
         const name = event.involvedObject?.name ?? '';
         if (/pulling image/i.test(event.message ?? '')) {
             report(where, { tone: 'danger', title: `Image pull failure: ${name}`, detail: where });
@@ -98,7 +122,7 @@ export async function podAlerts(now = Date.now()): Promise<Alert[]> {
             report(where, {
                 tone: 'danger',
                 title: `CrashLoopBackOff: ${name}`,
-                detail: `${count} back-off${count === 1 ? '' : 's'} in the last 10 min — ${where}`,
+                detail: `${backoffDetail(count, start, now)} — ${where}`,
             });
         }
     }
