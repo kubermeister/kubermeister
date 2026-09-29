@@ -78,7 +78,14 @@ export function rollbackRelease(input: ReleaseRollbackInput): Promise<ReleaseWri
                 apply_method: 'ssa',
             }),
         });
-        await restatusRevision(current.secret, current.data, 'superseded');
+        // The current revision is superseded whatever its status, and so is every other deployed one, as
+        // in Helm: a failed upgrade leaves the one under it deployed, and marking only the newest would
+        // leave the history with two deployed revisions.
+        for (const one of revisions) {
+            if (one === current || one.data.info?.status === 'deployed') {
+                await restatusRevision(one.secret, one.data, 'superseded');
+            }
+        }
 
         return {
             name: input.name,

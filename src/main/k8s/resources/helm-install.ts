@@ -470,7 +470,22 @@ export async function runHooks(
             lastRun: { started_at: new Date().toISOString(), completed_at: '', phase: 'Running' },
         };
         runs.set(hook, run);
-        await step(op, context, () => apis().objects.create(structuredClone(hook.object)));
+        const finish = (failed: boolean) => {
+            run.lastRun = {
+                ...run.lastRun,
+                completed_at: new Date().toISOString(),
+                phase: failed ? 'Failed' : 'Succeeded',
+            };
+        };
+        try {
+            await step(op, context, () => apis().objects.create(structuredClone(hook.object)));
+        } catch (error) {
+            // Recorded as finished, as Helm's `execHook` records a refused create: Go cannot parse the
+            // empty completion time a running hook carries, and the Helm CLI would not read the release.
+            // Nothing was created, so there is nothing for `hook-failed` to delete.
+            finish(true);
+            throw error;
+        }
         let failure: unknown = null;
         try {
             const failed = await until(
@@ -488,11 +503,7 @@ export async function runHooks(
         } catch (error) {
             failure = error;
         }
-        run.lastRun = {
-            ...run.lastRun,
-            completed_at: new Date().toISOString(),
-            phase: failure ? 'Failed' : 'Succeeded',
-        };
+        finish(Boolean(failure));
         if (failure) {
             if (policies.includes(HOOK_FAILED)) await removeAndWait(op, context, hook.object);
             throw failure;

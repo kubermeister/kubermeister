@@ -130,6 +130,26 @@ describe('rollbackRelease', () => {
         expect(core.replaceNamespacedSecret.mock.calls[0]![0].body.metadata.labels.status).toBe('superseded');
     });
 
+    it('supersedes every deployed revision, as a failed upgrade leaves the one under it deployed', async () => {
+        const v3 = {
+            ...v2,
+            version: 3,
+            info: { status: 'failed', description: 'Upgrade "demo" failed: refused' },
+        };
+        seed(v1, v2, v3);
+        const result = await rollbackRelease({ ...ON_ALPHA, revision: 1 });
+        expect(result.revision).toBe(4);
+        const restatused = core.replaceNamespacedSecret.mock.calls.map(([call]) => [
+            call.name,
+            call.body.metadata.labels.status,
+        ]);
+        // The failed current revision and the deployed one under it are superseded; revision 1 already was.
+        expect(restatused).toEqual([
+            ['sh.helm.release.v1.demo.v3', 'superseded'],
+            ['sh.helm.release.v1.demo.v2', 'superseded'],
+        ]);
+    });
+
     it('stamps Helm ownership on what it applies, and stores the render without it', async () => {
         await rollbackRelease({ ...ON_ALPHA, revision: 1 });
         // Helm 4.3's uninstall leaves an object without this metadata behind as not its own.
