@@ -110,7 +110,10 @@ one, and `<kind>-export.yaml` when there are several. It offers two versions:
   and deletion timestamps, `managedFields`), the `last-applied-configuration` and
   `deployment.kubernetes.io/revision` annotations, the owner references naming a uid only this
   cluster issued, and a Service's cluster IPs, which come out of this cluster's own range. A
-  headless Service keeps `clusterIP: None`.
+  headless Service keeps `clusterIP: None`. A Job loses the selector and `controller-uid` labels the
+  control plane generated from its uid, unless it set `manualSelector`. A claim the controller bound
+  loses its `volumeName` and the binding and selected-node annotations, and a PersistentVolume's
+  `claimRef` loses the claim's uid and `resourceVersion`, or goes whole when the controller wrote it.
 
 An object deleted since the list was read is left out, and the message confirming the save says how
 many were.

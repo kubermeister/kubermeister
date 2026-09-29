@@ -104,6 +104,89 @@ describe('cleanForExport', () => {
         expect(clean.spec.template.metadata).toEqual({ labels: { app: 'web' } });
     });
 
+    it('drops the selector and pod labels the control plane generated for a Job', () => {
+        const uid = { 'controller-uid': 'u1', 'batch.kubernetes.io/controller-uid': 'u1' };
+        const names = { 'job-name': 'migrate', 'batch.kubernetes.io/job-name': 'migrate' };
+        const clean = cleanForExport({
+            kind: 'Job',
+            metadata: {
+                name: 'migrate',
+                labels: { ...uid, ...names, app: 'web' },
+                annotations: { 'batch.kubernetes.io/job-tracking': '' },
+            },
+            spec: {
+                selector: { matchLabels: uid },
+                template: { metadata: { labels: { ...uid, ...names, app: 'web' } }, spec: { restartPolicy: 'Never' } },
+            },
+        }) as {
+            metadata: Record<string, unknown>;
+            spec: Record<string, unknown> & { template: { metadata: unknown } };
+        };
+        expect(clean.metadata).toEqual({ name: 'migrate', labels: { app: 'web' } });
+        expect(clean.spec.selector).toBeUndefined();
+        expect(clean.spec.template.metadata).toEqual({ labels: { app: 'web' } });
+    });
+
+    it('keeps the selector and labels of a Job that chose them with manualSelector', () => {
+        const job = {
+            kind: 'Job',
+            metadata: { name: 'migrate', labels: { 'controller-uid': 'mine' } },
+            spec: {
+                manualSelector: true,
+                selector: { matchLabels: { 'controller-uid': 'mine' } },
+                template: { metadata: { labels: { 'controller-uid': 'mine' } } },
+            },
+        };
+        expect(cleanForExport(job)).toEqual(job);
+    });
+
+    it('unbinds a claim the controller bound, so another cluster provisions it afresh', () => {
+        const clean = cleanForExport({
+            kind: 'PersistentVolumeClaim',
+            metadata: {
+                name: 'data',
+                annotations: {
+                    'pv.kubernetes.io/bind-completed': 'yes',
+                    'pv.kubernetes.io/bound-by-controller': 'yes',
+                    'volume.kubernetes.io/selected-node': 'node-1',
+                    team: 'a',
+                },
+            },
+            spec: { volumeName: 'pvc-1234', storageClassName: 'local-path' },
+        }) as { metadata: Record<string, unknown>; spec: Record<string, unknown> };
+        expect(clean.metadata.annotations).toEqual({ team: 'a' });
+        expect(clean.spec).toEqual({ storageClassName: 'local-path' });
+    });
+
+    it('keeps the volume a claim named itself', () => {
+        const clean = cleanForExport({
+            kind: 'PersistentVolumeClaim',
+            metadata: { name: 'data', annotations: { 'pv.kubernetes.io/bind-completed': 'yes' } },
+            spec: { volumeName: 'nfs-share' },
+        }) as { metadata: Record<string, unknown>; spec: Record<string, unknown> };
+        expect(clean.metadata.annotations).toBeUndefined();
+        expect(clean.spec).toEqual({ volumeName: 'nfs-share' });
+    });
+
+    it("drops a volume's claim reference identity, and the whole reference when the controller made it", () => {
+        const claimRef = { kind: 'PersistentVolumeClaim', namespace: 'team-a', name: 'data' };
+        const identity = { uid: 'uid-data', resourceVersion: '81', apiVersion: 'v1' };
+        const provisioned = cleanForExport({
+            kind: 'PersistentVolume',
+            metadata: { name: 'pvc-1234' },
+            spec: { claimRef: { ...claimRef, ...identity }, capacity: { storage: '1Gi' } },
+        }) as { spec: Record<string, unknown> };
+        expect(provisioned.spec).toEqual({ claimRef: { ...claimRef, apiVersion: 'v1' }, capacity: { storage: '1Gi' } });
+
+        const bound = cleanForExport({
+            kind: 'PersistentVolume',
+            metadata: { name: 'nfs', annotations: { 'pv.kubernetes.io/bound-by-controller': 'yes' } },
+            spec: { claimRef: { ...claimRef, ...identity }, nfs: { path: '/' } },
+        }) as { metadata: Record<string, unknown>; spec: Record<string, unknown> };
+        expect(bound.metadata.annotations).toBeUndefined();
+        expect(bound.spec).toEqual({ nfs: { path: '/' } });
+    });
+
     it('leaves the object the caller passed untouched', () => {
         const object = configMap('app-config');
         const before = structuredClone(object);
