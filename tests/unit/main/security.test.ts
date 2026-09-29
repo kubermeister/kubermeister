@@ -22,19 +22,37 @@ describe('isExternalWebUrl', () => {
 });
 
 describe('isInternalNavigation', () => {
+    const index = 'file:///Applications/Kubermeister.app/Contents/Resources/app/out/renderer/index.html';
+
     it('allows only the dev server origin while developing', () => {
         const dev = 'http://localhost:5173/';
-        expect(isInternalNavigation('http://localhost:5173/#/pods', dev)).toBe(true);
-        expect(isInternalNavigation('http://localhost:5174/', dev)).toBe(false);
-        expect(isInternalNavigation('https://example.com', dev)).toBe(false);
-        expect(isInternalNavigation('file:///app/index.html', dev)).toBe(false);
+        expect(isInternalNavigation('http://localhost:5173/#/pods', dev, index)).toBe(true);
+        expect(isInternalNavigation('http://localhost:5174/', dev, index)).toBe(false);
+        expect(isInternalNavigation('https://example.com', dev, index)).toBe(false);
+        expect(isInternalNavigation(index, dev, index)).toBe(false);
     });
 
-    it('allows only the packaged file bundle otherwise', () => {
-        expect(
-            isInternalNavigation('file:///Applications/Kubermeister.app/Contents/Resources/app/index.html', undefined),
-        ).toBe(true);
-        expect(isInternalNavigation('http://localhost:5173/', undefined)).toBe(false);
-        expect(isInternalNavigation('https://example.com', undefined)).toBe(false);
+    it('allows the packaged index file with any hash route', () => {
+        expect(isInternalNavigation(index, undefined, index)).toBe(true);
+        expect(isInternalNavigation(`${index}#/workloads/pods`, undefined, index)).toBe(true);
+    });
+
+    it('refuses every other file, such as one dropped on the window', () => {
+        for (const url of [
+            'file:///Users/me/Downloads/dropped.html',
+            'file:///Users/me/deployment.yaml',
+            'file:///Applications/Kubermeister.app/Contents/Resources/app/out/renderer/other.html',
+            'file:///Applications/Kubermeister.app/Contents/Resources/app/out/renderer/',
+            `${index}?x=1`,
+            'file:///',
+        ]) {
+            expect(isInternalNavigation(url, undefined, index)).toBe(false);
+        }
+    });
+
+    it('refuses other schemes and malformed input when packaged', () => {
+        expect(isInternalNavigation('http://localhost:5173/', undefined, index)).toBe(false);
+        expect(isInternalNavigation('https://example.com', undefined, index)).toBe(false);
+        expect(isInternalNavigation('not a url', undefined, index)).toBe(false);
     });
 });

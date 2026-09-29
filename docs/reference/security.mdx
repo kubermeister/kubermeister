@@ -79,7 +79,8 @@ The window is hardened and that is never relaxed:
 - A Content-Security-Policy that loads scripts only from the app itself:
   `default-src 'self'; script-src 'self'`, with no inline scripts.
 - Window-open and navigation handlers route only `http:` and `https:` URLs to your OS browser and
-  **deny everything else**.
+  **deny everything else**. The window never navigates to any document but the app's own, so a
+  file dropped on it before the app has finished loading is not opened in the app's place.
 - The preload bridge imports exactly one file, which imports nothing, because a sandboxed preload
   cannot require anything but Electron built-ins. A build-time check fails the build if the preload
   bundle ever requires anything else.
