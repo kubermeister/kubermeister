@@ -3,7 +3,6 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { CalendarClockIcon, InfoIcon, TagIcon, type LucideIcon } from 'lucide-react';
 import type { ObjectEventsInput } from '../../../shared/k8s/events';
-import { KINDS, kindInfo, type Kind } from '../../../shared/k8s/registry';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +13,7 @@ import { DetailHeader, type DetailHeaderProps } from '@/components/templates/det
 import { ObjectEvents } from '@/components/templates/object-events';
 import { ManifestEditContext, useManifestEditBridge } from '@/components/templates/manifest-edit';
 import { ObjectMetaCard } from '@/components/templates/object-meta-card';
-import { isManifestKind } from '../../../shared/k8s/manifest';
+import { isClusterScopedManifestKind, isManifestKind } from '../../../shared/k8s/manifest';
 import { ReadErrorHints } from '@/components/templates/read-error-hints';
 import { publishDetailTab } from '@/lib/detail-tab';
 import { describeError, readErrorSentence } from '@/lib/k8s-error';
@@ -125,6 +124,11 @@ interface ResourceDetailProps extends DetailHeaderProps {
     kind?: string;
     /** Namespace named in the not-found copy; omitted for cluster-scoped kinds. */
     namespace?: string;
+    /**
+     * Whether the object lives in no namespace, so the not-found copy names none. Known from `kind`
+     * for every kind the app reads by name; a custom resource's screen learns it from its CRD.
+     */
+    clusterScoped?: boolean;
     testId?: string;
 }
 
@@ -152,6 +156,7 @@ export function ResourceDetail({
     backTo,
     kind,
     namespace,
+    clusterScoped: clusterScopedProp,
     testId,
     ...header
 }: ResourceDetailProps) {
@@ -211,7 +216,7 @@ export function ResourceDetail({
     const subject = { one: kind ?? 'resource' };
     const sentence = failure ? readErrorSentence(failure.kind, subject) : '';
     // A cluster-scoped kind lives in no namespace, so the not-found copy names none.
-    const clusterScoped = !!kind && (KINDS as readonly string[]).includes(kind) && kindInfo(kind as Kind).clusterScoped;
+    const clusterScoped = clusterScopedProp ?? (isManifestKind(kind) && isClusterScopedManifestKind(kind));
     const where = clusterScoped ? '' : namespace ? ` in namespace “${namespace}”` : ' in the current namespace';
 
     return (

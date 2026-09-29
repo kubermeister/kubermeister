@@ -1,6 +1,7 @@
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { Meter } from '@/components/data-display/meter';
 import { DetailCard, PropertyGrid } from '@/components/templates/detail-cards';
+import { ReadFailure } from '@/components/templates/read-failure';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useIpcQuery } from '@/lib/query';
 import { useRefreshIntervalMs } from '@/lib/settings';
@@ -16,8 +17,25 @@ const CONDITION_TONE: Record<string, StatusTone> = { True: 'ok', False: 'danger'
  */
 export function RolloutStatusTab({ name, namespace }: { name: string; namespace: string }) {
     const refetchInterval = useRefreshIntervalMs();
-    const status = useIpcQuery('deployments.rolloutStatus', { name, namespace }, { refetchInterval }).data;
-    if (!status) return null;
+    const query = useIpcQuery('deployments.rolloutStatus', { name, namespace }, { refetchInterval });
+    const status = query.data;
+    if (!status) {
+        return (
+            <DetailCard title="Rollout">
+                {query.isError ? (
+                    <ReadFailure
+                        error={query.error}
+                        subject={{ one: 'Deployment' }}
+                        onRetry={() => void query.refetch()}
+                    />
+                ) : (
+                    <p className="text-body text-text-muted" data-testid="rollout-pending">
+                        Reading the rollout…
+                    </p>
+                )}
+            </DetailCard>
+        );
+    }
 
     const progress = status.desired === 0 ? 100 : Math.round((status.updated / status.desired) * 100);
     const tone: StatusTone = status.paused ? 'neutral' : status.settled ? 'ok' : 'warn';

@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoutes } from './helpers';
 import { settingsFixture } from './settings-fixture';
@@ -15,6 +16,7 @@ vi.mock('@/lib/ipc', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
+const { IpcError } = await import('@/lib/ipc');
 
 const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date' },
@@ -133,6 +135,33 @@ describe('command palette', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
         expect(invoke).not.toHaveBeenCalledWith('context.set', expect.anything());
         expect(router.state.location.pathname).toBe('/workloads/pods/team-a/web-1');
+    });
+
+    it('says why a switch from the palette failed', async () => {
+        const error = vi.spyOn(toast, 'error').mockImplementation(() => 0);
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'context.set' || channel === 'namespace.set') {
+                throw new IpcError({ kind: 'unknown', detail: `${channel} refused`, op: channel });
+            }
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/overview/summary');
+        await userEvent.keyboard('{Control>}k{/Control}');
+        const dialog = await screen.findByRole('dialog', { name: 'Quick actions' });
+        await userEvent.click(await within(dialog).findByRole('option', { name: /beta/ }));
+        await waitFor(() =>
+            expect(error).toHaveBeenCalledWith('Could not switch to “beta”', { description: 'context.set refused' }),
+        );
+
+        await userEvent.keyboard('{Control>}k{/Control}');
+        const again = await screen.findByRole('dialog', { name: 'Quick actions' });
+        await userEvent.click(await within(again).findByRole('option', { name: /kube-system/ }));
+        await waitFor(() =>
+            expect(error).toHaveBeenCalledWith('Could not select namespace “kube-system”', {
+                description: 'namespace.set refused',
+            }),
+        );
+        error.mockRestore();
     });
 
     it('closes a detail page back to its list when the context or namespace changes', async () => {

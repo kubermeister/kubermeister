@@ -4,6 +4,7 @@ import type { PodOwnerKind } from '../../../shared/k8s/owners';
 import { LogViewer, SINCE_OPTIONS, type SinceOption } from '@/components/data-display/log-viewer';
 import type { DetailTab } from '@/components/templates/resource-detail';
 import { downloadTextFile } from '@/lib/download';
+import { describeError } from '@/lib/k8s-error';
 import { isBrokenPattern, visibleLines, NO_SEARCH, type LogSearch } from '@/lib/log-filter';
 import { useLogViewOptions } from '@/lib/log-view-options';
 import { podColors, useMultiPodLogStream } from '@/lib/multi-pod-logs';
@@ -28,7 +29,8 @@ interface WorkloadLogsProps {
  */
 export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
     const refetchInterval = useRefreshIntervalMs();
-    const pods = useIpcQuery('workloads.pods', { kind, name, namespace }, { refetchInterval }).data;
+    const podsQuery = useIpcQuery('workloads.pods', { kind, name, namespace }, { refetchInterval });
+    const pods = podsQuery.data;
     const names = useMemo(() => (pods ?? []).map((pod) => pod.name), [pods]);
     const colors = useMemo(() => podColors(names), [names]);
 
@@ -46,6 +48,13 @@ export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
     const deferred = useDeferredValue(search);
     const lines = visibleLines(follow.lines, deferred);
     const failures = Object.entries(follow.failures);
+    // Without the pods there is nothing to follow, so their read failing is the one thing to say.
+    const podsFailure = podsQuery.isError ? describeError(podsQuery.error) : null;
+    const error = podsFailure
+        ? `${podsFailure.title}: ${podsFailure.detail}`
+        : failures.length > 0
+          ? `${failures[0]![0]}: ${failures[0]![1]}`
+          : null;
 
     const download = () =>
         downloadTextFile(
@@ -71,7 +80,7 @@ export function WorkloadLogs({ kind, name, namespace }: WorkloadLogsProps) {
             timestamps={false}
             defaultTail={TAIL_LINES_PER_POD}
             onDownload={download}
-            error={failures.length > 0 ? `${failures[0]![0]}: ${failures[0]![1]}` : null}
+            error={error}
             filtered={lines.length !== follow.lines.length}
             brokenPattern={isBrokenPattern(search)}
         />

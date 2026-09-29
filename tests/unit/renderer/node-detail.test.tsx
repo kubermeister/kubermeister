@@ -110,9 +110,7 @@ describe('node detail', () => {
             channel === 'metrics.nodeSeries' ? { cpu: [], mem: [] } : channel === 'nodes.get' ? null : data[channel],
         );
         renderRoutes(routeTree, '/overview/nodes/ghost');
-        expect(await screen.findByTestId('not-found')).toHaveTextContent(
-            'Node “ghost” was not found in the current namespace.',
-        );
+        expect(await screen.findByTestId('not-found')).toHaveTextContent('Node “ghost” was not found.');
         expect(screen.getByRole('link', { name: 'Back to list' })).toHaveAttribute('href', '/overview/nodes');
     });
 

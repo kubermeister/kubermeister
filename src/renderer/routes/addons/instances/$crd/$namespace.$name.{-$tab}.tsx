@@ -51,6 +51,7 @@ function InstanceDetailPage() {
             eyebrow={query.data?.kind ?? crd}
             title={name}
             namespace={scope}
+            clusterScoped={scope === undefined}
             backTo={`/addons/instances/${encodeURIComponent(crd)}`}
             query={query}
             found={!!row}

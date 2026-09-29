@@ -14,6 +14,7 @@ vi.mock('@/lib/ipc', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
+const { IpcError } = await import('@/lib/ipc');
 
 const columns = [
     { name: 'Size', type: 'string', jsonPath: '.spec.size' },
@@ -120,6 +121,18 @@ describe('custom resource instances', () => {
                 namespace: undefined,
             }),
         );
+    });
+
+    it('names no namespace for a missing cluster-scoped instance', async () => {
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'customResources.get') {
+                throw new IpcError({ kind: 'notFound', detail: 'widgets "gone" not found', op: 'customResources.get' });
+            }
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/addons/instances/widgets.example.com/-/gone');
+        expect(await screen.findByTestId('not-found')).toHaveTextContent('“gone” was not found.');
+        expect(screen.getByTestId('not-found')).not.toHaveTextContent('namespace');
     });
 
     it('offers the instances from the definition that describes them', async () => {
