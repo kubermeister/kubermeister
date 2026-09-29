@@ -764,14 +764,60 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   `oneOf` is satisfied by any matching form, since the walk checks only some keywords and cannot
   claim two forms are ambiguous. A key neither the schema nor the defaults name is a warning, never
   for `global` or a subchart's section (`subcharts`, from `Chart.yaml`), whose schema is not this one.
-- The values are read as YAML 1.2, as main reads a manifest, so `yes` is a string; Helm reading a
-  values file itself would take it as true.
+- The values are read as YAML 1.2, as main reads a manifest, so `yes` is a string, and Helm is
+  handed them as JSON rather than as a file it would read as YAML 1.1 (see Installing a chart).
 - **A failed render is laid over the values** (`values-render-error.ts`, pure, tested on Helm's own
   messages). `helmErrorMessage` keeps every line after `Error:`, since that is where a schema failure
   lists each value by path (Helm 4's JSON Pointers, Helm 3's dotted fields, a subchart's under its
   section) and where a template names the `.Values` it failed on. Each is marked on the nearest key
   the text holds; a `required` or `fail` names no value and is a note beside the editor with its
   template and line. The marks stand only while the text is the one Helm refused.
+
+### Installing a chart
+
+- **An install writes the render that was reviewed, never a second one.** `charts.render`
+  (`reviewChart`, `src/main/k8s/resources/helm-install.ts`) fetches the chart, refuses a release name
+  already recorded in the namespace (`hasRelease`, by Helm's own labels), renders it once for the
+  live cluster's capabilities and puts every object through a server-side dry run; the render is kept
+  in main under a random `reviewId` for 30 minutes and at most eight at a time. `releases.install`
+  names that id, is refused for an expired, spent or other-context review or one whose dry run
+  refused an object, and spends the review whatever the outcome. The install code lives in
+  `src/main/k8s` because it writes to the cluster; `src/main/charts` still touches no API server.
+- **The values reach Helm as JSON.** The renderer parses the editor's text with the editor's own
+  reader (`valuesForRender` in `values-validation.ts`, YAML 1.2, so `yes` is a string) and sends the
+  object across the bridge (`chartValuesObjectSchema` refuses a number JSON cannot carry); main writes
+  it to `values.json`, which Helm reads with no YAML 1.1 second opinion. The release's `config` is
+  that same object, so the review, the install and `helm get values` agree.
+- A dry-run check is `passed`, `failed`, `exists` (a CRD already there, which Helm leaves alone) or
+  `deferred` (a kind a CRD of the same chart defines, which the server cannot check before it
+  exists). An object that already exists is `failed`, since Helm installs over nothing it does not
+  own, except a hook deleted before its creation. `reviewProblem` in `src/shared/chart-install.ts`
+  is the one sentence both the screen and main refuse an install with.
+- **The write order is Helm's:** CRDs from `crds/` (a 409 skipped, each waited on until
+  `Established`), the release Secret v1 as `pending-install`, the `pre-install` hooks by weight then
+  name, the objects in the order `helm template` printed them (Helm's install order), the
+  `post-install` hooks, then the Secret replaced as `deployed`. A hook with no delete policy gets
+  `before-hook-creation`, as Helm's `execHook` gives it; a Job is waited on until Complete or
+  Failed, a Pod until Succeeded or Failed, anything else not at all, each for Helm's five minutes.
+  Hooks for other events are recorded, not run.
+- **Every step has its own read ceiling and re-checks the context stamp**, rather than one ceiling
+  over the install: a hook may run for minutes, and a ceiling firing mid-install would also abort the
+  write recording the failure. A failure once the Secret exists marks it `failed` with Helm's
+  description and answers `status: 'failed'` rather than an error, so the screen offers **Uninstall**;
+  a context switch mid-install writes nothing more and says the release was left pending.
+- **Every object an install writes carries Helm's ownership metadata** (`withHelmOwnership` in
+  `helm.ts`: the `app.kubernetes.io/managed-by: Helm` label and the `meta.helm.sh/release-name` and
+  `release-namespace` annotations), as Helm stamps it; hooks and CRDs are not stamped, and the stored
+  manifest stays the render without it. Helm 4.3 `uninstall` leaves an object without it in place as
+  "not owned by this release", which the end-to-end spec asserts against.
+- The Secret holds what the Helm CLI decodes: Helm's `Chart` JSON (`helmChartRecord`,
+  `src/main/charts/release-chart.ts`: metadata read with every scalar a string so `1.10` survives,
+  templates, default values, schema and other files base64, no subcharts), `info` with no `deleted`
+  and hooks with no `last_run` until they ran, since Go cannot parse an empty time. The end-to-end
+  spec has the real Helm list, read and uninstall a release the app installed.
+- The screen is `/helm/charts/install/$source/$chart/$version` (`charts_.install...` so it renders
+  beside the Charts list); switching the version replaces the path and keeps edited values. Its entry
+  points are #420's. The e2e job installs a pinned Helm with `azure/setup-helm`.
 
 ### Container detail
 

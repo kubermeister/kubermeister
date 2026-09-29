@@ -1,0 +1,5 @@
+apiVersion: v2
+name: km-demo
+description: The chart the end-to-end suite installs from its own fixture repository.
+version: 0.1.0
+appVersion: '1.0'

@@ -101,6 +101,7 @@ import { Route as WorkloadsReplicationcontrollersNamespaceNameChar123TabChar125R
 import { Route as WorkloadsSecretsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/secrets/$namespace.$name.{-$tab}';
 import { Route as WorkloadsStatefulsetsNamespaceNameChar123TabChar125RouteImport } from './routes/workloads/statefulsets/$namespace.$name.{-$tab}';
 import { Route as AddonsInstancesCrdNamespaceNameChar123TabChar125RouteImport } from './routes/addons/instances/$crd/$namespace.$name.{-$tab}';
+import { Route as HelmChartsInstallSourceChartVersionRouteImport } from './routes/helm/charts_.install.$source.$chart.$version';
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -624,6 +625,12 @@ const AddonsInstancesCrdNamespaceNameChar123TabChar125Route =
     path: '/addons/instances/$crd/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
+const HelmChartsInstallSourceChartVersionRoute =
+  HelmChartsInstallSourceChartVersionRouteImport.update({
+    id: '/helm/charts_/install/$source/$chart/$version',
+    path: '/helm/charts/install/$source/$chart/$version',
+    getParentRoute: () => rootRouteImport,
+  } as any);
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
@@ -718,6 +725,7 @@ export interface FileRoutesByFullPath {
   '/workloads/secrets/$namespace/$name/{-$tab}': typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
   '/workloads/statefulsets/$namespace/$name/{-$tab}': typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
   '/addons/instances/$crd/$namespace/$name/{-$tab}': typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
+  '/helm/charts/install/$source/$chart/$version': typeof HelmChartsInstallSourceChartVersionRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -812,6 +820,7 @@ export interface FileRoutesByTo {
   '/workloads/secrets/$namespace/$name/{-$tab}': typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
   '/workloads/statefulsets/$namespace/$name/{-$tab}': typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
   '/addons/instances/$crd/$namespace/$name/{-$tab}': typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
+  '/helm/charts/install/$source/$chart/$version': typeof HelmChartsInstallSourceChartVersionRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -907,6 +916,7 @@ export interface FileRoutesById {
   '/workloads/secrets/$namespace/$name/{-$tab}': typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
   '/workloads/statefulsets/$namespace/$name/{-$tab}': typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
   '/addons/instances/$crd/$namespace/$name/{-$tab}': typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
+  '/helm/charts_/install/$source/$chart/$version': typeof HelmChartsInstallSourceChartVersionRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
@@ -1002,7 +1012,8 @@ export interface FileRouteTypes {
     | '/workloads/replicationcontrollers/$namespace/$name/{-$tab}'
     | '/workloads/secrets/$namespace/$name/{-$tab}'
     | '/workloads/statefulsets/$namespace/$name/{-$tab}'
-    | '/addons/instances/$crd/$namespace/$name/{-$tab}';
+    | '/addons/instances/$crd/$namespace/$name/{-$tab}'
+    | '/helm/charts/install/$source/$chart/$version';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -1096,7 +1107,8 @@ export interface FileRouteTypes {
     | '/workloads/replicationcontrollers/$namespace/$name/{-$tab}'
     | '/workloads/secrets/$namespace/$name/{-$tab}'
     | '/workloads/statefulsets/$namespace/$name/{-$tab}'
-    | '/addons/instances/$crd/$namespace/$name/{-$tab}';
+    | '/addons/instances/$crd/$namespace/$name/{-$tab}'
+    | '/helm/charts/install/$source/$chart/$version';
   id:
     | '__root__'
     | '/'
@@ -1190,7 +1202,8 @@ export interface FileRouteTypes {
     | '/workloads/replicationcontrollers/$namespace/$name/{-$tab}'
     | '/workloads/secrets/$namespace/$name/{-$tab}'
     | '/workloads/statefulsets/$namespace/$name/{-$tab}'
-    | '/addons/instances/$crd/$namespace/$name/{-$tab}';
+    | '/addons/instances/$crd/$namespace/$name/{-$tab}'
+    | '/helm/charts_/install/$source/$chart/$version';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -1286,6 +1299,7 @@ export interface RootRouteChildren {
   WorkloadsSecretsNamespaceNameChar123TabChar125Route: typeof WorkloadsSecretsNamespaceNameChar123TabChar125Route;
   WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route: typeof WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route;
   AddonsInstancesCrdNamespaceNameChar123TabChar125Route: typeof AddonsInstancesCrdNamespaceNameChar123TabChar125Route;
+  HelmChartsInstallSourceChartVersionRoute: typeof HelmChartsInstallSourceChartVersionRoute;
 }
 
 declare module '@tanstack/react-router' {
@@ -1934,6 +1948,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddonsInstancesCrdNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/helm/charts_/install/$source/$chart/$version': {
+      id: '/helm/charts_/install/$source/$chart/$version';
+      path: '/helm/charts/install/$source/$chart/$version';
+      fullPath: '/helm/charts/install/$source/$chart/$version';
+      preLoaderRoute: typeof HelmChartsInstallSourceChartVersionRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -2072,6 +2093,8 @@ const rootRouteChildren: RootRouteChildren = {
     WorkloadsStatefulsetsNamespaceNameChar123TabChar125Route,
   AddonsInstancesCrdNamespaceNameChar123TabChar125Route:
     AddonsInstancesCrdNamespaceNameChar123TabChar125Route,
+  HelmChartsInstallSourceChartVersionRoute:
+    HelmChartsInstallSourceChartVersionRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

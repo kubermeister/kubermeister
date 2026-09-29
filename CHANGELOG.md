@@ -13,6 +13,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- A chart version from a configured repository or registry can be installed as a Helm release: the
+  values are edited against the chart's own schema, a review lists every rendered object with a
+  server-side dry run and flags a chart that calls `lookup`, and the install follows Helm's order of
+  CRDs, hooks and objects, recording a release the Helm CLI reads, or a failed one that can be
+  uninstalled. Rendering needs Helm 3 or later on the machine.
+
 ### Changed
 
 - Helm has its own section at the bottom of the sidebar, with **Releases** and then **Charts**,

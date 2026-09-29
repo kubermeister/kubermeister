@@ -1,15 +1,15 @@
 ---
 title: Helm releases
-description: Reading, rolling back and uninstalling Helm releases in Kubermeister, decoded from the release Secrets Helm itself writes so the Helm CLI can still read them afterwards. Kubermeister 0.5.0 does not install or upgrade charts.
+description: Installing charts, and reading, rolling back and uninstalling Helm releases in Kubermeister, through the release Secrets Helm itself writes so the Helm CLI can still read them afterwards. Installing needs Helm 3 or later on your machine; upgrading is not supported.
 sidebar:
   order: 1
 ---
 
 import Figure from '@/components/docs/Figure.astro';
 
-Kubermeister 0.5.0 **reads, rolls back and uninstalls** Helm releases. It does **not install or
-upgrade** them, and it cannot browse a chart repository: use the Helm CLI for those, and the release
-shows up here as soon as Helm has written it.
+Kubermeister **installs** a chart from a configured repository or registry, and **reads, rolls
+back and uninstalls** Helm releases. It does **not upgrade** them: use the Helm CLI for that, and the
+new revision shows up here as soon as Helm has written it.
 
 Both screens have a section of their own in the sidebar, **Helm**: **Releases** and **Charts**.
 
@@ -19,8 +19,9 @@ Helm has no API of its own. A release is a **Secret** of type `helm.sh/release.v
 field is base64(gzip(json)), base64'd again by the API, with one Secret per revision named
 `sh.helm.release.v1.<name>.v<n>`.
 
-Kubermeister decodes those Secrets. That is the whole mechanism, and it is why the app needs no Helm
-binary and no component in the cluster. A Secret that will not decode, or would decode to more than
+Kubermeister decodes those Secrets. That is the whole mechanism, and it is why reading releases
+needs no Helm binary and no component in the cluster; only [installing a chart](#installing-a-chart)
+uses Helm, to render it. A Secret that will not decode, or would decode to more than
 32 MiB, is skipped rather than shown half-read. Reading releases needs permission to list Secrets in
 the namespaces you look at.
 
@@ -138,6 +139,98 @@ The toast counts the objects removed and kept, and you land back on **Releases**
 An object annotated `helm.sh/resource-policy: keep` is never deleted by a rollback or an uninstall,
 and the app counts them back to you so you know what was left behind.
 
+## Installing a chart
+
+Installing takes one version of a chart from a repository or registry added under
+[**Settings › Charts**](/docs/reference/settings/#chart-repositories) and installs it as a new
+release in the namespace selected in the top bar.
+
+### Helm is required
+
+The chart is rendered by the `helm` installed on your machine, Helm 3 or later, found on your login
+shell's PATH. Kubermeister runs it for `helm template` and nothing else, with an empty kubeconfig and
+a Helm home of its own, so it never reaches your cluster, your repositories or your plugins. Every
+object is then written by Kubermeister itself, under the context you are on, as any other write is.
+Without Helm the screen says **Helm is required to install a chart** and offers nothing else;
+[install Helm](https://helm.sh/docs/intro/install/) and open it again.
+
+### The values
+
+The screen, **Install** _chart_, asks for three things:
+
+- **Release name**, which starts as the chart's name: lowercase letters, digits and dashes, starting
+  and ending with a letter or digit, at most 53 characters.
+- **Version**, from the versions a classic repository's index lists. An OCI registry lists none, so
+  the version is the one the screen was opened on.
+- The **values**, in an editor that starts from the chart's own `values.yaml`. When the chart ships
+  a `values.schema.json`, the editor marks what it refuses as you type and completes keys and values
+  from it.
+
+The namespace is the one selected in the top bar. Under **All namespaces** the screen says a chart
+installs into one namespace and **Review** stays off until you choose it.
+
+:::caution[`yes` is a string]
+The values are read as YAML 1.2, the way the editor checks them, so `yes`, `no`, `on` and `off` are
+strings; write `true` and `false` for booleans. Helm is handed them as JSON, so it reads them exactly
+as the editor shows them. `helm install -f` reads the same file as YAML 1.1, where `yes` is true, so
+the two can differ, including for a `yes` the chart's own `values.yaml` starts the editor with.
+:::
+
+### The review
+
+**Review** renders the chart and checks what it rendered, before anything is written:
+
+- A render Helm refuses, such as a `required` value or one the chart's schema rejects, is marked on
+  the values it names, in Helm's own words, and the screen stays on the values.
+- A release of the same name already recorded in the namespace is refused, as `helm install` refuses
+  one.
+
+Otherwise the review lists every object in the order it will be written — **Custom resource
+definitions**, **Hooks** and **Objects** — each with its YAML one click away and what a server-side
+dry run said about it:
+
+| Check         | Meaning                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| Checked       | The API server accepted it.                                                                    |
+| After its CRD | Its kind comes from a CRD in this chart, so it can only be checked once that CRD is installed. |
+| Already there | A CRD the cluster already has. Helm leaves it as it is, and so does the install.               |
+| Refused       | The API server refused it, or it already exists. **Install** stays off.                        |
+
+:::caution[Charts that call `lookup`]
+A template's `lookup` finds nothing while a chart is rendered for review, exactly as in
+`helm template`, so whatever it would have read from the cluster is missing from the objects. The
+review says so when a chart calls it.
+:::
+
+### The install
+
+**Install** _release_ writes the render you reviewed, not a new one, in the order Helm follows:
+
+1. The CRDs from the chart's `crds/`, skipping any already there, each waited on until it is served.
+2. The release, recorded as `pending-install` in the Secret `sh.helm.release.v1.<name>.v1`.
+3. The `pre-install` hooks, by weight, each waited on: a Job until it completes, a Pod until it
+   succeeds, anything else once it exists.
+4. The objects.
+5. The `post-install` hooks, the same way.
+6. The release marked `deployed`.
+
+A hook with no delete policy is deleted before it is created, and the `hook-succeeded` and
+`hook-failed` policies are applied as Helm applies them. Hooks for other events, such as `test`, are
+recorded with the release and not run. Each hook may take five minutes, Helm's own default. The new
+release then opens on **Resources**, which shows whether everything came up; the install does not
+wait for workloads to become ready.
+
+A review is good for one install and for 30 minutes. An install refused before anything is written,
+because the review expired or a release of the same name was recorded in the meantime, says why and
+takes you back to the values to review again.
+
+If a step fails once the release is recorded, the release is marked `failed`, as Helm marks it, and
+owns what was written before the failure. The screen says why and offers **Uninstall** and **Open
+release**. CRDs are never removed by an uninstall, by Kubermeister or by Helm.
+
+A release installed here is one the Helm CLI reads and acts on: `helm list`, `helm get values`,
+`helm get hooks` and `helm uninstall` all work on it.
+
 ## Helm charts
 
 **Helm › Charts** lists the charts your installed releases use, derived from the same release Secrets,
@@ -157,6 +250,6 @@ There is no chart detail page and nothing on this screen installs a chart.
 ## Chart repositories
 
 Chart repositories can be added, refreshed and removed under **Settings › Charts**, and they live in
-app settings rather than in the cluster, so they survive a context switch. In 0.5.0 no screen
-installs from them yet, and the **Charts** page does not use them. See
+app settings rather than in the cluster, so they survive a context switch. A chart version from one
+can be [installed](#installing-a-chart); the **Charts** page does not use them. See
 [settings](/docs/reference/settings/).

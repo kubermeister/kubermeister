@@ -21,7 +21,7 @@ vi.mock('../../../src/main/charts/registry.js', async (importOriginal) => ({
     ...registry,
 }));
 
-const { addChartRepository, listChartRepositories, refreshChartRepository, removeChartRepository } =
+const { addChartRepository, listChartRepositories, listChartVersions, refreshChartRepository, removeChartRepository } =
     await import('../../../src/main/charts/repositories.js');
 
 const bitnami: ChartRepository = { name: 'bitnami', kind: 'classic', url: 'https://charts.example.com' };
@@ -262,6 +262,44 @@ describe('chart repositories', () => {
             });
             expect(store.updateSettings).not.toHaveBeenCalled();
             expect(cache.removeIndex).not.toHaveBeenCalled();
+        });
+    });
+    describe('listChartVersions', () => {
+        const cached = {
+            url: bitnami.url,
+            refreshedAt: '2026-09-22T10:00:00.000Z',
+            charts: [
+                {
+                    name: 'nginx',
+                    latestVersion: '18.2.0',
+                    appVersion: '1.27',
+                    description: '',
+                    versions: ['18.2.0', '18.1.0'],
+                },
+            ],
+            archives: {},
+        };
+
+        it('answers a chart’s versions from the cached index without asking the repository', async () => {
+            store.getSettings.mockReturnValue(settingsWith([bitnami]));
+            cache.readIndex.mockReturnValue(cached);
+            await expect(listChartVersions('bitnami', 'nginx')).resolves.toEqual(['18.2.0', '18.1.0']);
+            expect(fetchMock).not.toHaveBeenCalled();
+        });
+
+        it('reads the index again once when the cached one does not name the chart', async () => {
+            store.getSettings.mockReturnValue(settingsWith([bitnami]));
+            cache.readIndex.mockReturnValue(cached);
+            fetchMock.mockResolvedValue(okIndex());
+            await expect(listChartVersions('bitnami', 'redis')).resolves.toEqual(['20.0.1']);
+            fetchMock.mockResolvedValue(okIndex());
+            await expect(listChartVersions('bitnami', 'postgresql')).rejects.toMatchObject({ kind: 'notFound' });
+        });
+
+        it('answers null for an OCI registry, which lists no versions, and refuses an unknown source', async () => {
+            store.getSettings.mockReturnValue(settingsWith([ghcr]));
+            await expect(listChartVersions('ghcr', 'nginx')).resolves.toBeNull();
+            await expect(listChartVersions('nowhere', 'nginx')).rejects.toMatchObject({ kind: 'notFound' });
         });
     });
 });

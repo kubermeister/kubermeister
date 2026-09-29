@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-prepare
+  annotations:
+    helm.sh/hook: pre-install
+    helm.sh/hook-weight: '-1'
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: prepare
+          image: busybox:1.36
+          command: ['sh', '-c', 'echo prepared']
