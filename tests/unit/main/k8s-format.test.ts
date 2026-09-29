@@ -72,6 +72,15 @@ describe('cpu quantity parsing', () => {
         expect(cpuToMillicores('not-a-number')).toBe(0);
     });
 
+    it('reads the decimal multiplier suffixes and refuses unknown ones', () => {
+        expect(cpuToMillicores('1k')).toBe(1_000_000);
+        expect(cpuToMillicores('2M')).toBe(2_000_000_000);
+        expect(cpuToMillicores('1500000000n')).toBe(1500);
+        expect(cpuToMillicores('1Ki')).toBe(1_024_000);
+        expect(cpuToMillicores('1K')).toBe(0);
+        expect(cpuToMillicores('3x')).toBe(0);
+    });
+
     it('converts to whole cores', () => {
         expect(cpuToCores('2000m')).toBe(2);
         expect(cpuToCores('4')).toBe(4);
@@ -93,6 +102,20 @@ describe('memory quantity parsing', () => {
         expect(memToBytes('1E')).toBe(1e18);
         expect(memToBytes('2Ei')).toBe(2 * 1024 ** 6);
         expect(memToBytes('garbage')).toBe(0);
+    });
+
+    it('reads the lower-case kilo and the milli suffix the API server canonicalises to', () => {
+        expect(memToBytes('1500k')).toBe(1_500_000);
+        expect(memToBytes('1k')).toBe(1000);
+        expect(memToBytes('128974848000m')).toBe(128_974_848);
+        expect(memToBytes('2000000u')).toBe(2);
+        expect(memToBytes('3000000000n')).toBe(3);
+    });
+
+    it('refuses suffixes Kubernetes does not define rather than reading them as bytes', () => {
+        expect(memToBytes('1K')).toBe(0);
+        expect(memToBytes('5X')).toBe(0);
+        expect(memToBytes('1ki')).toBe(0);
     });
 
     it('converts to MiB and GiB', () => {
@@ -131,6 +154,11 @@ describe('quantityToNumber / formatQuantityDelta', () => {
         expect(quantityToNumber('requests.storage', '1Gi')).toBe(1024 ** 3);
         expect(quantityToNumber('pods', '10')).toBe(10);
         expect(quantityToNumber('services', undefined)).toBe(0);
+        expect(quantityToNumber('requests.memory', '1500k')).toBe(1_500_000);
+        expect(quantityToNumber('limits.cpu', '1k')).toBe(1_000_000);
+        expect(quantityToNumber('pods', '1k')).toBe(1000);
+        expect(quantityToNumber('count/configmaps', '2k')).toBe(2000);
+        expect(quantityToNumber('pods', 'lots')).toBe(0);
     });
 
     it('formats quota headroom in the resource unit', () => {
@@ -138,6 +166,8 @@ describe('quantityToNumber / formatQuantityDelta', () => {
         expect(formatQuantityDelta('limits.cpu', '2', '1500m')).toBe('500m');
         expect(formatQuantityDelta('requests.memory', '1Gi', '512Mi')).toBe('512 MiB');
         expect(formatQuantityDelta('pods', '20', '7')).toBe('13');
+        expect(formatQuantityDelta('requests.memory', '2M', '1500k')).toBe('488 KiB');
+        expect(formatQuantityDelta('pods', '1k', '400')).toBe('600');
     });
 
     it('clamps at zero and falls back with no hard ceiling', () => {
