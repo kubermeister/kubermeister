@@ -376,6 +376,25 @@ describe('helm writes', () => {
             expect(helm.goneBetween(from, to).map((o) => o.metadata.name)).toEqual(['demo-svc']);
             expect(helm.goneBetween(to, from)).toEqual([]);
         });
+
+        it('takes an object moved to another version of its group as the same object', () => {
+            const at = (apiVersion: string, kind = 'HorizontalPodAutoscaler', name = 'web') => ({
+                apiVersion,
+                kind,
+                metadata: { name, namespace: 'team-a' },
+            });
+            expect(helm.goneBetween([at('autoscaling/v2beta2')], [at('autoscaling/v2')])).toEqual([]);
+            expect(
+                helm.goneBetween(
+                    [at('policy/v1beta1', 'PodDisruptionBudget')],
+                    [at('policy/v1', 'PodDisruptionBudget')],
+                ),
+            ).toEqual([]);
+            expect(helm.goneBetween([at('v1', 'ConfigMap')], [at('v1', 'ConfigMap')])).toEqual([]);
+            // A kind of the same name in another group is another object.
+            expect(helm.goneBetween([at('example.com/v1', 'Service')], [at('v1', 'Service')])).toHaveLength(1);
+            expect(helm.objectKey(at('autoscaling/v1'))).toBe(helm.objectKey(at('autoscaling/v2')));
+        });
     });
 
     describe('uninstallRelease', () => {
