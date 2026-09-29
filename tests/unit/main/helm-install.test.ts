@@ -104,7 +104,7 @@ const INPUT = {
     version: '0.1.0',
     name: 'web',
     namespace: 'team-a',
-    // What the editor read from `enabled: yes`: YAML 1.2, so a string, and Helm is handed the same.
+    // The user's overrides as the editor read them: a `yes` typed there is YAML 1.2's string.
     values: { enabled: 'yes', replicas: 2 },
 };
 

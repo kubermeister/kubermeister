@@ -33,6 +33,7 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 /**
  * Values as JSON, which is how they reach Helm: the renderer parses the editor's text the way the
  * editor checks it (YAML 1.2, so `yes` is a string) and Helm reads the JSON with no second opinion.
+ * They are the user's overrides alone; Helm reads the chart's own `values.yaml` under them itself.
  * A number JSON cannot carry (`.inf`, `.nan`) is refused rather than turned into null on the way.
  */
 export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>

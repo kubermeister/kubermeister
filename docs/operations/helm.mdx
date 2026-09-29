@@ -195,13 +195,13 @@ installs into one namespace and **Review** stays off until you choose it.
   caption="The values start from the chart's own values.yaml."
 />
 
-:::caution[Known issue]
-The values are read as YAML 1.2, the way the editor checks them, so `yes`, `no`, `on` and `off` are
-strings; write `true` and `false` for booleans. Helm is handed them as JSON, so it reads them exactly
-as the editor shows them. `helm install -f` reads the same file as YAML 1.1, where `yes` is true, so
-the two can differ, including for a `yes` the chart's own `values.yaml` starts the editor with
-([#425](https://github.com/kubermeister/kubermeister/issues/425)).
-:::
+Helm is handed only what you changed, as `helm install -f` would take a file of your own values, and
+reads the chart's `values.yaml` itself for the rest. A value you leave as the chart wrote it is
+therefore read by Helm exactly as `helm install` reads it: a default written `yes` is true. A value
+taken out of the editor keeps the chart's default; set it to `null` to remove the default, as Helm
+does. What you change is read the way the editor checks it, as YAML 1.2, so `yes`, `no`, `on` and
+`off` you type are strings; write `true` and `false` for booleans. Those changes are what the release
+records, and what `helm get values` shows.
 
 ### The review
 
@@ -283,8 +283,8 @@ The **values** start from the current revision's own user-supplied values, what 
 shows, and are checked against the chosen version's schema as you type. What the editor holds is the
 whole of what the new revision is given, over that version's defaults: a value taken out of the
 editor goes back to the chart's default, as it would with `helm upgrade -f` and not
-`--reuse-values`. [`yes` is a string](#the-values) here too, while a default the chart's own
-`values.yaml` writes as `yes` is read by Helm as true.
+`--reuse-values`. A `yes` you type is [a string](#the-values) here too, while the chart's own
+`values.yaml` is read by Helm, where a default written `yes` is true.
 
 ### The review
 

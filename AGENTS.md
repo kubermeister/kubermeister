@@ -768,7 +768,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   claim two forms are ambiguous. A key neither the schema nor the defaults name is a warning, never
   for `global` or a subchart's section (`subcharts`, from `Chart.yaml`), whose schema is not this one.
 - The values are read as YAML 1.2, as main reads a manifest, so `yes` is a string, and Helm is
-  handed them as JSON rather than as a file it would read as YAML 1.1 (see Installing a chart).
+  handed them as JSON rather than as a file it would read as YAML 1.1 (see Installing a chart). The
+  chart's own `values.yaml` is Helm's to read, as YAML 1.1, which is why an install hands over only
+  what the edit changed.
 - **A failed render is laid over the values** (`values-render-error.ts`, pure, tested on Helm's own
   messages). `helmErrorMessage` keeps every line after `Error:`, since that is where a schema failure
   lists each value by path (Helm 4's JSON Pointers, Helm 3's dotted fields, a subchart's under its
@@ -786,11 +788,16 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   names that id, is refused for an expired, spent or other-context review or one whose dry run
   refused an object, and spends the review whatever the outcome. The install code lives in
   `src/main/k8s` because it writes to the cluster; `src/main/charts` still touches no API server.
-- **The values reach Helm as JSON.** The renderer parses the editor's text with the editor's own
-  reader (`valuesForRender` in `values-validation.ts`, YAML 1.2, so `yes` is a string) and sends the
-  object across the bridge (`chartValuesObjectSchema` refuses a number JSON cannot carry); main writes
-  it to `values.json`, which Helm reads with no YAML 1.1 second opinion. The release's `config` is
-  that same object, so the review, the install and `helm get values` agree.
+- **The values reach Helm as JSON, and only the user's overrides.** The renderer parses the editor's
+  text with the editor's own reader (`valuesForRender` in `values-validation.ts`, YAML 1.2, so `yes`
+  is a string) and `valueOverrides` keeps only what differs from the chart's `values.yaml` read the
+  same way: mappings walked into, anything else that differs (a list, a null deleting a default)
+  whole, a key taken out of the text left to its default. Helm reads the chart's own file itself, as
+  YAML 1.1, so a default written `yes` is true as in `helm install`, which the handed-over JSON alone
+  could never say. The object crosses the bridge (`chartValuesObjectSchema` refuses a number JSON
+  cannot carry) and main writes it to `values.json`. The release's `config` is that same object, so
+  the review, the install and `helm get values` agree. An upgrade needs no such step: its editor
+  starts from the revision's `config`, which is already overrides alone.
 - A dry-run check is `passed`, `failed`, `exists` (a CRD already there, which Helm leaves alone) or
   `deferred` (a kind a CRD of the same chart defines, which the server cannot check before it
   exists). An object that already exists is `failed`, since Helm installs over nothing it does not
