@@ -15,10 +15,7 @@ class FakeInformer extends EventEmitter {
 }
 let informer = new FakeInformer();
 const makeInformer = vi.fn(() => informer);
-vi.mock('@kubernetes/client-node', async () => ({
-    ...(await vi.importActual<typeof import('@kubernetes/client-node')>('@kubernetes/client-node')),
-    makeInformer,
-}));
+vi.mock('../../../src/main/k8s/informer.js', () => ({ makeInformer }));
 
 const listNamespacedPod = vi.fn(async () => ({ items: [] }));
 const listPodForAllNamespaces = vi.fn(async () => ({ items: [] }));
@@ -249,6 +246,48 @@ describe('startResourceWatch', () => {
         await vi.advanceTimersByTimeAsync(WATCH_RETRY_MS);
         expect(informer.start).toHaveBeenCalledTimes(2);
         expect(informer.stop).toHaveBeenCalledOnce();
+    });
+
+    it('reports a start that rejects and retries it, rather than leaving the rejection unhandled', async () => {
+        informer.start.mockRejectedValueOnce(new Error('exec plugin aws failed')).mockRejectedValueOnce('again');
+        const send = vi.fn();
+        const { stop } = await startResourceWatch({ kind: 'Pod' }, send);
+        expect(send).toHaveBeenCalledWith({ type: 'error', message: 'exec plugin aws failed' });
+
+        // The retry rejects as well, and is reported and scheduled again.
+        await vi.advanceTimersByTimeAsync(WATCH_RETRY_MS);
+        expect(informer.start).toHaveBeenCalledTimes(2);
+        expect(send).toHaveBeenLastCalledWith({ type: 'error', message: 'again' });
+        await vi.advanceTimersByTimeAsync(WATCH_RETRY_MS);
+        expect(informer.start).toHaveBeenCalledTimes(3);
+        stop();
+    });
+
+    it('keeps retrying a first start that failed for a screen that arrives later', async () => {
+        informer.start.mockRejectedValueOnce(new Error('token expired'));
+        const first = await startResourceWatch({ kind: 'Pod', namespace: 'team-a' }, vi.fn());
+        first.stop();
+        // The failed screen went, so nothing of it is left to make the next screen "second".
+        expect(openInformerCount()).toBe(0);
+
+        informer.start.mockRejectedValueOnce(new Error('token expired'));
+        const a = vi.fn();
+        await startResourceWatch({ kind: 'Pod', namespace: 'team-a' }, a);
+        const b = vi.fn();
+        await startResourceWatch({ kind: 'Pod', namespace: 'team-a' }, b);
+        expect(informer.start).toHaveBeenCalledTimes(2);
+        // The second screen shares the failing informer, which is still retried for both.
+        await vi.advanceTimersByTimeAsync(WATCH_RETRY_MS);
+        expect(informer.start).toHaveBeenCalledTimes(3);
+        expect(a).toHaveBeenCalledWith({ type: 'error', message: 'token expired' });
+    });
+
+    it('keeps one pending retry when a failure is reported twice', async () => {
+        await startResourceWatch({ kind: 'Pod' }, vi.fn());
+        informer.emit('error', new Error('one'));
+        informer.emit('error', new Error('two'));
+        await vi.advanceTimersByTimeAsync(WATCH_RETRY_MS);
+        expect(informer.start).toHaveBeenCalledTimes(2);
     });
 
     it('stops emitting after stop and cancels a pending retry', async () => {
