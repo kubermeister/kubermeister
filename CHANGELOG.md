@@ -40,6 +40,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Upgrading or rolling back a Helm release across a chart that moves an object to a new API version,
   such as an autoscaler from `autoscaling/v1` to `v2`, keeps that object instead of deleting it as
   one the new revision no longer renders.
+- Logs and shells show accented letters, CJK characters and emoji intact when one arrives split across
+  two chunks, and a downloaded log cut to its size limit no longer drops its first whole line or opens
+  mid-character.
 
 ## [0.9.1] - 2026-09-29
 

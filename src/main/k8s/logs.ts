@@ -1,3 +1,4 @@
+import { StringDecoder } from 'node:string_decoder';
 import { Writable, type Readable } from 'node:stream';
 import { Log } from '@kubernetes/client-node';
 import type { LogLine, PodLogDownload, PodLogDownloadInput, PodLogSnapshotInput } from '../../shared/k8s/logs.js';
@@ -49,13 +50,16 @@ export async function startPodLogStream(rawInput: unknown, send: StreamSend): Pr
     if (!target) return reportMissingPod(send, input.name, input.namespace, input.container);
 
     const splitter = createLineSplitter((line) => send({ type: 'data', data: parseLogLine(line) }));
+    // A body chunk can end inside a multi-byte character; the decoder keeps those bytes for the next.
+    const decoder = new StringDecoder('utf8');
     const sink = new Writable({
         write(chunk: Buffer, _encoding, callback) {
-            splitter.push(chunk.toString('utf8'));
+            splitter.push(decoder.write(chunk));
             callback();
         },
     });
     sink.on('finish', () => {
+        splitter.push(decoder.end());
         splitter.flush();
         send({ type: 'end' });
     });
@@ -139,9 +143,26 @@ export function readPodLogText(input: PodLogDownloadInput): Promise<PodLogDownlo
                 timestamps: true,
             }),
         );
-        if (Buffer.byteLength(raw, 'utf8') <= LOG_DOWNLOAD_BYTES) return { text: raw, truncated: false };
-        // Cut on a line boundary so the file never opens on half a line.
-        const tail = Buffer.from(raw, 'utf8').subarray(-LOG_DOWNLOAD_BYTES).toString('utf8');
-        return { text: tail.slice(tail.indexOf('\n') + 1), truncated: true };
+        const bytes = Buffer.from(raw, 'utf8');
+        if (bytes.length <= LOG_DOWNLOAD_BYTES) return { text: raw, truncated: false };
+        return { text: bytes.subarray(tailStart(bytes, LOG_DOWNLOAD_BYTES)).toString('utf8'), truncated: true };
     });
+}
+
+const NEWLINE = 0x0a;
+
+/**
+ * Where the newest `cap` bytes should begin so the file opens on a whole line: at the cut itself
+ * when a line starts there, else after the first newline past it. A kept tail with no newline is
+ * one line longer than the cap, which can only be kept in part, so it starts on the first whole
+ * character instead of on a UTF-8 continuation byte.
+ */
+function tailStart(bytes: Buffer, cap: number): number {
+    const cut = bytes.length - cap;
+    if (bytes[cut - 1] === NEWLINE) return cut;
+    const newline = bytes.indexOf(NEWLINE, cut);
+    if (newline !== -1 && newline + 1 < bytes.length) return newline + 1;
+    let start = cut;
+    while (start < bytes.length && (bytes[start]! & 0xc0) === 0x80) start++;
+    return start;
 }

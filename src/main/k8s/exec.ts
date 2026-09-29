@@ -1,3 +1,4 @@
+import { StringDecoder } from 'node:string_decoder';
 import { PassThrough, Writable } from 'node:stream';
 import { Exec } from '@kubernetes/client-node';
 import {
@@ -12,11 +13,21 @@ import { EXEC_CONTAINER_ROLES, reportMissingPod, resolvePodTarget } from './pod-
 
 const DEFAULT_COMMAND = ['/bin/sh'];
 
-/** A Writable that forwards every chunk to the renderer as raw terminal text. */
+/**
+ * A Writable that forwards every chunk to the renderer as raw terminal text. One decoder per sink
+ * holds the bytes of a character a websocket frame ended inside of until the next frame completes it.
+ */
 export function terminalSink(send: StreamSend): Writable {
+    const decoder = new StringDecoder('utf8');
     const sink = new Writable({
         write(chunk: Buffer, _encoding, callback) {
-            send({ type: 'data', data: chunk.toString('utf8') });
+            const data = decoder.write(chunk);
+            if (data.length > 0) send({ type: 'data', data });
+            callback();
+        },
+        final(callback) {
+            const rest = decoder.end();
+            if (rest.length > 0) send({ type: 'data', data: rest });
             callback();
         },
     });
