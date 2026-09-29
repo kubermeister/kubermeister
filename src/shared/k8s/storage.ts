@@ -4,7 +4,7 @@ const pairs = z.array(z.tuple([z.string(), z.string()]));
 
 export const volumeStatusSchema = z.enum(['Bound', 'Available', 'Released', 'Failed', 'Pending', 'Unknown']);
 export const claimStatusSchema = z.enum(['Bound', 'Pending', 'Lost', 'Unknown']);
-export const snapshotReadySchema = z.enum(['Ready', 'Pending']);
+export const snapshotReadySchema = z.enum(['Ready', 'Pending', 'Failed']);
 
 export const volumeSchema = z.object({
     name: z.string(),

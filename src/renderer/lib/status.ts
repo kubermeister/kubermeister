@@ -59,7 +59,7 @@ export const CLAIM_TONE: Record<ClaimStatus, StatusTone> = {
     Lost: 'danger',
     Unknown: 'neutral',
 };
-export const SNAPSHOT_TONE: Record<SnapshotReady, StatusTone> = { Ready: 'ok', Pending: 'warn' };
+export const SNAPSHOT_TONE: Record<SnapshotReady, StatusTone> = { Ready: 'ok', Pending: 'warn', Failed: 'danger' };
 export const RELEASE_TONE: Record<ReleaseStatus, StatusTone> = {
     Deployed: 'ok',
     Superseded: 'neutral',
@@ -74,7 +74,12 @@ export const API_SERVICE_TONE: Record<ApiServiceStatus, StatusTone> = { Availabl
 
 /** A budget allowing no disruption blocks a drain, which is worth flagging rather than colouring ok. */
 export const DISRUPTION_TONE: Record<DisruptionStatus, StatusTone> = { Satisfied: 'ok', Blocked: 'warn' };
-export const JOB_TONE: Record<JobStatus, StatusTone> = { Complete: 'ok', Running: 'accent', Failed: 'danger' };
+export const JOB_TONE: Record<JobStatus, StatusTone> = {
+    Complete: 'ok',
+    Running: 'accent',
+    Suspended: 'neutral',
+    Failed: 'danger',
+};
 
 /** An object a release rendered and the cluster no longer holds is drift, which a release is broken by. */
 export const RELEASE_OBJECT_TONE: Record<ReleaseObjectState, StatusTone> = {

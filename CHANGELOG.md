@@ -27,6 +27,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   "Nothing else names this object"; a failed log download, clipboard copy or context or namespace
   switch shows an error, and a missing node, namespace or cluster-scoped custom resource no longer
   reads as missing from the current namespace.
+- A pod whose init container crash-loops or cannot pull its image reads CrashLoop or Error and raises that alert
+  instead of Pending, the ready count includes native sidecars as kubectl's does, a suspended Job
+  reads Suspended instead of Running, and a volume snapshot the controller failed reads Failed
+  instead of Pending.
 - Saving a custom resource's manifest shows the saved text on its Manifest tab and the new values on its
   screens at once, instead of the text from before the save until the page was reopened.
 - A pod owned by a custom resource that shares a built-in kind's name, such as an OpenKruise

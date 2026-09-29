@@ -716,6 +716,24 @@ describe('job transforms', () => {
         expect(workloads.jobStatus(job({ status: {} }))).toBe('Running');
     });
 
+    it('reads a suspended job as Suspended, below its terminal conditions', () => {
+        expect(workloads.jobStatus(job({ spec: { suspend: true, template: {} }, status: {} }))).toBe('Suspended');
+        expect(workloads.jobStatus(job({ status: { conditions: [{ type: 'Suspended', status: 'True' }] } }))).toBe(
+            'Suspended',
+        );
+        expect(workloads.jobStatus(job({ status: { conditions: [{ type: 'Suspended', status: 'False' }] } }))).toBe(
+            'Running',
+        );
+        expect(
+            workloads.jobStatus(
+                job({
+                    spec: { suspend: true, template: {} },
+                    status: { conditions: [{ type: 'Failed', status: 'True' }] },
+                }),
+            ),
+        ).toBe('Failed');
+    });
+
     it('builds the row with completions, duration and age', () => {
         expect(workloads.toJob(job(), NOW)).toEqual({
             name: 'import',

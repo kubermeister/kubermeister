@@ -117,6 +117,24 @@ describe('alerts', () => {
         });
     });
 
+    it('reads a crash-looping init container as a crash loop rather than a pending pod', async () => {
+        const stuck = pod('init-loop', 'Pending');
+        stuck.status!.initContainerStatuses = [
+            {
+                name: 'migrate',
+                ready: false,
+                restartCount: 5,
+                image: 'x',
+                imageID: 'x',
+                state: { waiting: { reason: 'CrashLoopBackOff' } },
+            },
+        ];
+        podsByPhase([stuck]);
+        await expect(alerts.podAlerts(NOW)).resolves.toEqual([
+            { tone: 'danger', title: 'CrashLoopBackOff: init-loop', detail: '5 restarts — team-a/init-loop' },
+        ]);
+    });
+
     it('never raises a high-restarts alert: healthy pods are not read at all', async () => {
         podsByPhase([pod('flaky', 'Running', { restarts: 50 })]);
         await expect(alerts.podAlerts(NOW)).resolves.toEqual([]);

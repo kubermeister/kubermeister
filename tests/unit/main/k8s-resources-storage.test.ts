@@ -172,6 +172,13 @@ describe('storage transforms', () => {
         });
         expect(storage.toSnapshotDetail(object, NOW)).toMatchObject({ labels: [], annotations: [] });
     });
+
+    it('reads a snapshot the controller reported an error for as Failed', () => {
+        const failed = { metadata: { name: 'x' }, status: { readyToUse: false, error: { message: 'no space' } } };
+        expect(storage.toSnapshot(failed, NOW).ready).toBe('Failed');
+        const recovered = { metadata: { name: 'x' }, status: { readyToUse: true, error: { message: 'retried' } } };
+        expect(storage.toSnapshot(recovered, NOW).ready).toBe('Ready');
+    });
 });
 
 describe('storage readers', () => {

@@ -22,12 +22,16 @@ import { containerUsage, ensureSampler, podUsage } from '../sampler.js';
  * Pure transforms first, exported for tests and for the watch stream; thin readers at the end.
  */
 
-/** Terminating and waiting reasons outrank the phase, since the phase still says Running for them. */
+/**
+ * Terminating and waiting reasons outrank the phase, since the phase still says Running for them.
+ * Init containers count too: one that crash-loops or cannot pull holds the whole pod in Pending.
+ */
 export function derivePodStatus(pod: V1Pod): PodStatus {
     if (pod.metadata?.deletionTimestamp) return 'Terminating';
-    const waiting = pod.status?.containerStatuses?.map((cs) => cs.state?.waiting?.reason).find(Boolean);
-    if (waiting === 'CrashLoopBackOff') return 'CrashLoop';
-    if (waiting === 'ImagePullBackOff' || waiting === 'ErrImagePull') return 'Error';
+    const statuses = [...(pod.status?.initContainerStatuses ?? []), ...(pod.status?.containerStatuses ?? [])];
+    const waiting = new Set(statuses.map((cs) => cs.state?.waiting?.reason));
+    if (waiting.has('CrashLoopBackOff')) return 'CrashLoop';
+    if (waiting.has('ImagePullBackOff') || waiting.has('ErrImagePull')) return 'Error';
     switch (pod.status?.phase) {
         case 'Running':
             return 'Running';
@@ -42,16 +46,26 @@ export function derivePodStatus(pod: V1Pod): PodStatus {
     }
 }
 
-/** `usage` is the latest metrics-server sample for the pod; zero usage when there is none yet. */
+/**
+ * `usage` is the latest metrics-server sample for the pod; zero usage when there is none yet. The
+ * ready ratio counts native sidecars (init containers with `restartPolicy: Always`) as kubectl does,
+ * and restarts include every init container's.
+ */
 export function toPod(pod: V1Pod, now = Date.now(), usage?: Usage): Pod {
     const statuses = pod.status?.containerStatuses ?? [];
+    const initStatuses = pod.status?.initContainerStatuses ?? [];
     const containers = pod.spec?.containers ?? [];
+    const sidecars = new Set(
+        (pod.spec?.initContainers ?? []).filter((c) => c.restartPolicy === 'Always').map((c) => c.name),
+    );
+    const sidecarStatuses = initStatuses.filter((cs) => sidecars.has(cs.name));
+    const readyCount = [...statuses, ...sidecarStatuses].filter((cs) => cs.ready).length;
     return {
         name: pod.metadata?.name ?? '',
         namespace: pod.metadata?.namespace ?? 'default',
         status: derivePodStatus(pod),
-        ready: `${statuses.filter((cs) => cs.ready).length}/${containers.length || statuses.length}`,
-        restarts: statuses.reduce((sum, cs) => sum + cs.restartCount, 0),
+        ready: `${readyCount}/${(containers.length || statuses.length) + sidecars.size}`,
+        restarts: [...initStatuses, ...statuses].reduce((sum, cs) => sum + cs.restartCount, 0),
         age: age(pod.metadata?.creationTimestamp, now),
         node: dash(pod.spec?.nodeName),
         owner: ownerLabel(pod.metadata),
