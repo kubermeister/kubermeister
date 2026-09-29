@@ -1,5 +1,7 @@
 import type { ClusterSparklines, HealthPoint, ResourceSeries, Usage } from '../../shared/k8s/metrics.js';
+import { currentAbortSignal } from './abort.js';
 import { apis } from './client.js';
+import { withK8s } from './errors.js';
 import { cpuToMillicores, memToMi } from './format.js';
 import { containerUsageKey, readNodeUsage, readUsage } from './metrics.js';
 
@@ -24,6 +26,11 @@ interface AggregatePoint {
 }
 
 let running = false;
+/**
+ * Bumped by every reset. A sample that was reading when the context switched belongs to the cluster
+ * that was left, so it compares the epoch it started in before writing anything.
+ */
+let epoch = 0;
 let timer: NodeJS.Timeout | null = null;
 let aggregate: AggregatePoint[] = [];
 /** Node name to percent-of-allocatable points. */
@@ -53,11 +60,14 @@ export function percent(used: number, total: number): number {
 
 /** Take one sample: refresh the latest usage maps and append a point to every ring. */
 export async function sampleOnce(now = Date.now()): Promise<void> {
+    const startedIn = epoch;
     const [usage, nodeUsage, nodeList] = await Promise.all([
         readUsage(),
         readNodeUsage(),
         bestEffort(() => apis().core.listNode(), { items: [] }),
     ]);
+    // An aborted read answers empty rather than failing, which would be recorded as a zero point.
+    if (epoch !== startedIn || currentAbortSignal()?.aborted) return;
     const podUsage = usage.pods;
     latestPods = podUsage;
     latestContainers = usage.containers;
@@ -100,7 +110,9 @@ export async function sampleOnce(now = Date.now()): Promise<void> {
 
 async function tick(): Promise<void> {
     try {
-        await sampleOnce();
+        // Under the read ceiling like every other call: a credential plugin waiting for a sign-in or a
+        // server that never answers would otherwise hold the chain forever and freeze every chart.
+        await withK8s('metrics', () => sampleOnce());
     } catch {
         // A rejected sample must not kill the timer chain; charts flatline one interval and recover.
     } finally {
@@ -123,6 +135,7 @@ export function stopSampler(): void {
 
 /** Discard history and the latest usage after a context switch. */
 export function resetHistory(): void {
+    epoch++;
     aggregate = [];
     perNode.clear();
     perResource.clear();

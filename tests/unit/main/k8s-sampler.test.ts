@@ -11,6 +11,13 @@ const listNode = vi.fn();
 vi.mock('../../../src/main/k8s/client.js', () => ({ apis: () => ({ core: { listNode } }) }));
 
 const sampler = await import('../../../src/main/k8s/sampler.js');
+const { currentAbortSignal } = await import('../../../src/main/k8s/abort.js');
+const { readTimeoutMs } = await import('../../../src/main/k8s/errors.js');
+
+const usageOf = (cpu: number) => ({
+    pods: new Map([['team-a/web-1', { cpu, mem: 64 }]]),
+    containers: new Map(),
+});
 
 const node = (name: string, cpu = '4', memory = '8Gi') => ({
     metadata: { name },
@@ -120,5 +127,50 @@ describe('sampler', () => {
         expect(sampler.nodeUsage('n1')).toBeUndefined();
         expect(sampler.clusterSparklines().cpu).toEqual([]);
         expect(sampler.trackResourceSeries('team-a', 'web-1')).toEqual({ cpu: [], mem: [] });
+    });
+
+    it('gives up on a sample that never answers at the read ceiling, aborts it and keeps sampling', async () => {
+        let signal: AbortSignal | undefined;
+        readUsage.mockImplementationOnce(() => {
+            signal = currentAbortSignal();
+            return new Promise(() => {});
+        });
+        sampler.ensureSampler();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(signal?.aborted).toBe(false);
+        await vi.advanceTimersByTimeAsync(readTimeoutMs());
+        expect(signal?.aborted).toBe(true);
+        await vi.advanceTimersByTimeAsync(sampler.SAMPLE_INTERVAL_MS);
+        expect(readUsage).toHaveBeenCalledTimes(2);
+        expect(sampler.clusterSparklines().cpu).toHaveLength(1);
+    });
+
+    it('records nothing from a sample that answers after its ceiling aborted it', async () => {
+        let answer: (value: ReturnType<typeof usageOf>) => void = () => {};
+        readUsage.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+        sampler.ensureSampler();
+        await vi.advanceTimersByTimeAsync(readTimeoutMs());
+        sampler.stopSampler();
+        answer(usageOf(999));
+        await vi.advanceTimersByTimeAsync(0);
+        expect(sampler.podUsage('team-a', 'web-1')).toBeUndefined();
+        expect(sampler.clusterSparklines().cpu).toEqual([]);
+    });
+
+    it('drops a sample that was running when the history was reset', async () => {
+        sampler.trackResourceSeries('team-a', 'web-1');
+        let answer: (value: ReturnType<typeof usageOf>) => void = () => {};
+        readUsage.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+        const sample = sampler.sampleOnce();
+        sampler.resetHistory();
+        answer(usageOf(999));
+        await sample;
+        expect(sampler.podUsage('team-a', 'web-1')).toBeUndefined();
+        expect(sampler.nodeUsage('n1')).toBeUndefined();
+        expect(sampler.nodeSeries('n1')).toEqual({ cpu: [], mem: [] });
+        expect(sampler.workloadHealth()).toEqual([]);
+        await sampler.sampleOnce();
+        expect(sampler.podUsage('team-a', 'web-1')).toEqual({ cpu: 250, mem: 64 });
+        expect(sampler.clusterSparklines().cpu).toHaveLength(1);
     });
 });
