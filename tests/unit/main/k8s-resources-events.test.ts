@@ -47,6 +47,22 @@ describe('event transforms', () => {
         expect(events.eventTimestamp(event({ lastTimestamp: new Date('nope') }))).toBeUndefined();
     });
 
+    it('reads a repeating series by its last observation, not its first', () => {
+        const series = event({
+            lastTimestamp: undefined,
+            eventTime: new Date('2026-09-15T09:00:00Z'),
+            series: { count: 12, lastObservedTime: new Date('2026-09-15T12:30:00Z') },
+        });
+        expect(events.eventTimestamp(series)).toBe('2026-09-15T12:30:00.000Z');
+        expect(events.eventTimestamp(event({ series: { count: 2, lastObservedTime: new Date('nope') } }))).toBe(
+            '2026-09-15T12:00:05.000Z',
+        );
+
+        const older = event({ reason: 'older', lastTimestamp: new Date('2026-09-15T11:00:00Z') });
+        const repeating = { ...series, reason: 'repeating' };
+        expect(events.sortedByTimeDesc([older, repeating]).map((e) => e.reason)).toEqual(['repeating', 'older']);
+    });
+
     it('renders clock time or a dash', () => {
         expect(events.clockTime('2026-09-15T12:00:05.000Z')).toMatch(/^\d{2}:\d{2}:\d{2}$/);
         expect(events.clockTime(undefined)).toBe('—');

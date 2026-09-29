@@ -4,9 +4,17 @@ import { isClusterScopedKindName } from '../../../shared/k8s/registry.js';
 import { apis, isSafeSelectorValue, listItems, resolveObjectNamespace } from '../client.js';
 import { withK8s } from '../errors.js';
 
-/** The most recent of the timestamps an event may carry, as ISO; undefined when it has none. */
+/**
+ * The most recent of the timestamps an event may carry, as ISO; undefined when it has none. An
+ * event written through `events.k8s.io` keeps its first `eventTime` and no `lastTimestamp`, so a
+ * repeating one says when it last happened only in `series.lastObservedTime`.
+ */
 export function eventTimestamp(event: CoreV1Event): string | undefined {
     const raw = event.lastTimestamp ?? event.eventTime ?? event.firstTimestamp ?? event.metadata?.creationTimestamp;
+    return isoOf(event.series?.lastObservedTime) ?? isoOf(raw);
+}
+
+function isoOf(raw: Date | string | undefined): string | undefined {
     if (!raw) return undefined;
     const date = new Date(raw);
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
