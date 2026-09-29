@@ -110,11 +110,23 @@ describe('building a job from one that ran', () => {
         expect(lifecycle.jobFromTemplate(stamped, 'import').metadata?.labels).toBeUndefined();
     });
 
-    it('stamps a manual run with the time, so two runs never collide', () => {
-        const name = lifecycle.manualJobName('nightly', new Date('2026-09-16T10:30:00Z'));
-        expect(name).toBe('nightly-2609161030');
+    it('stamps a manual run with the time and a random suffix', () => {
+        const name = lifecycle.manualJobName('nightly', new Date('2026-09-16T10:30:00Z'), 'k3x9q');
+        expect(name).toBe('nightly-2609161030-k3x9q');
+    });
+
+    it('never names two runs started in the same minute alike', () => {
+        const now = new Date('2026-09-16T10:30:00Z');
+        const names = new Set(Array.from({ length: 50 }, () => lifecycle.manualJobName('nightly', now)));
+        expect(names.size).toBe(50);
+        for (const name of names) expect(name).toMatch(/^nightly-2609161030-[a-z0-9]{5}$/);
+    });
+
+    it('trims a long cron job name rather than the stamp that keeps runs apart', () => {
+        const name = lifecycle.manualJobName('x'.repeat(70), new Date('2026-09-16T10:30:00Z'), 'k3x9q');
         // Names stay within the 63 characters Kubernetes allows.
-        expect(lifecycle.manualJobName('x'.repeat(70)).length).toBe(63);
+        expect(name.length).toBe(63);
+        expect(name.endsWith('-2609161030-k3x9q')).toBe(true);
     });
 });
 
@@ -150,6 +162,36 @@ describe('running a job again', () => {
         expect(batch.createNamespacedJob).not.toHaveBeenCalled();
     });
 
+    it('keeps waiting through a read that failed for another reason than the job being gone', async () => {
+        vi.useFakeTimers();
+        batch.readNamespacedJob
+            .mockResolvedValueOnce(ranJob())
+            .mockRejectedValueOnce(new ApiException(503, 'unavailable', null, {}))
+            .mockRejectedValueOnce(new TypeError('fetch failed'))
+            .mockResolvedValueOnce(ranJob())
+            .mockRejectedValue(new ApiException(404, 'gone', null, {}));
+        const retry = lifecycle.retryJob(ON_ALPHA);
+        await vi.advanceTimersByTimeAsync(0);
+        // The old job may still be there: nothing is submitted until a read says it is gone.
+        expect(batch.createNamespacedJob).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(2_000);
+        await expect(retry).resolves.toMatchObject({ name: 'import' });
+        expect(batch.readNamespacedJob).toHaveBeenCalledTimes(5);
+        expect(batch.createNamespacedJob).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports the read that kept failing rather than a deletion it could not see', async () => {
+        vi.useFakeTimers();
+        batch.readNamespacedJob
+            .mockResolvedValueOnce(ranJob())
+            .mockRejectedValue(new ApiException(403, 'forbidden', null, {}));
+        const retry = lifecycle.retryJob(ON_ALPHA);
+        const settled = expect(retry).rejects.toMatchObject({ kind: 'forbidden' });
+        await vi.advanceTimersByTimeAsync(25_000);
+        await settled;
+        expect(batch.createNamespacedJob).not.toHaveBeenCalled();
+    });
+
     it('refuses a retry aimed at a context the app has left', async () => {
         client.activeContextName.mockReturnValue('beta');
         await expect(lifecycle.retryJob(ON_ALPHA)).rejects.toMatchObject({ kind: 'conflict' });
@@ -168,7 +210,7 @@ describe('running and holding a cron job', () => {
     it('creates a job from the cron job’s template, owned by nobody', async () => {
         const result = await lifecycle.triggerCronJob({ ...ON_ALPHA, name: 'nightly' });
         expect(result.kind).toBe('Job');
-        expect(result.name).toMatch(/^nightly-\d{10}$/);
+        expect(result.name).toMatch(/^nightly-\d{10}-[a-z0-9]{5}$/);
         const submitted = batch.createNamespacedJob.mock.calls[0][0].body;
         expect(submitted.metadata.namespace).toBe('team-a');
         // Nothing sweeps it away on the schedule's history limits.

@@ -1,4 +1,12 @@
-import type { KubernetesObject, V1Job, V1JobSpec, V1ObjectMeta, V2MetricSpec } from '@kubernetes/client-node';
+import { randomInt } from 'node:crypto';
+import {
+    ApiException,
+    type KubernetesObject,
+    V1Job,
+    V1JobSpec,
+    V1ObjectMeta,
+    V2MetricSpec,
+} from '@kubernetes/client-node';
 import type {
     AutoscalerUpdateInput,
     CronJobSuspendInput,
@@ -127,14 +135,21 @@ const GONE_POLL_MS = 500;
 
 async function waitForJobGone(name: string, namespace: string, op: string): Promise<void> {
     const deadline = Date.now() + GONE_TIMEOUT_MS;
+    // Only a 404 says the name is free. Any other failure says nothing about the old job, which
+    // may well still be there, so the wait goes on; if reads fail to the end, that failure is the
+    // answer rather than a deletion nobody saw.
+    let failure: unknown;
     while (Date.now() < deadline) {
-        const still = await apis()
-            .batch.readNamespacedJob({ name, namespace })
-            .then(() => true)
-            .catch(() => false);
-        if (!still) return;
+        try {
+            await apis().batch.readNamespacedJob({ name, namespace });
+            failure = undefined;
+        } catch (error) {
+            if (error instanceof ApiException && error.code === 404) return;
+            failure = error;
+        }
         await new Promise((resolve) => setTimeout(resolve, GONE_POLL_MS));
     }
+    if (failure !== undefined) throw failure;
     throw new K8sError(
         'conflict',
         `Job "${name}" is still being deleted. Wait for its pods to finish and try again.`,
@@ -142,10 +157,23 @@ async function waitForJobGone(name: string, namespace: string, op: string): Prom
     );
 }
 
-/** A name for a manually triggered run, stamped with the minute so two triggers never collide. */
-export function manualJobName(cronJob: string, now = new Date()): string {
+const SUFFIX_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
+function randomSuffix(): string {
+    return Array.from({ length: 5 }, () => SUFFIX_ALPHABET[randomInt(SUFFIX_ALPHABET.length)]).join('');
+}
+
+/**
+ * A name for a manually triggered run: the minute it started, for a reader, and a random suffix,
+ * since two triggers within one minute are a double click away. A long cron job name is what gets
+ * trimmed, never the part that keeps two runs apart, and the trimmed name must not end on a
+ * separator a DNS name cannot carry before the dash.
+ */
+export function manualJobName(cronJob: string, now = new Date(), suffix = randomSuffix()): string {
     const stamp = now.toISOString().replace(/[-:T]/g, '').slice(2, 12);
-    return `${cronJob}-${stamp}`.slice(0, 63);
+    const tail = `-${stamp}-${suffix}`;
+    const base = cronJob.slice(0, 63 - tail.length).replace(/[-.]+$/, '');
+    return `${base}${tail}`;
 }
 
 /**

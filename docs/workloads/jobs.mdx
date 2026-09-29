@@ -17,8 +17,10 @@ pods of the previous run go with it, and their logs with them**, so read what yo
 
 The app deletes the old Job with foreground propagation, so the API server keeps the name until the
 pods are gone, and then waits up to 20 seconds for the name to come free before creating the new
-one. The create cannot race a half-deleted Job into an "already exists" failure. The whole sequence
-has its own 45-second ceiling rather than the ordinary read timeout, which would cut it short and
+one. Only the API server answering that the Job is not found counts as free: a read that fails for
+any other reason keeps the wait going, so the create cannot race a half-deleted Job into an "already
+exists" failure. If every read fails to the end, the app reports that failure instead. The whole
+sequence has its own 45-second ceiling rather than the ordinary read timeout, which would cut it short and
 report a timeout where the truth is that the old run is still finishing.
 
 If the name is still taken after the wait, the app says "Job “_name_” is still being deleted. Wait
@@ -38,9 +40,10 @@ A CronJob's header has **Run now** and **Suspend** (or **Resume**).
 ### Running a CronJob now
 
 **Run now** asks for no confirmation. It builds a Job from the CronJob's job template, names it
-`<cronjob>-<yyMMddHHmm>` from the current UTC minute (cut to 63 characters) and reports "Job
-“_name_” created". The Job is owned by nobody, so the CronJob's history limits never sweep your
-manual run away; it stays until you delete it. For the same reason it does not appear under the
+`<cronjob>-<yyMMddHHmm>-<suffix>` from the current UTC minute and five random letters and digits, so
+two runs started in the same minute never share a name, and reports "Job “_name_” created". A
+CronJob name too long for that is shortened so the whole stays within 63 characters. The Job is
+owned by nobody, so the CronJob's history limits never sweep your manual run away; it stays until you delete it. For the same reason it does not appear under the
 CronJob's own **Pods** and **Logs** tabs: find it in the Jobs list.
 
 Building it correctly means stripping what the control plane stamps on a Job it has run: the
