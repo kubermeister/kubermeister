@@ -143,8 +143,11 @@ describe('rollbackRelease', () => {
             call.name,
             call.body.metadata.labels.status,
         ]);
-        // The failed revision stays failed and the superseded one is left alone, as in Helm.
-        expect(restatused).toEqual([['sh.helm.release.v1.demo.v2', 'superseded']]);
+        // The failed current revision and the deployed one under it are superseded; revision 1 already was.
+        expect(restatused).toEqual([
+            ['sh.helm.release.v1.demo.v3', 'superseded'],
+            ['sh.helm.release.v1.demo.v2', 'superseded'],
+        ]);
     });
 
     it('stamps Helm ownership on what it applies, and stores the render without it', async () => {
