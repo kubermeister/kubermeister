@@ -1,6 +1,6 @@
 import { StringDecoder } from 'node:string_decoder';
 import { PassThrough, Writable } from 'node:stream';
-import { Exec } from '@kubernetes/client-node';
+import { Exec, type V1Status } from '@kubernetes/client-node';
 import {
     execResizeSchema,
     streamSchemas,
@@ -60,10 +60,21 @@ export function resizableTerminalSink(
     return sink;
 }
 
+/** What a status that is not a success says went wrong, or `null` when the command succeeded. */
+export function execFailure(status: V1Status): string | null {
+    if (status.status !== 'Failure') return null;
+    return status.message || status.reason || 'the command failed';
+}
+
 /**
  * Interactive exec into a container over a bidirectional stream: stdout and stderr flow to the
  * renderer as text, keystrokes come back through the controller's `write`. Stopping closes the
  * websocket.
+ *
+ * The session ends on whichever comes first: the status the API server sends when the command
+ * exits, or the socket closing. The status only arrives when the server is still there to send it,
+ * so a restarted API server, a dropped network or a proxy cutting an idle connection close the
+ * socket without one, and a session that waited for the status would stay open forever.
  */
 export async function startPodExecStream(rawInput: unknown, send: StreamSend): Promise<StreamController> {
     const input = streamSchemas['pods.exec'].parse(rawInput);
@@ -72,6 +83,13 @@ export async function startPodExecStream(rawInput: unknown, send: StreamSend): P
 
     const stdin = new PassThrough();
     const stdout = resizableTerminalSink(send, input.size ?? DEFAULT_SIZE);
+    let ended = false;
+    const end = (error: string | null) => {
+        if (ended) return;
+        ended = true;
+        if (error) send({ type: 'error', message: error });
+        send({ type: 'end' });
+    };
     const socket = await new Exec(kubeConfig()).exec(
         target.namespace,
         target.name,
@@ -81,11 +99,14 @@ export async function startPodExecStream(rawInput: unknown, send: StreamSend): P
         terminalSink(send),
         stdin,
         true,
-        () => send({ type: 'end' }),
+        (status) => end(execFailure(status)),
     );
+    socket.on('close', () => end('The connection to the container was lost.'));
 
     return {
         stop: () => {
+            // Whoever stopped the stream has already let go of it; the close that follows is not news.
+            ended = true;
             try {
                 socket.close();
             } catch {

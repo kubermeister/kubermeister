@@ -75,5 +75,7 @@ screen when that happens — choosing a kubeconfig from the top bar's connection
 — it prints the reason in red, such as `The kubeconfig changed`.
 
 When a session ends, whether the shell exited or the connection went, the terminal prints
-`[session ended]`. It does not reconnect by itself: leave the tab and come back to open a new
-session.
+`[session ended]`. A command the cluster reports as failed prints the cluster's message in red first,
+such as the exit code a shell left with, and a connection that drops — the API server restarting,
+the network going, a proxy cutting an idle connection — prints `The connection to the container was
+lost.` It does not reconnect by itself: leave the tab and come back to open a new session.
