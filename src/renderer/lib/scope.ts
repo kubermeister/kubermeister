@@ -22,20 +22,49 @@ export async function switchContext(name: string): Promise<void> {
 /**
  * A detail page names one object of the scope being left, so it is closed first, back to its list:
  * keeping it open would show the same-named object of the new scope under the old page's live tabs.
- * A list page stays where it is and simply reloads under the new scope.
+ * A list page stays where it is and simply reloads under the new scope. False when the page refused
+ * to close (an unsaved edit the reader kept), and the switch is then cancelled.
  */
-async function closeDetail(router: AnyRouter): Promise<void> {
+async function closeDetail(router: AnyRouter): Promise<boolean> {
     const listPath = listPathForSubPage(router.state.location.pathname);
-    if (listPath) await router.navigate({ to: listPath });
+    if (!listPath) return true;
+    if (await isBlocked(router, listPath)) return false;
+    await router.navigate({ to: listPath, ignoreBlocker: true });
+    return true;
 }
 
-/** Switch context from a screen, closing an open detail page first; main ends its streams in any case. */
-export function useSwitchContext(): (name: string) => Promise<void> {
+/**
+ * Ask the page's blockers first rather than letting the navigation meet them: the router leaves a
+ * blocked navigation's promise pending until some later navigation settles it, which would run the
+ * switch then, under whatever page is open by that time.
+ */
+async function isBlocked(router: AnyRouter, to: string): Promise<boolean> {
+    const { history } = router;
+    const next = router.buildLocation({ to });
+    const nextLocation = {
+        href: next.href,
+        pathname: next.pathname,
+        search: next.searchStr,
+        hash: next.hash,
+        state: history.location.state,
+    };
+    for (const blocker of history._getBlockers()) {
+        if (await blocker.blockerFn({ currentLocation: history.location, nextLocation, action: 'PUSH' })) return true;
+    }
+    return false;
+}
+
+/**
+ * Switch context from a screen, closing an open detail page first; main ends its streams in any case.
+ * Resolves false, having switched nothing, when the page refused to close.
+ */
+export function useSwitchContext(): (name: string) => Promise<boolean> {
     const router = useRouter();
     return useCallback(
         async (name: string) => {
-            await closeDetail(router);
+            if (!(await closeDetail(router))) return false;
             await switchContext(name);
+            return true;
         },
         [router],
     );
@@ -56,8 +85,7 @@ export function useSelectNamespace(): (namespace: string | null) => Promise<void
     const router = useRouter();
     return useCallback(
         async (namespace: string | null) => {
-            await closeDetail(router);
-            await selectNamespace(namespace);
+            if (await closeDetail(router)) await selectNamespace(namespace);
         },
         [router],
     );

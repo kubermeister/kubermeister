@@ -40,3 +40,21 @@ export function useDetailTabLabel(pathname: string): string | undefined {
     const current = useSyncExternalStore(subscribe, () => published);
     return current?.pathname === pathname ? current.label : undefined;
 }
+
+/** A location as the router's navigation blocker describes it. */
+interface BlockedLocation {
+    routeId: string;
+    params: Record<string, string | undefined>;
+}
+
+/**
+ * Whether a navigation only moves between tabs of one object: the same route with the same params
+ * but the optional `tab`. A tab switch keeps the page, so a panel holding unsaved state lets it
+ * through, where leaving the object would lose that state.
+ */
+export function isTabSwitch(current: BlockedLocation, next: BlockedLocation): boolean {
+    if (current.routeId !== next.routeId) return false;
+    const keys = new Set([...Object.keys(current.params), ...Object.keys(next.params)]);
+    keys.delete('tab');
+    return [...keys].every((key) => current.params[key] === next.params[key]);
+}

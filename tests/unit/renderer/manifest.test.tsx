@@ -1,5 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { EditorView } from '@codemirror/view';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderInRouter, renderRoutes } from './helpers';
 
@@ -124,5 +125,91 @@ describe('manifest tab on a detail screen', () => {
         await waitFor(() =>
             expect(within(page).getByTestId('manifest-panel').textContent).toContain('kind: ConfigMap'),
         );
+    });
+});
+
+describe('unsaved manifest edits', () => {
+    const contexts = [
+        { name: 'alpha', cluster: 'a', user: 'u', current: true },
+        { name: 'beta', cluster: 'b', user: 'u', current: false },
+    ];
+
+    beforeEach(() => {
+        invoke.mockImplementation(async (channel: string, input: { kind?: string }) => {
+            if (channel === 'resources.get') return { kind: input.kind, item: configMap };
+            if (channel === 'resources.list') return { kind: input.kind, items: [configMap] };
+            if (channel === 'contexts.list') return contexts;
+            if (channel === 'startupChecks') return { ok: true, checks: [] };
+            return data[channel];
+        });
+    });
+
+    const editManifest = async () => {
+        const rendered = renderRoutes(routeTree, '/workloads/configmaps/team-a/app-config/manifest');
+        const page = await screen.findByTestId('configmap-page');
+        await userEvent.click(await within(page).findByRole('button', { name: 'Edit' }));
+        const content = await waitFor(() => {
+            const editor = within(page).getByLabelText('ConfigMap manifest');
+            expect(editor).toHaveAttribute('contenteditable', 'true');
+            return editor;
+        });
+        // Inside act, so the blocker has re-registered with the dirty buffer before the test moves on.
+        await act(async () => {
+            EditorView.findFromDOM(content)?.dispatch({ changes: { from: 0, insert: '# edited\n' } });
+        });
+        await waitFor(() => expect(within(page).getByTestId('manifest-panel').textContent).toContain('# edited'));
+        return { ...rendered, page };
+    };
+
+    const pickContext = async (name: string) => {
+        await userEvent.click(screen.getByTestId('context-selector'));
+        await userEvent.click(await screen.findByRole('menuitem', { name: new RegExp(`^${name}`) }));
+    };
+
+    it('lets a switch to another tab of the same object through, keeping the edit', async () => {
+        const { page, router } = await editManifest();
+        await userEvent.click(within(page).getByRole('tab', { name: /Labels/ }));
+        await waitFor(() =>
+            expect(router.state.location.pathname).toBe('/workloads/configmaps/team-a/app-config/labels'),
+        );
+        expect(screen.queryByRole('alertdialog')).toBeNull();
+
+        await userEvent.click(within(page).getByRole('tab', { name: /Manifest/ }));
+        await waitFor(() => expect(within(page).getByTestId('manifest-panel').textContent).toContain('# edited'));
+    });
+
+    it('still asks before leaving the object', async () => {
+        const { router } = await editManifest();
+        void router.navigate({ to: '/workloads/configmaps' });
+        expect(await screen.findByRole('alertdialog')).toHaveTextContent('Discard unsaved changes?');
+        expect(router.state.location.pathname).toBe('/workloads/configmaps/team-a/app-config/manifest');
+    });
+
+    it('cancels a context switch the reader keeps editing through, so a later navigation cannot run it', async () => {
+        const { page, router } = await editManifest();
+        await pickContext('beta');
+        const dialog = await screen.findByRole('alertdialog');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+
+        // The selector is usable again: the switch ended rather than waiting on the blocked navigation.
+        await userEvent.click(screen.getByTestId('context-selector'));
+        expect(await screen.findByRole('menuitem', { name: /^beta/ })).not.toHaveAttribute('aria-disabled', 'true');
+        await userEvent.keyboard('{Escape}');
+
+        await userEvent.click(within(page).getByRole('tab', { name: /Labels/ }));
+        await waitFor(() =>
+            expect(router.state.location.pathname).toBe('/workloads/configmaps/team-a/app-config/labels'),
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(invoke).not.toHaveBeenCalledWith('context.set', expect.anything());
+    });
+
+    it('switches once the reader discards the edit, closing the page first', async () => {
+        const { router } = await editManifest();
+        await pickContext('beta');
+        const dialog = await screen.findByRole('alertdialog');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Discard' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('context.set', { name: 'beta' }));
+        expect(router.state.location.pathname).toBe('/workloads/configmaps');
     });
 });
