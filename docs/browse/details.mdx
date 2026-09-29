@@ -156,7 +156,8 @@ A pod's **Related** tab answers what else it is tied to, grouped into Traffic, C
 Storage and Access, and every link says _why_:
 
 - A Service whose selector covers the pod's labels ("selects these pods"), and a NetworkPolicy
-  whose pod selector's `matchLabels` do ("applies to these pods").
+  whose pod selector selects the pod, its `matchExpressions` included, or selects every pod with an
+  empty `podSelector` ("applies to these pods").
 - ConfigMaps and Secrets "mounted as volume", "projected into" a volume, read through "envFrom in"
   a container or as "env NAME in" one, and Secrets used as an "image pull secret".
 - PersistentVolumeClaims "mounted as volume".

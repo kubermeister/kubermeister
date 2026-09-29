@@ -101,8 +101,15 @@ describe('disruption budget transforms', () => {
         expect(policy.budgetPolicy({})).toBe('—');
     });
 
-    it('dashes a selector that matches everything', () => {
-        expect(policy.toPodDisruptionBudget({ ...budget, spec: { selector: {} } }, NOW).selector).toBe('—');
+    it('tells a selector matching every pod from one matching none, and names expressions', () => {
+        expect(policy.toPodDisruptionBudget({ ...budget, spec: { selector: {} } }, NOW).selector).toBe('<all pods>');
+        // In policy/v1 a budget with no selector at all selects no pods.
+        expect(policy.toPodDisruptionBudget({ ...budget, spec: {} }, NOW).selector).toBe('—');
+        const expressions = {
+            ...budget,
+            spec: { selector: { matchExpressions: [{ key: 'app', operator: 'In', values: ['web', 'api'] }] } },
+        };
+        expect(policy.toPodDisruptionBudget(expressions, NOW).selector).toBe('app in (web,api)');
     });
 
     it('adds labels and annotations to the detail', () => {

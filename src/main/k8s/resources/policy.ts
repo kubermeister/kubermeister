@@ -10,7 +10,7 @@ import type {
 } from '../../../shared/k8s/policy.js';
 import { apis, getNamespaced, listItems, readOrNull } from '../client.js';
 import { withK8s } from '../errors.js';
-import { age, ago, dash, joinSelector, toPairs } from '../format.js';
+import { age, ago, dash, formatLabelSelector, toPairs } from '../format.js';
 
 /*
  * The kinds that decide what the control plane may disturb: budgets that hold evictions back,
@@ -43,7 +43,8 @@ export function toPodDisruptionBudget(pdb: V1PodDisruptionBudget, now = Date.now
         currentHealthy: pdb.status?.currentHealthy ?? 0,
         desiredHealthy: pdb.status?.desiredHealthy ?? 0,
         disruptionsAllowed,
-        selector: joinSelector(pdb.spec?.selector?.matchLabels, '—'),
+        // In policy/v1 an empty selector covers every pod in the namespace and an absent one none.
+        selector: formatLabelSelector(pdb.spec?.selector, { everything: '<all pods>', nothing: '—' }),
         age: age(pdb.metadata?.creationTimestamp, now),
     };
 }

@@ -228,6 +228,28 @@ describe('endpoints and network policy transforms', () => {
         expect(
             network.toNetworkPolicy({ metadata: {}, spec: { podSelector: { matchLabels: { app: 'web' } } } }, NOW),
         ).toMatchObject({ podSelector: 'app=web', policyTypes: '—' });
+        // A policy selecting through expressions alone names them rather than claiming every pod.
+        expect(
+            network.toNetworkPolicy(
+                {
+                    metadata: {},
+                    spec: {
+                        podSelector: {
+                            matchLabels: { app: 'web' },
+                            matchExpressions: [{ key: 'tier', operator: 'NotIn', values: ['front', 'back'] }],
+                        },
+                    },
+                },
+                NOW,
+            ).podSelector,
+        ).toBe('app=web,tier notin (front,back)');
+        expect(
+            network.toNetworkPolicy(
+                { metadata: {}, spec: { podSelector: { matchExpressions: [{ key: 'tier', operator: 'Exists' }] } } },
+                NOW,
+            ).podSelector,
+        ).toBe('tier');
+        expect(network.toNetworkPolicy({ metadata: {}, spec: {} }, NOW).podSelector).toBe('<all pods>');
         expect(network.toNetworkPolicyDetail(policy, NOW)).toMatchObject({ labels: [] });
     });
 });
