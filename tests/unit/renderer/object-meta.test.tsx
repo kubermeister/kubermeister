@@ -30,7 +30,13 @@ const pod = {
     memLimit: 0,
 };
 const meta = {
-    owner: { kind: 'ReplicaSet', name: 'web-7d9', namespace: 'team-a', path: '/workloads/replicasets/team-a/web-7d9' },
+    owner: {
+        apiVersion: 'apps/v1',
+        kind: 'ReplicaSet',
+        name: 'web-7d9',
+        namespace: 'team-a',
+        path: '/workloads/replicasets/team-a/web-7d9',
+    },
     finalizers: ['kubernetes.io/pvc-protection'],
     deleting: true,
     created: '2026-09-14T10:00:00.000Z',

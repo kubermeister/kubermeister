@@ -2,6 +2,7 @@ import type { V1ObjectMeta, V1OwnerReference, V1Pod } from '@kubernetes/client-n
 import type { OwnerChain, OwnerLink, PodOwnerKind } from '../../../shared/k8s/owners.js';
 import { ownerPath } from '../../../shared/k8s/owners.js';
 import type { Pod } from '../../../shared/k8s/pods.js';
+import { registeredKindOf } from '../../../shared/k8s/registry.js';
 import { controllerRef } from './controller.js';
 import { apis, readOrNull } from '../client.js';
 import { withK8s } from '../errors.js';
@@ -16,10 +17,11 @@ import { toPod, usageFor } from './pods.js';
 export { controllerRef };
 
 const linkFor = (ref: V1OwnerReference, namespace: string): OwnerLink => ({
+    apiVersion: ref.apiVersion,
     kind: ref.kind,
     name: ref.name,
     namespace,
-    path: ownerPath(ref.kind, ref.name, namespace),
+    path: ownerPath(ref.apiVersion, ref.kind, ref.name, namespace),
 });
 
 /**
@@ -38,13 +40,17 @@ export async function ownerChainOf(metadata: V1ObjectMeta | undefined, namespace
     return chain;
 }
 
-/** The owner of an intermediate controller: a ReplicaSet's Deployment, a Job's CronJob. */
+/**
+ * The owner of an intermediate controller: a ReplicaSet's Deployment, a Job's CronJob. Only the
+ * built-in kinds are read, since a custom `Job` of another group is not in the `batch` API.
+ */
 async function parentOf(ref: V1OwnerReference, namespace: string): Promise<V1OwnerReference | undefined> {
-    if (ref.kind === 'ReplicaSet') {
+    const kind = registeredKindOf(ref.apiVersion, ref.kind);
+    if (kind === 'ReplicaSet') {
         const rs = await readOrNull(() => apis().apps.readNamespacedReplicaSet({ name: ref.name, namespace }));
         return controllerRef(rs?.metadata);
     }
-    if (ref.kind === 'Job') {
+    if (kind === 'Job') {
         const job = await readOrNull(() => apis().batch.readNamespacedJob({ name: ref.name, namespace }));
         return controllerRef(job?.metadata);
     }

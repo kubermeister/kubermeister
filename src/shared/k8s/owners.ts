@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { namespaceNameSchema } from './names.js';
-import { KIND_REGISTRY, KINDS, type Kind } from './registry.js';
+import { KIND_REGISTRY, registeredKindOf } from './registry.js';
 
 /**
  * Who controls an object, and who controls them. A pod's chain reads ReplicaSet then Deployment,
@@ -9,6 +9,11 @@ import { KIND_REGISTRY, KINDS, type Kind } from './registry.js';
  */
 
 export const ownerLinkSchema = z.object({
+    /**
+     * The owner's `apiVersion` as its reference names it. The kind alone is not an identity: an
+     * OpenKruise `StatefulSet` or a Volcano `Job` shares its name with a built-in kind.
+     */
+    apiVersion: z.string(),
     /** The owner's kind as the API reports it, including kinds the app has no screen for. */
     kind: z.string(),
     name: z.string(),
@@ -38,15 +43,14 @@ export type OwnedPodsInput = z.infer<typeof ownedPodsInputSchema>;
 /** Kinds whose pods a rollout restart replaces; a pod owned by one of these can be restarted. */
 export const RESTARTABLE_OWNER_KINDS: readonly string[] = ['Deployment', 'StatefulSet', 'DaemonSet'];
 
-const KIND_BY_NAME = new Map<string, Kind>(KINDS.map((kind) => [KIND_REGISTRY[kind].kind, kind]));
-
 /**
- * The screen for one owner, or null when the app has no list for that kind — a ReplicaSet today,
- * until the missing built-in kinds arrive. Derived from the registry so a new kind's detail route
- * becomes linkable the moment it is registered.
+ * The screen for one owner, or null when the app has no list for that kind. Derived from the
+ * registry so a new kind's detail route becomes linkable the moment it is registered, and matched on
+ * the API group as well as the kind, so a custom resource named like a built-in kind is never linked
+ * to the built-in kind's screen.
  */
-export function ownerPath(kind: string, name: string, namespace: string): string | null {
-    const registered = KIND_BY_NAME.get(kind);
+export function ownerPath(apiVersion: string, kind: string, name: string, namespace: string): string | null {
+    const registered = registeredKindOf(apiVersion, kind);
     if (!registered) return null;
     const info = KIND_REGISTRY[registered];
     return info.clusterScoped ? `${info.listPath}/${name}` : `${info.listPath}/${namespace}/${name}`;
@@ -54,5 +58,8 @@ export function ownerPath(kind: string, name: string, namespace: string): string
 
 /** The first owner in the chain a rollout restart would act on, if any. */
 export function restartableOwner(chain: OwnerChain): OwnerLink | undefined {
-    return chain.find((link) => RESTARTABLE_OWNER_KINDS.includes(link.kind));
+    return chain.find((link) => {
+        const registered = registeredKindOf(link.apiVersion, link.kind);
+        return !!registered && RESTARTABLE_OWNER_KINDS.includes(registered);
+    });
 }

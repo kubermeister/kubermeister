@@ -21,10 +21,11 @@ export function getObjectMeta(kind: ManifestKind, name: string, namespace?: stri
         return {
             owner: ref
                 ? {
+                      apiVersion: ref.apiVersion,
                       kind: ref.kind,
                       name: ref.name,
                       namespace: ownerNamespace,
-                      path: ownerPath(ref.kind, ref.name, ownerNamespace),
+                      path: ownerPath(ref.apiVersion, ref.kind, ref.name, ownerNamespace),
                   }
                 : null,
             finalizers: meta.finalizers ?? [],
