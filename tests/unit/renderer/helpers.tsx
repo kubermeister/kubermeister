@@ -12,6 +12,7 @@ import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { objectRemountDeps } from '@/lib/remount';
 
 function testQueryClient(): QueryClient {
     return new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
@@ -34,7 +35,11 @@ export function renderWithQuery(ui: ReactElement): RenderResult {
 
 /** Render a route tree at `path` under the app's providers, on an in-memory history. */
 export function renderRoutes(routeTree: AnyRoute, path: string) {
-    const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [path] }) });
+    const router = createRouter({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: [path] }),
+        defaultRemountDeps: objectRemountDeps,
+    });
     const result = render(
         <ThemeProvider>
             <QueryClientProvider client={testQueryClient()}>

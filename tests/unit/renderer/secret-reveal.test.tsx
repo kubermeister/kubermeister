@@ -102,6 +102,65 @@ describe('useSecretReveal', () => {
         expect(toasts.error).toHaveBeenLastCalledWith('Key not found', expect.anything());
         expect(result.current.shown('password')).toBeUndefined();
     });
+
+    it('never shows one Secret’s value under another Secret’s key', async () => {
+        const { result, rerender } = renderHook(({ name }) => useSecretReveal(name, 'team-a'), {
+            initialProps: { name: 'secret-a' },
+        });
+
+        await act(async () => result.current.toggle('password'));
+        expect(result.current.shown('password')).toEqual(value);
+
+        rerender({ name: 'secret-b' });
+        expect(result.current.shown('password')).toBeUndefined();
+
+        // Back on the first Secret, its value is not resurrected either: it went with the switch.
+        rerender({ name: 'secret-a' });
+        expect(result.current.shown('password')).toBeUndefined();
+    });
+
+    it('drops a read that answers after the Secret changed', async () => {
+        let answer: (v: typeof value) => void = () => {};
+        invoke.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+        const { result, rerender } = renderHook(({ name }) => useSecretReveal(name, 'team-a'), {
+            initialProps: { name: 'secret-a' },
+        });
+
+        act(() => result.current.toggle('password'));
+        expect(result.current.pending).toBe('password');
+
+        rerender({ name: 'secret-b' });
+        expect(result.current.pending).toBeNull();
+        await act(async () => answer(value));
+        expect(result.current.shown('password')).toBeUndefined();
+    });
+
+    it('drops a copy whose read answers after the Secret changed', async () => {
+        let answer: (v: typeof value) => void = () => {};
+        invoke.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+        const { result, rerender } = renderHook(({ name }) => useSecretReveal(name, 'team-a'), {
+            initialProps: { name: 'secret-a' },
+        });
+
+        act(() => result.current.copy('password'));
+        rerender({ name: 'secret-b' });
+        await act(async () => answer(value));
+        expect(writeText).not.toHaveBeenCalled();
+        expect(toasts.success).not.toHaveBeenCalled();
+    });
+
+    it('drops a refused read that answers after the Secret changed', async () => {
+        let refuse: (e: Error) => void = () => {};
+        invoke.mockReturnValueOnce(new Promise((_resolve, reject) => (refuse = reject)));
+        const { result, rerender } = renderHook(({ name }) => useSecretReveal(name, 'team-a'), {
+            initialProps: { name: 'secret-a' },
+        });
+
+        act(() => result.current.toggle('password'));
+        rerender({ name: 'secret-b' });
+        await act(async () => refuse(new IpcError({ kind: 'forbidden', detail: 'denied', op: 'secrets.reveal' })));
+        expect(toasts.error).not.toHaveBeenCalled();
+    });
 });
 
 describe('the Keys card', () => {

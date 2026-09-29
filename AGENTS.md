@@ -184,6 +184,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   first tab rather than a not-found page, and a tab id is therefore part of a URL: rename one only
   with that fallback in mind. The breadcrumb names the tab by the label `ResourceDetail` publishes
   through `src/renderer/lib/detail-tab.ts`, since the top bar sits outside the route.
+- **Another object is another screen**: the router's `defaultRemountDeps` (`objectRemountDeps` in
+  `src/renderer/lib/remount.ts`) keys every match by its path parameters except `tab`, because
+  TanStack Router otherwise keys by route id alone and a link to a second object of the same kind
+  would inherit the first one's local state. The tab stays out so `keepMounted` panels survive a
+  tab switch; a route whose parameter should keep state (the install screen's version) sets its own
+  `remountDeps`. `renderRoutes` in the test helpers passes the same function.
 - TanStack Query through `useIpcQuery` in `src/renderer/lib/query.ts`.
 - Tailwind 4 with shadcn primitives in `src/renderer/components/ui` (add them with the shadcn CLI,
   do not hand roll). `@/` aliases `src/renderer`.
