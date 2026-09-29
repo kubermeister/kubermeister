@@ -17,6 +17,7 @@ import {
     releaseInstallInputSchema,
     releaseInstallResultSchema,
 } from './chart-install.js';
+import { chartUpgradeInputSchema, chartUpgradeOutcomeSchema } from './chart-upgrade.js';
 import { chartValuesSchema, chartVersionInputSchema } from './chart-values.js';
 import {
     availableChartSchema,
@@ -259,6 +260,7 @@ export const ipcSchemas = {
     'releases.rollback': { input: releaseRollbackInputSchema, output: releaseWriteResultSchema },
     'releases.uninstall': { input: releaseUninstallInputSchema, output: releaseWriteResultSchema },
     'releases.install': { input: releaseInstallInputSchema, output: releaseInstallResultSchema },
+    'releases.upgrade': { input: releaseInstallInputSchema, output: releaseInstallResultSchema },
     'chartRepositories.list': { input: noInput, output: z.array(chartRepositoryStatusSchema) },
     'chartRepositories.add': { input: chartRepositoryInputSchema, output: chartRepositoryStatusSchema },
     'chartRepositories.refresh': { input: chartRepositoryNameInputSchema, output: chartRepositoryStatusSchema },
@@ -268,6 +270,7 @@ export const ipcSchemas = {
     'charts.values': { input: chartVersionInputSchema, output: chartValuesSchema },
     'charts.versions': { input: chartVersionsInputSchema, output: chartVersionsSchema },
     'charts.render': { input: chartRenderInputSchema, output: chartRenderOutcomeSchema },
+    'charts.renderUpgrade': { input: chartUpgradeInputSchema, output: chartUpgradeOutcomeSchema },
     'namespaces.detail': { input: namespaceDetailInputSchema, output: namespaceDetailSchema.nullable() },
     'customResources.list': { input: customResourceListInputSchema, output: customResourceListOutputSchema },
     'customResources.get': { input: customResourceGetInputSchema, output: customResourceGetOutputSchema },

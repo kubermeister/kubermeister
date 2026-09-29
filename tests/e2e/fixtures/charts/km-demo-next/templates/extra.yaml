@@ -1,0 +1,7 @@
+{{- /* New in 0.2.0, so an upgrade creates it; the Deployment 0.1.0 had is gone, so an upgrade deletes it. */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-extra
+data:
+  added: '0.2.0'

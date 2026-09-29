@@ -2,6 +2,7 @@ import {
     MutationCache,
     QueryClient,
     useMutation,
+    useQueries,
     useQuery,
     useQueryClient,
     type QueryFilters,
@@ -52,6 +53,16 @@ export function useIpcQuery<C extends IpcChannel, TData = IpcOutput<C>>(
         queryKey: ipcQueryKey(channel, input),
         queryFn: () => invoke(channel, input),
         ...options,
+    });
+}
+
+/** One TanStack Query per input over the same channel, for a screen asking the same question of several things. */
+export function useIpcQueries<C extends IpcChannel>(channel: C, inputs: IpcInput<C>[]) {
+    return useQueries({
+        queries: inputs.map((input) => ({
+            queryKey: ipcQueryKey(channel, input),
+            queryFn: () => invoke(channel, input),
+        })),
     });
 }
 

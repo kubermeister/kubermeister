@@ -30,12 +30,12 @@ RBAC applies unchanged.
 ## What it installs in your cluster
 
 Nothing of its own. No deployment, no service, no agent, no service account, no CRD. A chart you
-install is written as you reviewed it, under your own permissions.
+install or a release you upgrade is written as you reviewed it, under your own permissions.
 
 ## What it runs on your machine
 
-Nothing, except `helm template` when you [install a chart](/docs/operations/helm/#installing-a-chart),
-using the `helm` you installed. It runs with an environment of its own: an empty kubeconfig, a
+Nothing, except `helm template` when you [install a chart](/docs/operations/helm/#installing-a-chart)
+or [upgrade a release](/docs/operations/helm/#upgrading-a-release), using the `helm` you installed. It runs with an environment of its own: an empty kubeconfig, a
 throwaway Helm home and none of your proxy or Helm variables, so it cannot reach a cluster, your
 repositories or your plugins. Its output is read, never executed, and Kubermeister writes the
 objects itself.

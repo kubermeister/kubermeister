@@ -1,15 +1,15 @@
 ---
 title: Helm releases
-description: Installing charts, and reading, rolling back and uninstalling Helm releases in Kubermeister, through the release Secrets Helm itself writes so the Helm CLI can still read them afterwards. Installing needs Helm 3 or later on your machine; upgrading is not supported.
+description: Installing charts, and reading, upgrading, rolling back and uninstalling Helm releases in Kubermeister, through the release Secrets Helm itself writes so the Helm CLI can still read them afterwards. Installing and upgrading need Helm 3 or later on your machine.
 sidebar:
   order: 1
 ---
 
 import Figure from '@/components/docs/Figure.astro';
 
-Kubermeister **installs** a chart from a configured repository or registry, and **reads, rolls
-back and uninstalls** Helm releases. It does **not upgrade** them: use the Helm CLI for that, and the
-new revision shows up here as soon as Helm has written it.
+Kubermeister **installs** a chart from a configured repository or registry, and **reads, upgrades,
+rolls back and uninstalls** Helm releases. A revision the Helm CLI writes shows up here as soon as
+Helm has written it, and one written here is one the Helm CLI reads.
 
 Both screens have a section of their own in the sidebar, **Helm**: **Releases** and **Charts**.
 
@@ -21,7 +21,7 @@ field is base64(gzip(json)), base64'd again by the API, with one Secret per revi
 
 Kubermeister decodes those Secrets. That is the whole mechanism, and it is why reading releases
 needs no Helm binary and no component in the cluster; only [installing a chart](#installing-a-chart)
-uses Helm, to render it. A Secret that will not decode, or would decode to more than
+and [upgrading a release](#upgrading-a-release) use Helm, to render it. A Secret that will not decode, or would decode to more than
 32 MiB, is skipped rather than shown half-read. Reading releases needs permission to list Secrets in
 the namespaces you look at.
 
@@ -258,6 +258,92 @@ release**. CRDs are never removed by an uninstall, by Kubermeister or by Helm.
 A release installed here is one the Helm CLI reads and acts on: `helm list`, `helm get values`,
 `helm get hooks` and `helm uninstall` all work on it.
 
+## Upgrading a release
+
+**Upgrade** in a release's header opens **Upgrade** _release_, which moves the release to a chart
+version from a repository or registry added under
+[**Settings › Charts**](/docs/reference/settings/#chart-repositories), in the release's own namespace.
+It needs [Helm on your machine](#helm-is-required), as installing does; without it the screen says
+**Helm is required to upgrade a release**, and without a configured source it says **No chart
+repository to upgrade from**.
+
+### The chart and the values
+
+A release does not record where its chart came from, so the screen chooses:
+
+- **Source** starts as the first classic repository whose index lists a chart of the release's
+  chart name, or else the first registry. Any configured source can be chosen instead.
+- **Chart** starts as the release's chart name, and can be changed to upgrade to another chart, as
+  `helm upgrade` allows.
+- **Version** starts as the newest version the repository lists, with the one the release runs
+  marked **(current)**. An OCI registry lists no versions, so the field starts as the version the
+  release runs and takes the one you type.
+
+The **values** start from the current revision's own user-supplied values, what the **Values** tab
+shows, and are checked against the chosen version's schema as you type. What the editor holds is the
+whole of what the new revision is given, over that version's defaults: a value taken out of the
+editor goes back to the chart's default, as it would with `helm upgrade -f` and not
+`--reuse-values`. [`yes` is a string](#the-values) here too, while a default the chart's own
+`values.yaml` writes as `yes` is read by Helm as true.
+
+### The review
+
+**Review** renders the chosen version as an upgrade of the release (`.Release.IsUpgrade` is true)
+and shows what the upgrade changes before anything is written. A render Helm refuses is marked on
+the values, as for an install, and a release another operation holds pending (`pending-install`,
+`pending-upgrade` or `pending-rollback`) or one that was uninstalled is refused.
+
+- **Values**: the current revision's values against the new ones, line by line.
+- **Objects**: every object the new revision renders, marked **Created**, **Changed** or
+  **Unchanged**. Opening one shows the object the cluster holds against what it will hold, both as
+  the API server stores them: each is a server-side dry run of the very write the upgrade sends, so a
+  field the server fills in is not a change and a field the render drops is. An object that is
+  already in the cluster but was neither rendered by the current revision nor marked as belonging to
+  this release is **Refused**, as Helm refuses to take it over.
+- **Removed**: what the current revision rendered and the new one does not. Each is **Deleted**,
+  **Already gone**, or **Kept** when the chart annotated it `helm.sh/resource-policy: keep`.
+- **Hooks**: every hook the new revision renders, with its dry run; the `pre-upgrade` and
+  `post-upgrade` ones run.
+
+The chart's `crds/` definitions are left alone, and the review says how many: Helm installs them on
+install only and never upgrades them. The review flags a chart that calls `lookup`, as for an
+install.
+
+### The upgrade
+
+**Upgrade to revision N** writes the render you reviewed, in the order Helm follows:
+
+1. The new revision, numbered one above the newest, recorded as `pending-upgrade`.
+2. The `pre-upgrade` hooks, by weight, each waited on and deleted as its policy says, as an
+   install's hooks are.
+3. The objects: created when missing and replaced when changed, each carrying the label and
+   annotations Helm marks its own objects with. An object the review found unchanged is not written,
+   so a field somebody set on it since stays.
+4. The removed objects deleted, except those the chart marked to be kept.
+5. The `post-upgrade` hooks, the same way.
+6. The previous revision marked `superseded` and the new one `deployed`, described "Upgrade
+   complete".
+
+The release then opens on **Resources**; the upgrade does not wait for workloads to become ready.
+The diff is the cluster as it was when you reviewed: an upgrade replaces an object with the rendered
+one, so a change made to it after the review, other than to an object found unchanged, is
+overwritten.
+
+A review is good for one upgrade and for 30 minutes, and one made before another revision was
+recorded is refused, so you review again. If a step fails once the new revision is recorded, it is
+marked `failed` with Helm's description, and the revision before it stays deployed. The screen says
+why and offers **Open release**, from whose **Revisions** tab the release can be rolled back.
+
+:::note[Replaced rather than patched]
+Helm 3 applies an upgrade as a three-way merge and Helm 4 as a server-side apply, both of which
+leave alone a field only somebody else set. Kubermeister replaces each changed object with the
+rendered one, as its rollback does, so such a field — an annotation a tool added, replicas an
+autoscaler set — is dropped. The review's diff shows every one of those before you upgrade.
+:::
+
+The Helm CLI reads the upgraded release like any other: `helm history` shows the new revision and
+the superseded one, and `helm get values`, `helm get hooks` and `helm uninstall` work on it.
+
 ## Helm charts
 
 **Helm › Charts** lists the charts you can install: every chart in the index of each classic
@@ -281,4 +367,5 @@ charts. Each case points at **Settings › Charts**.
 Chart repositories can be added, refreshed and removed under **Settings › Charts**, and they live in
 app settings rather than in the cluster, so they survive a context switch. The charts of a classic
 repository are listed under [**Helm › Charts**](#helm-charts), and a chart from any of them can be
-[installed](#installing-a-chart). See [settings](/docs/reference/settings/).
+[installed](#installing-a-chart), or a release [upgraded](#upgrading-a-release) to one. See
+[settings](/docs/reference/settings/).

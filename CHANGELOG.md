@@ -23,6 +23,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   a chart under **Helm › Charts**, from a repository's row under **Settings › Charts**, or from
   **Install a chart…** in the command palette, and each says Helm is required, linking its install
   page, when none is found.
+- A Helm release can be upgraded to a chart version from a configured repository or registry, from
+  **Upgrade** in its header: the values start from the current revision's own, and a review shows
+  them and every rendered object diffed against what the cluster holds, through a server-side dry
+  run, with what the new revision removes, before the upgrade writes a new revision in Helm's order
+  of hooks, objects and deletions and marks the previous one superseded.
 
 ### Changed
 

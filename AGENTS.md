@@ -646,8 +646,8 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - Helm (`src/main/k8s/resources/helm.ts`) has no API of its own: a release is a Secret of type
   `helm.sh/release.v1` whose `release` field is base64(gzip(json)), base64'd again by the API, with
   one Secret per revision named `sh.helm.release.v1.<name>.v<n>`. Reads decode those Secrets.
-- The writes (`releases.rollback`, `releases.uninstall`) act on the objects a revision's stored
-  `manifest` rendered and then keep Helm's own bookkeeping straight — same Secret names, labels and
+- The writes (`releases.rollback`, `releases.uninstall`, and `releases.install` and
+  `releases.upgrade` below) act on the objects a revision's stored `manifest` rendered and then keep Helm's own bookkeeping straight — same Secret names, labels and
   status words — so a release this app rolls back stays one the Helm CLI can read and act on.
 - A rollback re-applies the target revision's objects, removes what that revision never had,
   records the result as a **new** revision (Helm numbers forward, it never rewinds) and marks the
@@ -835,6 +835,46 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   screen on the latest version, where the version is still switched. Without Helm every entry point
   shows `HelmRequired` instead of navigating, the Charts row by opening the same dialog; its
   **Check again** refetches `helm.status`, which main never caches as missing.
+
+### Upgrading a release
+
+- **An upgrade is the install's two calls over again, through the same parts**
+  (`src/main/k8s/resources/helm-upgrade.ts`): `charts.renderUpgrade` fetches, renders and checks the
+  chart version and keeps the render under a `reviewId` (the install's `reviewStore`, its own store),
+  and `releases.upgrade` writes that render and nothing else. The hooks, the per-step ceiling with
+  its context re-check and the dry run are `helm-install.ts`'s, taking the op they report under.
+- **The starting revision is Helm's `prepareUpgrade` choice** (`upgradeBase`): the newest when it is
+  deployed, else the deployed one under it, else a newest that failed or was superseded; the number
+  follows the newest. A newest `pending-*` revision is refused as an operation in progress and an
+  uninstalled release has nothing to upgrade. The write re-reads the history and refuses a review
+  made before another revision was recorded.
+- **The values editor starts from the current revision's `config`**, and what it holds is the whole
+  of the new `config`, merged over the new chart's defaults by Helm: `helm upgrade -f` with the old
+  values, never `--reuse-values`, so nothing reaches the render that the screen did not show. The
+  render passes `--is-upgrade` (`ReleaseInfo.upgrade`), so `.Release.IsUpgrade` answers as in
+  `helm upgrade`.
+- **The object diff is two answers from the server**: the live object and a server-side dry run of
+  the very write the upgrade sends (a create, or a replace carrying the live `resourceVersion` and
+  Helm's ownership), both through `cleanForExport` and `yamlToText`, so a defaulted field is not a
+  change. An object the dry run leaves as it is, is `unchanged` and is not written, only recreated if
+  it has gone since. The values diff is both `config`s through `releaseValues`' dump.
+- **Changed objects are replaced, not patched**, like the rollback's `applyObject`: Helm 3 merges
+  three ways and Helm 4 applies server-side, and both keep fields only somebody else set, which a
+  replace drops. The review's diff is where that shows, and the docs say so. An object already in the
+  cluster that the current revision did not render is refused unless it carries this release's
+  ownership (`ownedByRelease`), as Helm refuses to adopt it.
+- **The write order is Helm's `performUpgrade`**: the new revision's Secret as `pending-upgrade`
+  ("Preparing upgrade", `first_deployed` carried over), `pre-upgrade` hooks, the objects in render
+  order, the deletions of what the new render drops (never `helm.sh/resource-policy: keep`), the
+  `post-upgrade` hooks, the previous revision `superseded`, the new one `deployed` ("Upgrade
+  complete"). A failure once the Secret exists marks it `failed` (`Upgrade "<name>" failed: …`) and
+  leaves the previous revision deployed. `crds/` is never touched, as Helm installs CRDs on install
+  alone.
+- The screen is `/helm/releases/$namespace/$name/upgrade`, a static last segment beside the detail's
+  `{-$tab}`, so `upgrade` can never be a tab id; the header's **Upgrade** opens it. A release does not
+  record its source, so the default is the first classic repository whose index lists the chart
+  (`defaultSource`, asking `charts.versions` of each), else the first registry. The e2e spec has the
+  Helm CLI install a release, upgrades it here, then has Helm read the history and uninstall it.
 
 ### Container detail
 

@@ -55,7 +55,8 @@ function ReviewedRow({ object }: { object: ReviewedObject | ReviewedHook }) {
     );
 }
 
-function Section({
+/** One kind of thing a review lists, each row with its check and its YAML one click away. */
+export function ReviewSection({
     title,
     desc,
     items,
@@ -114,19 +115,19 @@ export function InstallReview({ review }: { review: ChartReview }) {
                     {problem} Nothing has been written; change the values or the release name and review again.
                 </p>
             )}
-            <Section
+            <ReviewSection
                 title="Custom resource definitions"
                 desc={`${count(review.crds.length, 'definition')} from crds/, created first and never removed by an uninstall`}
                 items={review.crds}
                 testId="install-review-crds"
             />
-            <Section
+            <ReviewSection
                 title="Hooks"
                 desc={`${count(review.hooks.length, 'hook')}; pre-install hooks run before the objects and post-install ones after, each waited on; the rest are only recorded`}
                 items={review.hooks}
                 testId="install-review-hooks"
             />
-            <Section
+            <ReviewSection
                 title="Objects"
                 desc={`${count(review.objects.length, 'object')} in the order Helm installs them`}
                 items={review.objects}
