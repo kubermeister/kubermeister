@@ -75,7 +75,7 @@ beforeEach(() => {
         'helm.status': { found: true, path: '/usr/local/bin/helm', version: '3.15.1' },
         'charts.versions': ['0.2.0', '0.1.0'],
         'charts.values': {
-            // `yes` is YAML 1.1's true and YAML 1.2's string; the editor reads 1.2, and so must Helm.
+            // `yes` is YAML 1.1's true and YAML 1.2's string; Helm reads the chart's own file itself.
             valuesYaml: 'greeting: hello\nenabled: yes\n',
             schema: null,
             schemaProblem: null,
@@ -101,7 +101,7 @@ async function openReview() {
 }
 
 describe('installing a chart', () => {
-    it('renders the values as the editor reads them, for the active namespace and context', async () => {
+    it('hands Helm only what differs from the chart defaults, for the active namespace and context', async () => {
         await openReview();
         expect(invoke).toHaveBeenCalledWith('charts.values', { source: 'fixture', chart: 'km-demo', version: '0.1.0' });
         expect(invoke).toHaveBeenCalledWith('charts.render', {
@@ -110,7 +110,7 @@ describe('installing a chart', () => {
             version: '0.1.0',
             name: 'km-demo',
             namespace: 'team-a',
-            values: { greeting: 'hello', enabled: 'yes' },
+            values: {},
             context: 'alpha',
         });
     });

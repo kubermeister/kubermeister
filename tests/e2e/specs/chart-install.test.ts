@@ -137,11 +137,12 @@ test('installs a chart through a reviewed render, and the Helm CLI reads the rel
         release.getByTestId('release-resources').locator(`[data-object="Deployment/${RELEASE}-web"]`),
     ).toBeVisible();
 
-    // The values Helm rendered are the ones the editor showed: `yes` is the string, not YAML 1.1's true.
+    // Only the greeting differs from the chart's defaults, so only it reached Helm, which read `enabled`
+    // from the chart's own values.yaml as YAML 1.1: `yes` is true, exactly as `helm install` renders it.
     const settings = JSON.parse(
         clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-settings`, '-o', 'json']),
     ) as { data: Record<string, string> };
-    expect(settings.data).toMatchObject({ enabled: 'yes', greeting: 'from the e2e suite', seenBefore: 'no' });
+    expect(settings.data).toMatchObject({ enabled: 'true', greeting: 'from the e2e suite', seenBefore: 'no' });
     // The pre-install hook asked to go once it succeeded; the post-install one did not.
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'job', `${RELEASE}-prepare`, '--ignore-not-found'])).toBe('');
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-installed`, '-o', 'name'])).toContain(
@@ -159,10 +160,9 @@ test('installs a chart through a reviewed render, and the Helm CLI reads the rel
         chart: 'km-demo-0.1.0',
         revision: '1',
     });
+    // The release's config is the user's overrides alone, as for a release the Helm CLI installed.
     expect(JSON.parse(helm(['get', 'values', RELEASE, '--namespace', NAMESPACE, '--output', 'json']))).toEqual({
-        enabled: 'yes',
         greeting: 'from the e2e suite',
-        replicas: 1,
     });
     expect(helm(['get', 'hooks', RELEASE, '--namespace', NAMESPACE])).toContain(`${RELEASE}-prepare`);
 

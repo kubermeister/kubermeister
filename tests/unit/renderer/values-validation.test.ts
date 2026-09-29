@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonSchema } from '../../../src/shared/chart-values';
-import { chartDefaults, readValues, validateValues, valuesForRender } from '@/lib/values-validation';
+import { chartDefaults, readValues, validateValues, valueOverrides, valuesForRender } from '@/lib/values-validation';
 import { WEB_DEFAULTS, webChart } from './values-schema-fixture';
 
 const defaults = chartDefaults(WEB_DEFAULTS);
@@ -225,5 +225,63 @@ describe('the values handed to Helm', () => {
         expect(valuesForRender('- a\n')).toEqual({ problem: expect.stringMatching(/mapping/) });
         expect(valuesForRender('ratio: .inf\n')).toEqual({ problem: expect.stringMatching(/\.inf/) });
         expect(valuesForRender('nested:\n  - .nan\n')).toEqual({ problem: expect.stringMatching(/\.nan/) });
+    });
+});
+
+describe('the overrides handed to Helm', () => {
+    const overrides = (text: string, defaults: string) => {
+        const parsed = valuesForRender(text);
+        if ('problem' in parsed) throw new Error(parsed.problem);
+        return valueOverrides(parsed.values, defaults);
+    };
+
+    it('leaves out a default the text still holds, so Helm reads yes from values.yaml as YAML 1.1 does', () => {
+        expect(overrides('enabled: yes\ngreeting: hello\n', 'enabled: yes\ngreeting: hello\n')).toEqual({});
+    });
+
+    it('keeps a yes the user typed over another default as the string the editor showed', () => {
+        expect(overrides('enabled: yes\n', 'enabled: false\n')).toEqual({ enabled: 'yes' });
+        expect(overrides('enabled: yes\nextra: on\n', '')).toEqual({ enabled: 'yes', extra: 'on' });
+    });
+
+    it('hands a value nulled out to Helm as null, which is how Helm deletes a default', () => {
+        expect(overrides('greeting: null\nimage:\n  tag: ~\n', 'greeting: hello\nimage:\n  tag: "1.0"\n')).toEqual({
+            greeting: null,
+            image: { tag: null },
+        });
+    });
+
+    it('leaves a key taken out of the text to its default, as the editor checks it', () => {
+        expect(overrides('greeting: hello\n', 'greeting: hello\nreplicas: 1\n')).toEqual({});
+    });
+
+    it('walks into mappings and hands over only what changed in them', () => {
+        const defaults = 'image:\n  repository: nginx\n  tag: "1.0"\n  pull: IfNotPresent\nports: [80, 443]\n';
+        expect(overrides('image:\n  repository: nginx\n  tag: "1.1"\nports: [80, 443]\n', defaults)).toEqual({
+            image: { tag: '1.1' },
+        });
+    });
+
+    it('hands over a list whole when it changed at all, since Helm replaces a list rather than merging it', () => {
+        expect(overrides('ports: [80]\n', 'ports: [80, 443]\n')).toEqual({ ports: [80] });
+        expect(overrides('hosts:\n  - name: a\n', 'hosts:\n  - name: a\n    tls: true\n')).toEqual({
+            hosts: [{ name: 'a' }],
+        });
+    });
+
+    it('hands over a value whose shape differs from its default', () => {
+        expect(overrides('image: nginx\n', 'image:\n  repository: nginx\n')).toEqual({ image: 'nginx' });
+        expect(overrides('image:\n  repository: nginx\n', 'image: nginx\n')).toEqual({
+            image: { repository: 'nginx' },
+        });
+    });
+
+    it('compares mappings whatever order their keys were written in', () => {
+        expect(overrides('image: { tag: "1", name: a }\n', 'image:\n  name: a\n  tag: "1"\n')).toEqual({});
+    });
+
+    it('hands over every value when the defaults do not read, since there is nothing to leave to them', () => {
+        expect(overrides('enabled: yes\n', 'enabled: [\n')).toEqual({ enabled: 'yes' });
+        expect(overrides('enabled: yes\n', '- a\n')).toEqual({ enabled: 'yes' });
     });
 });

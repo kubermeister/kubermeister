@@ -13,6 +13,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Installing a chart hands Helm only the values you changed, so a default the chart writes as `yes`
+  reaches the release as true, as `helm install` reads it, and the release records only your values.
+
 ## [0.9.0] - 2026-09-29
 
 ### Added

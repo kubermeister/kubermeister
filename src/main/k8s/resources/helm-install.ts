@@ -261,7 +261,9 @@ function installHooks(hooks: RenderedHook[]): RenderedHook[] {
 /**
  * Render a chart for an install and check what it rendered. Answers the review, which `install`
  * then writes, or Helm's refusal, which the values editor lays over the values. The release name
- * must be free in the namespace, as `helm install` requires, and the values reach Helm as JSON.
+ * must be free in the namespace, as `helm install` requires. The values are the user's overrides
+ * alone, as `helm install -f` takes them, reaching Helm as JSON over the chart's own `values.yaml`,
+ * which Helm reads itself; they are also the release's `config`, as `helm get values` shows it.
  */
 export async function reviewChart(input: ChartRenderInput): Promise<ChartRenderOutcome> {
     assertContext(input.context, REVIEW_OP);

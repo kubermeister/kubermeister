@@ -1,4 +1,4 @@
-# Read as YAML 1.2, as the values editor reads it, so this is the string "yes" rather than true.
+# Helm reads this file itself, as YAML 1.1, so this is true in a release unless the values override it.
 enabled: yes
 greeting: hello
 replicas: 1

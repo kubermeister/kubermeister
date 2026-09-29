@@ -114,10 +114,10 @@ function asJson(value: unknown): JsonValue | undefined {
 }
 
 /**
- * The editor's text as the values Helm renders with. It is read here exactly as it is checked —
- * YAML 1.2, so `yes` is the string it looks like and `010` is ten — and handed to Helm as JSON,
- * which Helm reads with no YAML 1.1 second opinion, so the values the review shows are the values
- * that are installed. Text that does not read, or a number JSON cannot carry, is not handed over.
+ * The editor's text as values. It is read here exactly as it is checked — YAML 1.2, so `yes` is the
+ * string it looks like and `010` is ten — and handed to Helm as JSON, which Helm reads with no
+ * YAML 1.1 second opinion, so a value the user wrote renders as the editor showed it. Text that does
+ * not read, or a number JSON cannot carry, is not handed over.
  */
 export function valuesForRender(text: string): RenderValues {
     const { doc, diagnostics } = readValues(text);
@@ -136,6 +136,42 @@ export function valuesForRender(text: string): RenderValues {
     return values
         ? { values: values as Record<string, JsonValue> }
         : { problem: 'The values hold a number JSON cannot carry, such as .inf or .nan.' };
+}
+
+/**
+ * What Helm is handed for the edited values: only where they differ from the chart's own
+ * `values.yaml`, which Helm then reads itself, as YAML 1.1 like `helm install -f` would, so a default
+ * written `yes` is true in the release. Both sides are read here as the editor reads them, so a value
+ * left as the chart wrote it compares equal and is left out, a mapping is walked into, and anything
+ * else that differs (a list, a value of another shape, a null deleting a default) goes over whole. A
+ * key taken out of the text keeps its default, as the editor checks it. Defaults that do not read
+ * leave nothing to compare with, so every value goes over.
+ */
+export function valueOverrides(values: Record<string, JsonValue>, defaultsYaml: string): Record<string, JsonValue> {
+    const defaults = valuesForRender(defaultsYaml);
+    return 'values' in defaults ? changedFrom(values, defaults.values) : values;
+}
+
+function changedFrom(
+    values: Record<string, JsonValue>,
+    defaults: Record<string, JsonValue>,
+): Record<string, JsonValue> {
+    const out: Record<string, JsonValue> = {};
+    for (const [key, value] of Object.entries(values)) {
+        if (!Object.hasOwn(defaults, key)) {
+            out[key] = value;
+            continue;
+        }
+        const fallback = defaults[key];
+        const [inner, innerDefault] = [asObject(value), asObject(fallback)];
+        if (inner && innerDefault) {
+            const changed = changedFrom(inner as Record<string, JsonValue>, innerDefault as Record<string, JsonValue>);
+            if (Object.keys(changed).length > 0) out[key] = changed;
+        } else if (canonical(value) !== canonical(fallback)) {
+            out[key] = value;
+        }
+    }
+    return out;
 }
 
 /** The chart's own values as the merge starts from them; a file that does not read is none. */

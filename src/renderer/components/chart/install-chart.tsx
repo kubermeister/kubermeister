@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { describeError } from '@/lib/k8s-error';
 import { useIpcQuery } from '@/lib/query';
 import type { ValuesRenderError } from '@/lib/values-diagnostics';
-import { valuesForRender } from '@/lib/values-validation';
+import { valueOverrides, valuesForRender } from '@/lib/values-validation';
 import { useInstallRelease, useRenderChart } from '@/lib/writes';
 
 /** The release path a finished install opens on. */
@@ -140,14 +140,16 @@ export function InstallChart({
     const canReview = target !== null && name !== '' && nameProblem === null && values.data !== undefined && !busy;
 
     const runReview = async () => {
-        if (!target) return;
+        if (!target || !values.data) return;
         const parsed = valuesForRender(text);
         if ('problem' in parsed) {
             toast.error('The values cannot be rendered', { description: parsed.problem });
             return;
         }
+        // Helm reads the chart's own defaults itself, so it is handed only what the user changed.
+        const overrides = valueOverrides(parsed.values, values.data.valuesYaml);
         const outcome = await render
-            .mutateAsync({ source, chart, version, name, namespace: target, values: parsed.values })
+            .mutateAsync({ source, chart, version, name, namespace: target, values: overrides })
             .catch(() => null);
         if (!outcome) return;
         if (!outcome.rendered) {
