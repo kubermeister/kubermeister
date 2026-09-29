@@ -73,6 +73,19 @@ describe('reading a definition', () => {
         expect(custom.readableVersion(definition({ versions: [] }))).toBeUndefined();
     });
 
+    it('passes over a storage version that is no longer served', () => {
+        // Mid-migration the storage version can be unserved, and every read of it answers 404.
+        const migrating = definition({
+            versions: [
+                { name: 'v1alpha1', served: false, storage: true },
+                { name: 'v1', served: true, storage: false },
+            ],
+        });
+        expect(custom.readableVersion(migrating)).toBe('v1');
+        const unserved = definition({ versions: [{ name: 'v1alpha1', served: false, storage: true }] });
+        expect(custom.readableVersion(unserved)).toBeUndefined();
+    });
+
     it('takes that version’s printer columns and drops the one the app already shows', () => {
         // Age is the last column of every list here; the definition's own copy would just repeat it.
         expect(custom.printerColumns(definition(), 'v1')).toEqual([
