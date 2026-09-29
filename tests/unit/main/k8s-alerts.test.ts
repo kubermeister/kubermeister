@@ -74,6 +74,7 @@ function backoff(name: string, message: string, minutesAgo: number, count = 1): 
         reason: 'BackOff',
         message,
         count,
+        firstTimestamp: new Date(NOW - minutesAgo * 60_000),
         lastTimestamp: new Date(NOW - minutesAgo * 60_000),
         involvedObject: { kind: 'Pod', name, namespace: 'team-a' },
     } as CoreV1Event;
@@ -159,6 +160,32 @@ describe('alerts', () => {
             },
             { tone: 'danger', title: 'Image pull failure: pull', detail: 'team-a/pull' },
             { tone: 'danger', title: 'CrashLoopBackOff: once', detail: '1 back-off in the last 10 min — team-a/once' },
+        ]);
+    });
+
+    it('never quotes an event lifetime count as the back-offs of the last 10 minutes', async () => {
+        const since = (minutes: number) => new Date(NOW - minutes * 60_000);
+        const message = 'Back-off restarting failed container';
+        listEventForAllNamespaces.mockResolvedValue({
+            items: [
+                { ...backoff('fresh', message, 1, 4), firstTimestamp: since(8) },
+                { ...backoff('old', message, 1, 200), firstTimestamp: since(3 * 24 * 60) },
+                { ...backoff('both', message, 1, 5), firstTimestamp: since(4) },
+                {
+                    ...backoff('both', message, 2, 30),
+                    metadata: { name: 'both.ev2', namespace: 'team-a' },
+                    firstTimestamp: since(90),
+                },
+                { ...backoff('undated', message, 1, 7), firstTimestamp: undefined },
+                { ...backoff('single', message, 1), firstTimestamp: undefined },
+            ],
+        });
+        expect((await alerts.podAlerts(NOW)).map((a) => a.detail)).toEqual([
+            '4 back-offs in the last 10 min — team-a/fresh',
+            '200 back-offs in the last 3d — team-a/old',
+            '35 back-offs in the last 1h30m — team-a/both',
+            '7 back-offs, the latest in the last 10 min — team-a/undated',
+            '1 back-off in the last 10 min — team-a/single',
         ]);
     });
 

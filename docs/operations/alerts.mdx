@@ -42,8 +42,10 @@ A pod gets **one** alert however many rules it matches: a pending pod that also 
 is one problem, not two. A NotReady node that is also cordoned reads as NotReady.
 
 The detail line names where the object is (`namespace/name`). A crash loop found from events also
-says how many back-offs it saw in the last 10 minutes, a pod crash loop found from its status gives
-its restart count, a failed Job gives its completions, and a claim gives its storage class.
+says how many back-offs its events counted and over how long: "in the last 10 min" when they all
+began inside that window, or the span since the first of them, such as "in the last 3d", for a pod
+that has been backing off for longer. A pod crash loop found from its status gives its restart count,
+a failed Job gives its completions, and a claim gives its storage class.
 
 ## How pod alerts avoid reading every pod
 
