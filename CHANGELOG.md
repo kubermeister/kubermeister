@@ -26,6 +26,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A log search written as a regular expression is used exactly as typed, so a leading or trailing
   space no longer changes what it matches, and highlighting marks every match of a pattern that can
   also match nothing, such as `\d*`.
+- A port forward that could not bind its local port starts again when Start or the top bar's restore is
+  pressed once the port is free, and the top bar offers every remembered forward that is not running,
+  including a Service or another port sharing a running pod's name.
 - Usage charts and pod and node usage keep updating when a metrics read hangs on a cluster that never
   answers or a credential plugin waiting for a sign-in, and after a context switch they no longer
   start with a point from the cluster just left.

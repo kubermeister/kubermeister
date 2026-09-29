@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { forwardId, startForward, stopForward, useForward, type ForwardKind } from '@/lib/port-forwards';
+import { failedToBind, forwardId, startForward, stopForward, useForward, type ForwardKind } from '@/lib/port-forwards';
 import { rememberForward } from '@/lib/forward-memory';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -55,6 +55,8 @@ export function PortForwardControl({
     const forward = useForward(
         local === null || target === undefined ? null : { kind, name, namespace, localPort: local },
     );
+    // A forward that could not bind holds no port, so the control offers Start again to retry it.
+    const running = forward !== null && !failedToBind(forward);
 
     const start = () => {
         if (target === undefined) return;
@@ -86,7 +88,7 @@ export function PortForwardControl({
                     <span className="text-text-muted">Target</span>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="xs" disabled={!!forward} aria-label="Target port">
+                            <Button variant="outline" size="xs" disabled={running} aria-label="Target port">
                                 {target}
                                 <ChevronDownIcon />
                             </Button>
@@ -104,11 +106,11 @@ export function PortForwardControl({
                         value={localPort}
                         onChange={(e) => setLocalPort(e.target.value)}
                         placeholder={String(target ?? '')}
-                        disabled={!!forward}
+                        disabled={running}
                         aria-label="Local port"
                         className="h-7 w-20 text-cell"
                     />
-                    {forward ? (
+                    {running ? (
                         <Button variant="outline" size="xs" onClick={() => stopForward(forwardId(forward))}>
                             Stop
                         </Button>

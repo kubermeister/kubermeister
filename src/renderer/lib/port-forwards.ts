@@ -28,6 +28,14 @@ export interface Forward extends ForwardTarget {
 export const forwardId = (target: Pick<ForwardTarget, 'kind' | 'namespace' | 'name' | 'localPort'>): string =>
     `${target.kind}/${target.namespace}/${target.name}/${target.localPort}`;
 
+/**
+ * A forward whose listener never came up: main reports a bind failure, such as a port already in
+ * use, as an error without ending the stream, so the entry stays to show why. Nothing listens behind
+ * it, so starting the same forward again replaces it rather than handing it back.
+ */
+export const failedToBind = (forward: Pick<Forward, 'status' | 'error'>): boolean =>
+    forward.status === null && forward.error !== null;
+
 /** The address a forward listens on, which is what people actually want from it. */
 export const forwardUrl = (forward: Pick<Forward, 'localPort'>): string => `http://127.0.0.1:${forward.localPort}`;
 
@@ -55,12 +63,14 @@ function update(id: string, patch: Partial<Forward>): void {
 /**
  * Start forwarding, or hand back the forward already on that local port. Two forwards cannot share
  * a port, and the second one would fail at bind time with a message about an address in use rather
- * than about what the user actually did.
+ * than about what the user actually did. One that failed to bind is started again, which is how a
+ * port freed since is retried.
  */
 export function startForward(target: ForwardTarget): Forward {
     const id = forwardId(target);
     const existing = live.get(id);
-    if (existing) return existing.forward;
+    if (existing && !failedToBind(existing.forward)) return existing.forward;
+    if (existing) stopForward(id);
 
     const forward: Forward = { ...target, id, status: null, error: null };
     const input: PodPortForwardInput = {
@@ -70,7 +80,10 @@ export function startForward(target: ForwardTarget): Forward {
         targetPort: target.targetPort,
         localPort: target.localPort,
     };
+    // Messages are matched to this entry, not only to its id, so a stream replaced by a retry and
+    // still answering cannot end or overwrite the forward that took its place.
     const handle = stream('pods.portForward', input, (message) => {
+        if (live.get(id)?.handle !== handle) return;
         if (message.type === 'data') update(id, { status: message.data, error: null });
         else if (message.type === 'error') update(id, { error: message.message });
         else stopForward(id);

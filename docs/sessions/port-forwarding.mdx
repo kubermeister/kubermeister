@@ -28,7 +28,8 @@ The listener is bound to **127.0.0.1** only, so nothing else on your network can
 
 - A local port outside 1–65535 gives `error: enter a valid local port (1–65535)`.
 - A local port already in use gives an error such as `error: listen EADDRINUSE …`. The forward stays
-  in the top bar with that error until you stop it.
+  in the top bar with that error until you stop it, and the control shows **Start** again: once the
+  port is free, **Start** retries it.
 - Starting the same forward on the same local port again hands back the one already running rather
   than binding twice. A different local port is a second forward.
 
@@ -69,8 +70,8 @@ neither does switching namespace.
 ## Remembered, but never reopened unasked
 
 Every forward you start is remembered against the context it was started on — the most recent 20,
-across all contexts. When you are on that context and no forward to the same object is open, the top
-bar offers it again, greyed, with a play button; pressing it starts the forward and says **Forwarding
+across all contexts. When you are on that context and that forward — the same kind, object and local
+port — is not open, or could not bind its port, the top bar offers it again, greyed, with a play button; pressing it starts the forward and says **Forwarding
 &lt;name&gt; again**.
 
 They are never reopened automatically. Reopening a local port on your machine without asking would be
