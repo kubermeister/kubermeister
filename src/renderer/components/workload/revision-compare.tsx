@@ -20,9 +20,15 @@ export function RevisionCompare({
     namespace: string;
     rollouts: Rollout[];
 }) {
+    // Only what the reader picked is state. The revisions often arrive after this mounts, so a
+    // default taken at mount would be the empty list's; deriving it from the list on every render
+    // follows the list instead, and a pick the list no longer holds falls back to it too.
+    const [pickedTo, setTo] = useState<string | null>(null);
+    const [pickedFrom, setFrom] = useState<string | null>(null);
+    const listed = (rev: string | null) => rollouts.find((rollout) => rollout.rev === rev)?.rev;
     // Newest against the one before it: the comparison people almost always want first.
-    const [to, setTo] = useState(rollouts[0]?.rev ?? '');
-    const [from, setFrom] = useState(rollouts[1]?.rev ?? rollouts[0]?.rev ?? '');
+    const to = listed(pickedTo) ?? rollouts[0]?.rev ?? '';
+    const from = listed(pickedFrom) ?? rollouts[1]?.rev ?? rollouts[0]?.rev ?? '';
     // Nothing to compare with fewer than two revisions, and nothing to ask main about either.
     const enabled = rollouts.length > 1 && !!from && !!to;
     const query = useIpcQuery('deployments.compare', { name, namespace, from, to }, { enabled });
