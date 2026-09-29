@@ -26,51 +26,67 @@ export interface SecretRevealState {
  * the page takes every revealed value with it.
  */
 export function useSecretReveal(name: string, namespace: string): SecretRevealState {
-    const [revealed, setRevealed] = useState<Record<string, SecretValue>>({});
-    const [pending, setPending] = useState<string | null>(null);
+    // Everything below belongs to one Secret. The screen remounts on another object, but the hook
+    // does not rely on that: state recorded for another Secret reads as masked and is dropped, and a
+    // read that answers after the Secret changed is discarded rather than shown under the new one.
+    const secret = `${namespace}/${name}`;
+    const current = useRef(secret);
+    const [revealed, setRevealed] = useState<{ secret: string; values: Record<string, SecretValue> }>({
+        secret,
+        values: {},
+    });
+    const [pending, setPending] = useState<{ secret: string; key: string } | null>(null);
     const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+    if (revealed.secret !== secret) setRevealed({ secret, values: {} });
+    const values = revealed.secret === secret ? revealed.values : {};
 
     useEffect(() => {
+        current.current = secret;
         const running = timers.current;
-        return () => running.forEach((timer) => clearTimeout(timer));
-    }, []);
+        return () => {
+            running.forEach((timer) => clearTimeout(timer));
+            running.clear();
+        };
+    }, [secret]);
 
     const hide = useCallback((key: string) => {
         const timer = timers.current.get(key);
         if (timer) clearTimeout(timer);
         timers.current.delete(key);
-        setRevealed(({ [key]: _hidden, ...rest }) => rest);
+        setRevealed(({ secret: owner, values: { [key]: _hidden, ...rest } }) => ({ secret: owner, values: rest }));
     }, []);
 
     const read = useCallback(
         async (key: string): Promise<SecretValue | null> => {
-            setPending(key);
+            setPending({ secret, key });
             try {
                 const value = await invoke('secrets.reveal', { name, namespace, key });
+                if (current.current !== secret) return null;
                 if (!value) toast.error('Key not found', { description: `“${key}” is no longer in this Secret.` });
                 return value;
             } catch (error) {
+                if (current.current !== secret) return null;
                 const { title, detail } = describeError(error);
                 toast.error(title, { description: detail });
                 return null;
             } finally {
-                setPending(null);
+                setPending((now) => (now?.secret === secret && now.key === key ? null : now));
             }
         },
-        [name, namespace],
+        [secret, name, namespace],
     );
 
     const reveal = useCallback(
         async (key: string) => {
             const value = await read(key);
             if (!value) return;
-            setRevealed((current) => ({ ...current, [key]: value }));
+            setRevealed((now) => (now.secret === secret ? { secret, values: { ...now.values, [key]: value } } : now));
             timers.current.set(
                 key,
                 setTimeout(() => hide(key), REVEAL_TIMEOUT_MS),
             );
         },
-        [read, hide],
+        [secret, read, hide],
     );
 
     const copy = useCallback(
@@ -91,9 +107,9 @@ export function useSecretReveal(name: string, namespace: string): SecretRevealSt
     );
 
     return {
-        shown: (key) => revealed[key],
-        pending,
-        toggle: (key) => (revealed[key] ? hide(key) : void reveal(key)),
+        shown: (key) => values[key],
+        pending: pending?.secret === secret ? pending.key : null,
+        toggle: (key) => (values[key] ? hide(key) : void reveal(key)),
         copy: (key) => void copy(key),
     };
 }

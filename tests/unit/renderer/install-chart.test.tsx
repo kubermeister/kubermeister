@@ -220,8 +220,11 @@ describe('installing a chart', () => {
         expect(await reviewButton()).toBeDisabled();
     });
 
-    it('switches the version in place, reading that version’s values', async () => {
+    it('switches the version in place, reading that version’s values and keeping what was typed', async () => {
         const { router } = renderRoutes(routeTree, PATH);
+        const name = await screen.findByRole('textbox', { name: 'Release name' });
+        await userEvent.clear(name);
+        await userEvent.type(name, 'kept-name');
         await userEvent.click(await screen.findByRole('combobox', { name: 'Chart version' }));
         await userEvent.click(await screen.findByRole('option', { name: '0.2.0' }));
         await waitFor(() => expect(router.state.location.pathname).toBe('/helm/charts/install/fixture/km-demo/0.2.0'));
@@ -232,5 +235,6 @@ describe('installing a chart', () => {
                 version: '0.2.0',
             }),
         );
+        expect(screen.getByRole('textbox', { name: 'Release name' })).toHaveValue('kept-name');
     });
 });
