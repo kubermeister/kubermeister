@@ -18,13 +18,16 @@ import { assertContext } from './write.js';
  */
 
 /** Labels and annotations the control plane owns; a copy of a job must not carry them. */
-const CONTROLLER_LABELS = [
+export const CONTROLLER_LABELS = [
     'controller-uid',
     'batch.kubernetes.io/controller-uid',
     'job-name',
     'batch.kubernetes.io/job-name',
 ];
-const CONTROLLER_ANNOTATIONS = ['kubectl.kubernetes.io/last-applied-configuration', 'batch.kubernetes.io/job-tracking'];
+export const CONTROLLER_ANNOTATIONS = [
+    'kubectl.kubernetes.io/last-applied-configuration',
+    'batch.kubernetes.io/job-tracking',
+];
 
 const without = (source: Record<string, string> | undefined, drop: string[]): Record<string, string> | undefined => {
     if (!source) return undefined;

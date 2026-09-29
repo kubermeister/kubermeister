@@ -1,6 +1,7 @@
 import type { ManifestExportInput, ManifestExportTarget, ManifestKind } from '../../../shared/k8s/manifest.js';
 import { K8sError, withK8s } from '../errors.js';
 import { yamlToText } from '../yaml.js';
+import { CONTROLLER_ANNOTATIONS, CONTROLLER_LABELS } from './lifecycle.js';
 import { listRawObjects, typeMeta, type RawItem } from './manifest.js';
 
 /**
@@ -33,11 +34,78 @@ const SERVER_METADATA = [
 /** Bookkeeping written by kubectl and the controllers, about this cluster's copy rather than the object. */
 const SERVER_ANNOTATIONS = ['kubectl.kubernetes.io/last-applied-configuration', 'deployment.kubernetes.io/revision'];
 
+/** What the volume binder writes on a claim, naming a volume and a node of this cluster. */
+const BINDING_ANNOTATIONS = [
+    'pv.kubernetes.io/bind-completed',
+    'pv.kubernetes.io/bound-by-controller',
+    'volume.kubernetes.io/selected-node',
+];
+const BOUND_BY_CONTROLLER = 'pv.kubernetes.io/bound-by-controller';
+
+type Metadata = Record<string, unknown> & {
+    labels?: Record<string, string>;
+    annotations?: Record<string, string>;
+};
+
 interface Cleanable {
     kind?: unknown;
     status?: unknown;
-    metadata?: Record<string, unknown> & { annotations?: Record<string, string> };
+    metadata?: Metadata;
     spec?: Record<string, unknown>;
+}
+
+function dropKeys(meta: Metadata, field: 'labels' | 'annotations', keys: readonly string[]): void {
+    const map = meta[field];
+    if (!map) return;
+    for (const key of keys) delete map[key];
+    if (Object.keys(map).length === 0) delete meta[field];
+}
+
+/**
+ * A Job's selector and the matching pod labels are generated from its uid, and the API server
+ * refuses a Job that carries them without `manualSelector`, so they go as `jobFromTemplate` drops
+ * them. A Job that set `manualSelector` chose its selector, and keeps it.
+ */
+function cleanJob(job: Cleanable): void {
+    const spec = job.spec;
+    if (!spec || spec.manualSelector === true) return;
+    delete spec.selector;
+    const template = (spec.template as { metadata?: Metadata } | undefined)?.metadata;
+    for (const meta of [job.metadata, template]) {
+        if (!meta) continue;
+        dropKeys(meta, 'labels', CONTROLLER_LABELS);
+        dropKeys(meta, 'annotations', CONTROLLER_ANNOTATIONS);
+    }
+}
+
+/**
+ * A claim the controller bound names the volume it was given and the node it landed on, neither of
+ * which exists elsewhere, so it would be Lost or stay Pending. A `volumeName` the claim was written
+ * with is a static binding somebody chose, and stays.
+ */
+function cleanClaim(claim: Cleanable): void {
+    const meta = claim.metadata;
+    const boundByController = meta?.annotations?.[BOUND_BY_CONTROLLER] === 'yes';
+    if (boundByController && claim.spec) delete claim.spec.volumeName;
+    if (meta) dropKeys(meta, 'annotations', BINDING_ANNOTATIONS);
+}
+
+/**
+ * A volume's claim reference carries the uid and resourceVersion of this cluster's claim, which no
+ * other claim matches. A reference the controller made goes whole; one somebody wrote to reserve the
+ * volume for a claim keeps its name.
+ */
+function cleanVolume(volume: Cleanable): void {
+    const meta = volume.metadata;
+    const claimRef = volume.spec?.claimRef as Record<string, unknown> | undefined;
+    if (claimRef) {
+        if (meta?.annotations?.[BOUND_BY_CONTROLLER] === 'yes') delete volume.spec!.claimRef;
+        else {
+            delete claimRef.uid;
+            delete claimRef.resourceVersion;
+        }
+    }
+    if (meta) dropKeys(meta, 'annotations', [BOUND_BY_CONTROLLER]);
 }
 
 /**
@@ -51,8 +119,7 @@ export function cleanForExport<T extends object>(obj: T): T {
     const meta = clone.metadata;
     if (meta) {
         for (const field of SERVER_METADATA) delete meta[field];
-        for (const annotation of SERVER_ANNOTATIONS) delete meta.annotations?.[annotation];
-        if (meta.annotations && Object.keys(meta.annotations).length === 0) delete meta.annotations;
+        dropKeys(meta, 'annotations', SERVER_ANNOTATIONS);
     }
     // A Service's addresses come out of this cluster's own range, and another cluster refuses them;
     // `None` is not an address but the spelling of a headless Service, so it is the object's own.
@@ -61,6 +128,9 @@ export function cleanForExport<T extends object>(obj: T): T {
         if (Array.isArray(clone.spec.clusterIPs) && !clone.spec.clusterIPs.includes('None'))
             delete clone.spec.clusterIPs;
     }
+    if (clone.kind === 'Job') cleanJob(clone);
+    if (clone.kind === 'PersistentVolumeClaim') cleanClaim(clone);
+    if (clone.kind === 'PersistentVolume') cleanVolume(clone);
     dropNullCreationTimestamps(clone);
     return clone;
 }

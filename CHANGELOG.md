@@ -18,6 +18,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A custom resource definition whose storage version is no longer served, as during a version
   migration, lists and opens its instances through a served version instead of showing them as not
   found.
+- A Job, a PersistentVolumeClaim or a PersistentVolume exported cleaned for another cluster applies
+  there, without the selector, volume binding or node the original cluster generated for it.
 - Usage charts and pod and node usage keep updating when a metrics read hangs on a cluster that never
   answers or a credential plugin waiting for a sign-in, and after a context switch they no longer
   start with a point from the cluster just left.
