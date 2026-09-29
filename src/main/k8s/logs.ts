@@ -1,13 +1,21 @@
 import { StringDecoder } from 'node:string_decoder';
 import { Writable, type Readable } from 'node:stream';
-import { Log } from '@kubernetes/client-node';
+import { ApiException, Log } from '@kubernetes/client-node';
 import type { LogLine, PodLogDownload, PodLogDownloadInput, PodLogSnapshotInput } from '../../shared/k8s/logs.js';
 import { streamSchemas, type StreamController, type StreamSend } from '../../shared/streams.js';
 import { apis, kubeConfig } from './client.js';
-import { withK8s } from './errors.js';
-import { reportMissingPod, resolvePodTarget } from './pod-target.js';
+import { K8sError, toK8sError, withK8s } from './errors.js';
+import { reportMissingPod, resolvePodTarget, type PodTarget } from './pod-target.js';
 
 const DEFAULT_TAIL_LINES = 500;
+const FOLLOW_OP = 'pods.logs';
+
+interface LogReadOptions {
+    tailLines: number;
+    sinceSeconds?: number;
+    previous?: boolean;
+    timestamps: boolean;
+}
 
 /**
  * With `timestamps: true` each line is `<RFC3339> <message>`; a line without a space is all
@@ -81,13 +89,21 @@ export async function startPodLogStream(rawInput: unknown, send: StreamSend): Pr
         });
     });
 
-    const controller = await new Log(kubeConfig()).log(target.namespace, target.name, target.container, sink, {
-        follow: true,
+    const options: LogReadOptions = {
         tailLines: input.tailLines ?? DEFAULT_TAIL_LINES,
         sinceSeconds: input.sinceSeconds,
         previous: input.previous,
         timestamps: true,
-    });
+    };
+    let controller: AbortController;
+    try {
+        controller = await new Log(kubeConfig()).log(target.namespace, target.name, target.container, sink, {
+            ...options,
+            follow: true,
+        });
+    } catch (error) {
+        throw await followRefusal(target, options, error);
+    }
     return {
         stop: () => {
             stopped = true;
@@ -95,6 +111,29 @@ export async function startPodLogStream(rawInput: unknown, send: StreamSend): Pr
             source?.destroy();
         },
     };
+}
+
+/**
+ * Why the API server refused a follow. For any status but 200 and 500 the client library's follow
+ * throws with no body and a message dumping the response headers, dropping the server's sentence
+ * ("container is waiting to start"). The same read without `follow` keeps the Status body, so it
+ * is asked once more and its failure classified; should it succeed, the follow's own status is.
+ */
+async function followRefusal(target: PodTarget, options: LogReadOptions, error: unknown): Promise<K8sError> {
+    if (!(error instanceof ApiException)) return toK8sError(FOLLOW_OP, error);
+    try {
+        await withK8s(FOLLOW_OP, () => apis().core.readNamespacedPodLog({ ...target, ...options, tailLines: 1 }));
+    } catch (reread) {
+        if (reread instanceof K8sError && !isHeaderDump(reread.detail)) return reread;
+    }
+    const refused = toK8sError(FOLLOW_OP, error);
+    if (!isHeaderDump(refused.detail)) return refused;
+    return new K8sError(refused.kind, `The API server refused to stream this log (HTTP ${error.code}).`, FOLLOW_OP);
+}
+
+/** The text an `ApiException` without a Status body carries, which names no reason at all. */
+function isHeaderDump(detail: string): boolean {
+    return detail.startsWith('HTTP-Code:');
 }
 
 /**

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough, type Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiException } from '@kubernetes/client-node';
 
 const log = vi.fn();
 vi.mock('@kubernetes/client-node', async () => ({
@@ -21,6 +22,7 @@ const apis = vi.fn(() => ({ core: { readNamespacedPodLog } }));
 vi.mock('../../../src/main/k8s/client.js', () => ({ kubeConfig: () => ({}), apis, readOrNull: vi.fn() }));
 
 const logs = await import('../../../src/main/k8s/logs.js');
+const { K8sError } = await import('../../../src/main/k8s/errors.js');
 
 describe('log line parsing', () => {
     it('splits the API timestamp from the message and leaves the message alone', () => {
@@ -165,6 +167,54 @@ describe('startPodLogStream', () => {
         ]);
         expect(log).not.toHaveBeenCalled();
         expect(() => ctl.stop()).not.toThrow();
+    });
+
+    // The client library's follow throws a status other than 200 or 500 with no body and a
+    // message dumping the response headers, so the server's own sentence has to be asked again.
+    const headerDump = () =>
+        new ApiException(400, 'Error occurred in log request', undefined, { 'content-type': 'application/json' });
+
+    it("reads a refused follow's reason from the server, not the client library's header dump", async () => {
+        readNamespacedPodLog.mockReset();
+        log.mockRejectedValue(headerDump());
+        const waiting = 'container "web" in pod "web-1" is waiting to start: ContainerCreating';
+        readNamespacedPodLog.mockRejectedValue(
+            new ApiException(400, 'Unknown API Status Code!', { kind: 'Status', code: 400, message: waiting }, {}),
+        );
+        const failure = logs.startPodLogStream({ name: 'web-1', namespace: 'team-a', previous: true }, vi.fn());
+        await expect(failure).rejects.toBeInstanceOf(K8sError);
+        await expect(failure).rejects.toMatchObject({ kind: 'invalid', detail: waiting, op: 'pods.logs' });
+        expect(readNamespacedPodLog).toHaveBeenCalledWith(
+            expect.objectContaining({ name: 'web-1', namespace: 'team-a', container: 'web', previous: true }),
+        );
+        expect(readNamespacedPodLog.mock.calls[0]![0]).not.toHaveProperty('follow');
+    });
+
+    it('classifies a refused follow by its status when the second read succeeds or is refused bare', async () => {
+        readNamespacedPodLog.mockReset();
+        log.mockRejectedValue(new ApiException(403, 'Error occurred in log request', undefined, {}));
+        readNamespacedPodLog.mockResolvedValue('');
+        await expect(logs.startPodLogStream({ name: 'web-1', namespace: 'team-a' }, vi.fn())).rejects.toMatchObject({
+            kind: 'forbidden',
+            op: 'pods.logs',
+        });
+
+        log.mockRejectedValue(headerDump());
+        readNamespacedPodLog.mockRejectedValue(headerDump());
+        const failure = logs.startPodLogStream({ name: 'web-1', namespace: 'team-a' }, vi.fn());
+        await expect(failure).rejects.toMatchObject({ kind: 'invalid', op: 'pods.logs' });
+        await expect(failure).rejects.toMatchObject({
+            detail: 'The API server refused to stream this log (HTTP 400).',
+        });
+    });
+
+    it('classifies a follow that could not reach the cluster without asking it again', async () => {
+        readNamespacedPodLog.mockReset();
+        log.mockRejectedValue(Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }));
+        await expect(logs.startPodLogStream({ name: 'web-1', namespace: 'team-a' }, vi.fn())).rejects.toMatchObject({
+            kind: 'unreachable',
+        });
+        expect(readNamespacedPodLog).not.toHaveBeenCalled();
     });
 
     it('rejects invalid input before touching the cluster', async () => {
