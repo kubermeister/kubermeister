@@ -100,10 +100,42 @@ describe('createResource', () => {
 
     it('never gives a namespace to a cluster-scoped kind, registered or not', async () => {
         client.getActiveNamespace.mockReturnValue('team-a');
-        for (const kind of ['ClusterRole', 'Namespace', 'PriorityClass']) {
-            const manifest = `apiVersion: v1\nkind: ${kind}\nmetadata:\n  name: thing`;
+        const kinds = [
+            ['rbac.authorization.k8s.io/v1', 'ClusterRole'],
+            ['v1', 'Namespace'],
+            ['scheduling.k8s.io/v1', 'PriorityClass'],
+            ['storage.k8s.io/v1', 'VolumeAttachment'],
+        ];
+        for (const [apiVersion, kind] of kinds) {
+            const manifest = `apiVersion: ${apiVersion}\nkind: ${kind}\nmetadata:\n  name: thing\n  namespace: team-a`;
             expect(await write.createResource({ ...ON_ALPHA, manifest })).toMatchObject({ namespace: undefined });
         }
+        expect(objects.resource).not.toHaveBeenCalled();
+    });
+
+    it('asks discovery about a custom resource named like a built-in kind rather than borrowing its scope', async () => {
+        // Longhorn's Node is namespaced, unlike the core one: its namespace must survive.
+        const longhornNode =
+            'apiVersion: longhorn.io/v1beta2\nkind: Node\nmetadata:\n  name: worker-1\n  namespace: longhorn-system';
+        objects.resource.mockResolvedValue({ name: 'nodes', namespaced: true });
+        expect(await write.createResource({ ...ON_ALPHA, manifest: longhornNode })).toMatchObject({
+            namespace: 'longhorn-system',
+        });
+        expect(objects.resource).toHaveBeenCalledWith('longhorn.io/v1beta2', 'Node');
+        expect(objects.create).toHaveBeenLastCalledWith(
+            expect.objectContaining({ metadata: { name: 'worker-1', namespace: 'longhorn-system' } }),
+            undefined,
+            undefined,
+        );
+
+        // OpenShift's Ingress is cluster-scoped, unlike the networking one: it needs no namespace.
+        client.getActiveNamespace.mockReturnValue(null);
+        objects.resource.mockResolvedValue({ name: 'ingresses', namespaced: false });
+        const openshiftIngress = 'apiVersion: config.openshift.io/v1\nkind: Ingress\nmetadata:\n  name: cluster';
+        expect(await write.createResource({ ...ON_ALPHA, manifest: openshiftIngress })).toMatchObject({
+            namespace: undefined,
+        });
+        expect(objects.resource).toHaveBeenCalledWith('config.openshift.io/v1', 'Ingress');
     });
 
     it('refuses a namespaced kind with no namespace anywhere instead of letting the client pick one', async () => {
@@ -242,6 +274,44 @@ describe('replaceResource', () => {
                 expect: editing,
             }),
         ).rejects.toMatchObject({ detail: expect.stringContaining('ClusterRole "reader"') });
+    });
+    it('saves a custom resource named like a cluster-scoped built-in kind into its namespace', async () => {
+        const manifest = [
+            'apiVersion: longhorn.io/v1beta2',
+            'kind: Node',
+            'metadata:',
+            '  name: worker-1',
+            '  namespace: longhorn-system',
+            '  resourceVersion: "7"',
+        ].join('\n');
+        objects.resource.mockResolvedValue({ name: 'nodes', namespaced: true });
+        const editing = {
+            apiVersion: 'longhorn.io/v1beta2',
+            kind: 'Node',
+            name: 'worker-1',
+            namespace: 'longhorn-system',
+        };
+        expect(await write.replaceResource({ ...ON_ALPHA, manifest, expect: editing })).toMatchObject({
+            kind: 'Node',
+            namespace: 'longhorn-system',
+        });
+    });
+
+    it("refuses a manifest re-aimed at another group's kind of the same name", async () => {
+        const manifest = 'apiVersion: v1\nkind: Node\nmetadata:\n  name: worker-1\n  resourceVersion: "7"';
+        const editing = {
+            apiVersion: 'longhorn.io/v1beta2',
+            kind: 'Node',
+            name: 'worker-1',
+            namespace: 'longhorn-system',
+        };
+        await expect(write.replaceResource({ ...ON_ALPHA, manifest, expect: editing })).rejects.toMatchObject({
+            kind: 'invalid',
+            detail: expect.stringContaining(
+                'describes v1 Node "worker-1", but this editor is for longhorn.io/v1beta2 Node "longhorn-system/worker-1"',
+            ),
+        });
+        expect(objects.replace).not.toHaveBeenCalled();
     });
 });
 

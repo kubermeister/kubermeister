@@ -6,6 +6,8 @@ import {
     kindInfo,
     kindSchema,
     registeredKindOf,
+    knownKindScope,
+    isClusterScopedKind,
 } from '../../../src/shared/k8s/registry';
 import {
     resourceGetInputSchema,
@@ -119,6 +121,19 @@ describe('kind registry', () => {
         // A custom resource calling itself Service is not the core Service.
         expect(registeredKindOf('serving.knative.dev/v1', 'Service')).toBeUndefined();
         expect(registeredKindOf('messaging.example.com/v1', 'Queue')).toBeUndefined();
+    });
+
+    it("knows a kind's scope only when its API group matches as well as its name", () => {
+        expect(knownKindScope('v1', 'Node')).toBe('cluster');
+        expect(knownKindScope('v1', 'Namespace')).toBe('cluster');
+        expect(knownKindScope('storage.k8s.io/v1', 'VolumeAttachment')).toBe('cluster');
+        expect(knownKindScope('rbac.authorization.k8s.io/v1', 'ClusterRole')).toBe('cluster');
+        expect(knownKindScope('networking.k8s.io/v1', 'Ingress')).toBe('namespaced');
+        expect(knownKindScope('longhorn.io/v1beta2', 'Node')).toBeUndefined();
+        expect(knownKindScope('config.openshift.io/v1', 'Ingress')).toBeUndefined();
+        expect(knownKindScope('example.io/v1', 'VolumeAttachment')).toBeUndefined();
+        expect(isClusterScopedKind('v1', 'Node')).toBe(true);
+        expect(isClusterScopedKind('longhorn.io/v1beta2', 'Node')).toBe(false);
     });
 });
 

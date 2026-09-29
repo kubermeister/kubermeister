@@ -1,7 +1,13 @@
 import { z } from 'zod';
-import { manifestKindSchema, refineManifestTarget, type ManifestKind } from './manifest.js';
+import {
+    isManifestKind,
+    manifestKindOf,
+    manifestKindSchema,
+    refineManifestTarget,
+    type ManifestKind,
+} from './manifest.js';
 import { namespaceNameSchema } from './names.js';
-import { isKnownKindName, kindSchema, restartKindSchema } from './registry.js';
+import { kindSchema, restartKindSchema } from './registry.js';
 
 /** What a write reports back: enough to name the object in a toast and invalidate its screens. */
 export const writeResultSchema = z.object({
@@ -17,9 +23,21 @@ export const writeResultSchema = z.object({
  */
 const scopeStamp = { context: z.string().min(1) };
 
+/**
+ * The manifest kind an edited object's identity names. With its `apiVersion` the group has to match
+ * too, since a custom resource may share a built-in kind's name (Longhorn's `Node`); without one the
+ * kind is read as the app's own vocabulary. A custom resource answers undefined.
+ */
+export function identityKind(target: { apiVersion?: string; kind: string }): ManifestKind | undefined {
+    if (target.apiVersion !== undefined) return manifestKindOf(target.apiVersion, target.kind);
+    return isManifestKind(target.kind) ? target.kind : undefined;
+}
+
 /** The object a manifest edit started from; a save whose manifest names anything else is refused. */
 export const manifestIdentitySchema = z
     .object({
+        /** The object's apiVersion as it was read, which tells a custom resource from a built-in kind. */
+        apiVersion: z.string().min(1).optional(),
         /** A registered kind, or the kind of a custom resource the app has no registry entry for. */
         kind: z.string().min(1),
         name: z.string().min(1),
@@ -28,9 +46,8 @@ export const manifestIdentitySchema = z
     // Only a kind the app knows has a scope to check against; for a custom resource, naming a
     // namespace or not is what its own definition decided, and the identity just records it.
     .superRefine((target, ctx) => {
-        if (isKnownKindName(target.kind)) {
-            refineManifestTarget(target as { kind: ManifestKind; namespace?: string }, ctx);
-        }
+        const kind = identityKind(target);
+        if (kind) refineManifestTarget({ kind, namespace: target.namespace }, ctx);
     });
 
 export const manifestWriteSchema = z.object({

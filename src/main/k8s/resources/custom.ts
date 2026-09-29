@@ -258,6 +258,11 @@ export function getCustomResourceYaml(crd: string, name: string, namespace?: str
         const manifest = object as Record<string, unknown> & { metadata?: { namespace?: string } };
         manifest.apiVersion ??= shape.group ? `${shape.group}/${shape.version}` : shape.version;
         manifest.kind ??= shape.kind;
-        return { yaml: yamlToText(manifest), kind: shape.kind, namespace: manifest.metadata?.namespace };
+        return {
+            yaml: yamlToText(manifest),
+            apiVersion: String(manifest.apiVersion),
+            kind: shape.kind,
+            namespace: manifest.metadata?.namespace,
+        };
     });
 }

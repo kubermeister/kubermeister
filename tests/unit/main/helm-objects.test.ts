@@ -219,3 +219,16 @@ describe('reading a release’s objects', () => {
         expect(objects.list).not.toHaveBeenCalled();
     });
 });
+
+describe('inReleaseNamespace', () => {
+    const object = (apiVersion: string, kind: string) => ({ apiVersion, kind, metadata: { name: 'thing' } });
+
+    it('places a namespaced object in the release namespace and leaves a cluster-scoped one out of any', () => {
+        expect(helm.inReleaseNamespace(object('v1', 'ConfigMap'), 'shop').metadata.namespace).toBe('shop');
+        expect(helm.inReleaseNamespace(object('v1', 'Node'), 'shop').metadata.namespace).toBeUndefined();
+    });
+
+    it('reads the scope of a custom resource named like a built-in kind by its group, not its name', () => {
+        expect(helm.inReleaseNamespace(object('longhorn.io/v1beta2', 'Node'), 'shop').metadata.namespace).toBe('shop');
+    });
+});

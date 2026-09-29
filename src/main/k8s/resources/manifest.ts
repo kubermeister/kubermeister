@@ -124,6 +124,11 @@ export function getObjectYaml(kind: ManifestKind, name: string, namespace?: stri
         const manifest: Record<string, unknown> = { ...obj };
         manifest.apiVersion ??= meta.apiVersion;
         manifest.kind ??= meta.kind;
-        return { yaml: yamlToText(manifest), kind: meta.kind, namespace: obj.metadata?.namespace };
+        return {
+            yaml: yamlToText(manifest),
+            apiVersion: String(manifest.apiVersion),
+            kind: meta.kind,
+            namespace: obj.metadata?.namespace,
+        };
     });
 }

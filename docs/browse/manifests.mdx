@@ -123,7 +123,9 @@ Namespace rules are enforced at the boundary:
 - With **All namespaces** selected and no namespace in the manifest, the write is refused rather than
   left to a client-library default. The heading says as much: "the namespace each manifest names".
 - A cluster-scoped kind has any `metadata.namespace` removed before it is written.
-- A kind the app does not recognise is asked of API discovery to learn whether it is namespaced.
+- A kind the app does not recognise is asked of API discovery to learn whether it is namespaced. A
+  kind is recognised by its API group as well as its name, so a custom resource named like a
+  built-in kind, such as Longhorn's `longhorn.io` `Node`, is asked about too.
 
 ## Opening a manifest from a file
 
