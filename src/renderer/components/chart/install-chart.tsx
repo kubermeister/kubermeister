@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { describeError } from '@/lib/k8s-error';
 import { useIpcQuery } from '@/lib/query';
 import type { ValuesRenderError } from '@/lib/values-diagnostics';
-import { valueOverrides, valuesForRender } from '@/lib/values-validation';
+import { rebaseValues, valueOverrides, valuesForRender } from '@/lib/values-validation';
 import { useInstallRelease, useRenderChart } from '@/lib/writes';
 
 /** The release path a finished install opens on. */
@@ -63,9 +63,10 @@ export function InstallChart({
 
     const [name, setName] = useState(() => (releaseNameProblem(chart) ? '' : chart));
     const [text, setText] = useState('');
-    // The chart defaults the text last started from, so a version switch replaces untouched text and
-    // keeps an edit, which is meant for the chart whatever its version.
-    const [pristine, setPristine] = useState('');
+    // The chart defaults the text is an edit of. A version switch replaces untouched text and carries
+    // an edit over to the new defaults; text that does not read stays an edit of the old ones, and
+    // the review hands Helm only what it changed against them.
+    const [base, setBase] = useState('');
     const [renderError, setRenderError] = useState<ValuesRenderError | null>(null);
     const [review, setReview] = useState<ChartReview | null>(null);
     const [failed, setFailed] = useState<ReleaseInstallResult | null>(null);
@@ -74,8 +75,11 @@ export function InstallChart({
         setLoadedFor(version);
         // Helm refused the other version's render; this one has not been asked yet.
         setRenderError(null);
-        setPristine(values.data.valuesYaml);
-        if (text === pristine) setText(values.data.valuesYaml);
+        const carried = text === base ? values.data.valuesYaml : rebaseValues(text, base, values.data.valuesYaml);
+        if (carried !== null) {
+            setText(carried);
+            setBase(values.data.valuesYaml);
+        }
     }
 
     const target = namespace?.name ?? null;
@@ -147,7 +151,7 @@ export function InstallChart({
             return;
         }
         // Helm reads the chart's own defaults itself, so it is handed only what the user changed.
-        const overrides = valueOverrides(parsed.values, values.data.valuesYaml);
+        const overrides = valueOverrides(parsed.values, base);
         const outcome = await render
             .mutateAsync({ source, chart, version, name, namespace: target, values: overrides })
             .catch(() => null);

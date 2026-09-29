@@ -1,4 +1,4 @@
-import { isAlias, isMap, isScalar, isSeq, parse, parseAllDocuments, type Document, type Node } from 'yaml';
+import { Document, isAlias, isMap, isScalar, isSeq, parse, parseAllDocuments, type Node } from 'yaml';
 import type { JsonValue } from '../../shared/chart-install';
 import type { JsonSchema } from '../../shared/chart-values';
 import {
@@ -150,6 +150,35 @@ export function valuesForRender(text: string): RenderValues {
 export function valueOverrides(values: Record<string, JsonValue>, defaultsYaml: string): Record<string, JsonValue> {
     const defaults = valuesForRender(defaultsYaml);
     return 'values' in defaults ? changedFrom(values, defaults.values) : values;
+}
+
+/**
+ * The edited values carried over to another chart version: what the text changed against the
+ * defaults it was edited from, written over the other version's `values.yaml`, so a default the user
+ * never touched takes the new version's value rather than being pinned to the old one's. The new
+ * file keeps its comments and layout; a mapping is walked into, anything else replaces its key
+ * whole, as `valueOverrides` hands it over. Null when the text or either file does not read, since
+ * there is then no edit to tell apart from the defaults it was made on.
+ */
+export function rebaseValues(text: string, fromDefaults: string, toDefaults: string): string | null {
+    const parsed = valuesForRender(text);
+    const from = valuesForRender(fromDefaults);
+    if ('problem' in parsed || 'problem' in from) return null;
+    const { doc, diagnostics } = readValues(toDefaults);
+    if (diagnostics.length > 0) return null;
+    // A file of comments only has no mapping to write into, so the edit starts one of its own.
+    const target: Document = doc && isMap(doc.contents) ? doc : new Document({});
+    writeOver(target, [], changedFrom(parsed.values, from.values));
+    return target.toString();
+}
+
+function writeOver(doc: Document, path: string[], overrides: Record<string, JsonValue>) {
+    for (const [key, value] of Object.entries(overrides)) {
+        const at = [...path, key];
+        const inner = asObject(value);
+        if (inner && isMap(doc.getIn(at, true))) writeOver(doc, at, inner as Record<string, JsonValue>);
+        else doc.setIn(at, value);
+    }
 }
 
 function changedFrom(

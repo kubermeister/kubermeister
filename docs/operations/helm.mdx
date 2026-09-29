@@ -188,7 +188,8 @@ The screen, **Install** _chart_, asks for three things:
 - **Release name**, which starts as the chart's name: lowercase letters, digits and dashes, starting
   and ending with a letter or digit, at most 53 characters.
 - **Version**, from the versions a classic repository's index lists. An OCI registry lists none, so
-  the version is the one the screen was opened on.
+  the version is the one the screen was opened on. Switching the version after editing the values
+  keeps what you changed and takes the new version's defaults for everything else.
 - The **values**, in an editor that starts from the chart's own `values.yaml`. When the chart ships
   a `values.schema.json`, the editor marks what it refuses as you type and completes keys and values
   from it.
