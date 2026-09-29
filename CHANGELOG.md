@@ -17,6 +17,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Installing a chart hands Helm only the values you changed, so a default the chart writes as `yes`
   reaches the release as true, as `helm install` reads it, and the release records only your values.
+- Rolling back a Helm release applies its objects server-side, as Helm does, instead of replacing
+  them whole, so replicas an autoscaler or `kubectl scale` set and annotations other tools added
+  survive the rollback, and a field another manager owns refuses it before anything is written.
+- Upgrading a Helm release the Helm CLI wrote client-side is no longer refused over Helm's own
+  fields, and a field another manager owns is named with its manager rather than shown as the API
+  server's raw answer.
 
 ## [0.9.0] - 2026-09-29
 

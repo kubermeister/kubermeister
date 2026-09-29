@@ -183,24 +183,6 @@ spec:
           type: Utilization
           averageUtilization: 80
 ---
-# The objects revision 2 of the demo release rendered, applied here the way Helm would have applied
-# them: a rollback has to find them in the cluster, not only in the release's own record.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: demo-config
-  namespace: km-e2e
-data:
-  colour: green
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: demo-extra
-  namespace: km-e2e
-data:
-  note: only-in-v2
----
 # Helm keeps one Secret per release revision; the cluster runs no Helm controller here, so the
 # release the add-on screens read is seeded directly. Each revision carries a rendered `manifest`:
 # revision 1 renders the demo-config ConfigMap as blue, revision 2 makes it green and adds

@@ -23,6 +23,7 @@ export const KEEP_CLUSTER = process.env.KM_E2E_KEEP_CLUSTER === '1';
 
 const FIXTURES_PATH = resolve('tests/e2e/fixtures/seed.yaml');
 const CUSTOM_FIXTURES_PATH = resolve('tests/e2e/fixtures/seed-custom.yaml');
+const HELM_FIXTURES_PATH = resolve('tests/e2e/fixtures/seed-helm.yaml');
 
 let started: StartedK3sContainer | undefined;
 
@@ -42,6 +43,9 @@ export async function ensureCluster(): Promise<void> {
     // Rename the generic "default" context, cluster and user so the UI shows an unmistakable name.
     writeFileSync(KUBECONFIG_PATH, started.getKubeConfig().replace(/\bdefault\b/g, CONTEXT_NAME));
     kubectl(started.getId(), ['apply', '-f', '-'], readFileSync(FIXTURES_PATH, 'utf8'));
+    // The seeded release's objects are owned by Helm's field manager, as the Helm CLI would have left
+    // them; under kubectl's they would be another manager's fields, which a rollback refuses to take.
+    kubectl(started.getId(), ['apply', '--field-manager=helm', '-f', '-'], readFileSync(HELM_FIXTURES_PATH, 'utf8'));
     // A custom resource cannot be created until the API server serves its kind, so the instances
     // of the seeded definition come in a second pass once that definition is established.
     kubectl(started.getId(), ['wait', '--for=condition=Established', '--timeout=60s', 'crd/widgets.km-e2e.test']);

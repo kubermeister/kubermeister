@@ -63,9 +63,9 @@ const helmMod = {
     listReleases: vi.fn(),
     getRelease: vi.fn(),
     getReleaseRevisions: vi.fn(),
-    rollbackRelease: vi.fn(),
     uninstallRelease: vi.fn(),
 };
+const helmRollbackMod = { rollbackRelease: vi.fn() };
 const chartsMod = {
     listChartRepositories: vi.fn(),
     addChartRepository: vi.fn(),
@@ -121,6 +121,7 @@ vi.mock('../../../src/main/k8s/resources/config.js', () => configMod);
 vi.mock('../../../src/main/k8s/resources/overview.js', () => overviewMod);
 vi.mock('../../../src/main/k8s/resources/network.js', () => networkMod);
 vi.mock('../../../src/main/k8s/resources/helm.js', () => helmMod);
+vi.mock('../../../src/main/k8s/resources/helm-rollback.js', () => helmRollbackMod);
 vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
 vi.mock('../../../src/main/charts/helm-cli.js', () => helmCliMod);
 vi.mock('../../../src/main/charts/values.js', () => chartValuesMod);
@@ -230,7 +231,7 @@ describe('registerHandlers', () => {
             name: 'web',
             namespace: 'team-a',
         });
-        helmMod.rollbackRelease.mockResolvedValue({
+        helmRollbackMod.rollbackRelease.mockResolvedValue({
             name: 'demo',
             namespace: 'team-a',
             revision: 3,

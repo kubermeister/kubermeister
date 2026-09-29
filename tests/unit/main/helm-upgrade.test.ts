@@ -233,7 +233,7 @@ const conflictWith = (conflicts: { field: string; manager: string }[]) =>
             message: `Apply failed with ${conflicts.length} conflict(s)`,
             details: {
                 causes: conflicts.map(({ field, manager }) => ({
-                    type: 'FieldManagerConflict',
+                    reason: 'FieldManagerConflict',
                     message: `conflict with "${manager}" using v1`,
                     field,
                 })),

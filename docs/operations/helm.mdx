@@ -111,13 +111,20 @@ removed.
 
 A rollback then does what Helm does:
 
-1. Applies every object the target revision rendered: created if it is missing, replaced if it is
-   there. Each one carries the label and annotations Helm marks its own objects with, so a later
-   `helm uninstall` removes it rather than leaving it behind as not owned by the release.
+1. Applies every object the target revision rendered, creating it if it is missing. Each one carries
+   the label and annotations Helm marks its own objects with, so a later `helm uninstall` removes it
+   rather than leaving it behind as not owned by the release.
 2. Deletes the objects the current revision has and the target never had, except those the chart
    marked to be kept.
 3. Writes a **new** revision, numbered one above the current, marked deployed and described
    "Rollback to N", and marks the old current revision superseded.
+
+A rollback writes each object by server-side apply, as Helm 4 does and as an
+[upgrade](#what-an-upgrade-keeps) does, so it keeps the same things: a field another manager owns
+and the target revision leaves out stays, such as replicas an autoscaler or `kubectl scale` set, and
+a field only Helm set that the target revision does not render is removed. Every object is checked
+with a server-side dry run first, so a field the target revision would take from another manager
+refuses the whole rollback, naming the field and its manager, before anything is written.
 
 Helm numbers forward and never rewinds, so a rollback from revision 5 to revision 3 produces revision 6. The toast says which revision is now current and how many objects the chart kept. The point of
 using Helm's own Secret names, labels and status words is that a release this app rolls back is
@@ -354,11 +361,6 @@ ownership moved to server-side apply on each object first, as `helm upgrade --se
 Helm's own earlier writes are never a conflict. The new revision records that it was applied
 server-side, so a later `helm upgrade` applies it the same way. A release installed here is applied
 server-side from the start.
-
-:::note[Rolling back still replaces]
-A [rollback](#rolling-back) writes each object whole rather than applying it, so it does drop a
-field another manager set.
-:::
 
 The Helm CLI reads the upgraded release like any other: `helm history` shows the new revision and
 the superseded one, and `helm get values`, `helm get hooks` and `helm uninstall` work on it.

@@ -11,7 +11,7 @@ vi.mock('../../../src/main/k8s/client.js', () => ({
 
 const apply = await import('../../../src/main/k8s/resources/helm-apply.js');
 
-const conflict = (causes: { type?: string; message?: string; field?: string }[]) =>
+const conflict = (causes: { reason?: string; message?: string; field?: string }[]) =>
     new ApiException(409, 'Conflict', { kind: 'Status', reason: 'Conflict', details: { causes } }, {});
 
 beforeEach(() => {
@@ -53,11 +53,15 @@ describe('applyConflicts', () => {
             apply.applyConflicts(
                 conflict([
                     {
-                        type: 'FieldManagerConflict',
+                        reason: 'FieldManagerConflict',
                         message: 'conflict with "kubectl" using apps/v1',
                         field: '.spec.replicas',
                     },
-                    { type: 'FieldManagerConflict', message: 'conflict with "argocd"', field: '.metadata.labels.tier' },
+                    {
+                        reason: 'FieldManagerConflict',
+                        message: 'conflict with "argocd"',
+                        field: '.metadata.labels.tier',
+                    },
                 ]),
             ),
         ).toEqual([
@@ -66,9 +70,19 @@ describe('applyConflicts', () => {
         ]);
     });
 
+    it('reads the Status an API server answers, as the text the client hands over', () => {
+        // Verbatim from k3s: the body arrives unparsed, and Go's StatusCause.Type goes over the wire as `reason`.
+        const body =
+            '{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"Apply failed with 1 conflict: conflict with \\"helm\\" using v1: .data.colour","reason":"Conflict","details":{"causes":[{"reason":"FieldManagerConflict","message":"conflict with \\"helm\\" using v1","field":".data.colour"}]},"code":409}\n';
+        expect(apply.applyConflicts(new ApiException(409, 'Conflict', body, {}))).toEqual([
+            { field: '.data.colour', manager: 'helm' },
+        ]);
+        expect(apply.applyConflicts(new ApiException(409, 'Conflict', '<html>proxy error</html>', {}))).toBeNull();
+    });
+
     it('is null for anything that is not an apply conflict', () => {
         expect(apply.applyConflicts(new ApiException(409, 'AlreadyExists', { kind: 'Status' }, {}))).toBeNull();
-        expect(apply.applyConflicts(conflict([{ type: 'FieldValueInvalid', field: '.spec' }]))).toBeNull();
+        expect(apply.applyConflicts(conflict([{ reason: 'FieldValueInvalid', field: '.spec' }]))).toBeNull();
         expect(apply.applyConflicts(new ApiException(422, 'Invalid', { kind: 'Status' }, {}))).toBeNull();
         expect(apply.applyConflicts(new Error('fetch failed'))).toBeNull();
     });
