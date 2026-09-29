@@ -181,7 +181,8 @@ async function saveManifestExport(input: ManifestExportInput): Promise<ManifestE
 /** The route to the cluster changed, so nothing made over the old one may carry on. */
 function reconnect(): void {
     leaveConnection('The proxy settings changed');
-    reloadKubeConfig();
+    // The route changed, not the cluster, so the context and namespace in use stay.
+    reloadKubeConfig({ keepSelection: true });
 }
 
 /** Whether a settings write changed how the app reaches the cluster, which the loaded config holds. */

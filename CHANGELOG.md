@@ -36,6 +36,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   it no longer lands in the `default` namespace or is refused from the editor.
 - Switching a chart's version after editing its values keeps your changes and takes the new version's
   defaults for the rest, instead of installing the old version's defaults as values you set.
+- Changing the proxy, the bypass list or the CA bundle keeps the context and namespace the app is on instead of switching back to the one it opened on.
 
 ## [0.9.1] - 2026-09-29
 
