@@ -342,6 +342,18 @@ describe('helm writes', () => {
             ]);
         });
 
+        it('reads a stored manifest the way the Helm CLI does, octal file modes included', () => {
+            const manifest = [
+                'apiVersion: v1',
+                'kind: ConfigMap',
+                'metadata:',
+                '  name: modes',
+                'data:',
+                '  mode: 0755',
+            ].join('\n');
+            expect(helm.manifestObjects(manifest, 'team-a')[0]).toMatchObject({ data: { mode: 0o755 } });
+        });
+
         it('ignores empty documents, and a manifest it cannot read rather than guessing', () => {
             expect(helm.manifestObjects('---\n\n---\n', 'team-a')).toEqual([]);
             expect(helm.manifestObjects('a:\n b: [', 'team-a')).toEqual([]);

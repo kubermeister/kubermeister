@@ -221,6 +221,19 @@ describe('splitRendered', () => {
         );
     });
 
+    it('reads an octal file mode and a YAML 1.1 boolean the way Helm and kubectl do', () => {
+        const split = splitRendered(
+            '---\n# Source: c/templates/pod.yaml\napiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n' +
+                '  enableServiceLinks: no\n  volumes:\n    - name: s\n      secret:\n        secretName: s\n        defaultMode: 0400\n',
+        );
+        const spec = split.objects[0]!.object.spec as {
+            enableServiceLinks: unknown;
+            volumes: { secret: { defaultMode: unknown } }[];
+        };
+        expect(spec.volumes[0]!.secret.defaultMode).toBe(0o400);
+        expect(spec.enableServiceLinks).toBe(false);
+    });
+
     it('refuses output that is not YAML', () => {
         expect(() => splitRendered('---\n# Source: c/templates/bad.yaml\nkey: [unclosed\n')).toThrow(
             /c\/templates\/bad\.yaml is not valid YAML/,

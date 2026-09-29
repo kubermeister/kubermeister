@@ -210,6 +210,9 @@ does. What you change is read the way the editor checks it, as YAML 1.2, so `yes
 `off` you type are strings; write `true` and `false` for booleans. Those changes are what the release
 records, and what `helm get values` shows.
 
+The objects the chart renders are read the way Helm and kubectl read them, as YAML 1.1, so a file
+mode a template writes as `0644` is octal, as in `helm install`.
+
 ### The review
 
 **Review** renders the chart and checks what it rendered, before anything is written:

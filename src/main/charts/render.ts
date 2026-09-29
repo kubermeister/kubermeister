@@ -2,9 +2,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { gunzip } from 'node:zlib';
-import { load as loadYaml } from 'js-yaml';
 import { DNS_LABEL } from '../../shared/k8s/names.js';
 import type { RenderedObject } from '../k8s/resources/helm.js';
+import { loadRenderedYaml } from '../k8s/yaml.js';
 import { MAX_EXPANDED_BYTES, readTarEntries } from './archive.js';
 import {
     HELM_TIMEOUT_MS,
@@ -173,7 +173,7 @@ export function splitRendered(output: string): Omit<ChartRender, 'usesLookup'> {
         if (!manifest) continue;
         let document: unknown;
         try {
-            document = loadYaml(manifest);
+            document = loadRenderedYaml(manifest);
         } catch (error) {
             throw new Error(`${source} is not valid YAML: ${(error as Error).message}`, { cause: error });
         }
