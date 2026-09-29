@@ -109,6 +109,98 @@ describe('useWatchedList', () => {
         expect(stop).toHaveBeenCalledOnce();
     });
 
+    // A list answer the test releases by hand, so events can arrive while it is still in flight.
+    function deferredLists() {
+        const pending: Array<{ resolve: (output: ResourceListOutput) => void; reject: (error: Error) => void }> = [];
+        invoke.mockImplementation((channel: string) => {
+            if (channel === 'resources.list') {
+                return new Promise<ResourceListOutput>((resolve, reject) => pending.push({ resolve, reject }));
+            }
+            if (channel === 'namespace.active') return Promise.resolve({ name: 'team-a' });
+            if (channel === 'context.current') {
+                return Promise.resolve({ name: 'alpha', cluster: 'c', user: 'u', current: true });
+            }
+            return Promise.resolve(undefined);
+        });
+        return {
+            count: () => pending.length,
+            answer: (index: number, output: ResourceListOutput) => pending[index]?.resolve(output),
+            fail: (index: number) => pending[index]?.reject(new Error('list failed')),
+        };
+    }
+
+    it('keeps events that arrive before the list answers, since the list is the older of the two', async () => {
+        const lists = deferredLists();
+        const { result } = renderHook(() => useWatchedList('Pod'), { wrapper });
+        await waitFor(() => expect(onMessage).toBeDefined());
+        act(() => onMessage?.({ type: 'data', data: event('deleted', 'a') }));
+        act(() => onMessage?.({ type: 'data', data: event('modified', 'b', 'CrashLoop') }));
+        act(() => onMessage?.({ type: 'data', data: event('added', 'c') }));
+        await act(async () => {
+            lists.answer(0, list('a', 'b'));
+        });
+        await waitFor(() =>
+            expect(result.current.data?.map((r) => [r.name, r.status])).toEqual([
+                ['b', 'CrashLoop'],
+                ['c', 'Running'],
+            ]),
+        );
+    });
+
+    it('keeps events applied during a refetch rather than letting the older answer overwrite them', async () => {
+        const lists = deferredLists();
+        const { result } = renderHook(() => useWatchedList('Pod'), { wrapper });
+        await waitFor(() => expect(onMessage).toBeDefined());
+        await act(async () => {
+            lists.answer(0, list('a', 'b'));
+        });
+        await waitFor(() => expect(result.current.data).toHaveLength(2));
+        act(() => onMessage?.({ type: 'error', message: 'watch closed' }));
+        await waitFor(() => expect(lists.count()).toBe(2));
+        act(() => onMessage?.({ type: 'data', data: event('deleted', 'a') }));
+        await waitFor(() => expect(result.current.data?.map((r) => r.name)).toEqual(['b']));
+        await act(async () => {
+            lists.answer(1, list('a', 'b'));
+        });
+        await waitFor(() => expect(result.current.isFetching).toBe(false));
+        expect(result.current.data?.map((r) => r.name)).toEqual(['b']);
+        // Once the answer has taken the events in, a later list answer is newer than them.
+        await act(async () => {
+            void client.invalidateQueries({ queryKey: ['resources.list'] });
+        });
+        await waitFor(() => expect(lists.count()).toBe(3));
+        await act(async () => {
+            lists.answer(2, list('a', 'b'));
+        });
+        await waitFor(() => expect(result.current.data?.map((r) => r.name)).toEqual(['a', 'b']));
+    });
+
+    it('drops the held events when the refetch fails, leaving the rows they were applied to', async () => {
+        const lists = deferredLists();
+        const { result } = renderHook(() => useWatchedList('Pod'), { wrapper });
+        await waitFor(() => expect(onMessage).toBeDefined());
+        await act(async () => {
+            lists.answer(0, list('a', 'b'));
+        });
+        await waitFor(() => expect(result.current.data).toHaveLength(2));
+        act(() => onMessage?.({ type: 'error', message: 'watch closed' }));
+        await waitFor(() => expect(lists.count()).toBe(2));
+        act(() => onMessage?.({ type: 'data', data: event('deleted', 'a') }));
+        await act(async () => {
+            lists.fail(1);
+        });
+        await waitFor(() => expect(result.current.isFetching).toBe(false));
+        expect(result.current.data?.map((r) => r.name)).toEqual(['b']);
+        await act(async () => {
+            void client.invalidateQueries({ queryKey: ['resources.list'] });
+        });
+        await waitFor(() => expect(lists.count()).toBe(3));
+        await act(async () => {
+            lists.answer(2, list('a', 'b'));
+        });
+        await waitFor(() => expect(result.current.data?.map((r) => r.name)).toEqual(['a', 'b']));
+    });
+
     it('restarts the watch when the active namespace changes', async () => {
         let namespace = 'team-a';
         invoke.mockImplementation(async (channel: string) => {

@@ -76,6 +76,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   forwards, log follows and shells keep running and the open page stays where it is.
 - A log follow the cluster refuses, such as one on a container still starting, shows the cluster's
   reason instead of a dump of the response headers.
+- A live list no longer loses a change made while it was still loading or reloading, so a pod deleted
+  in that moment no longer keeps its row and a changed one no longer keeps its old status.
 
 ## [0.9.1] - 2026-09-29
 
