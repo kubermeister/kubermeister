@@ -1,3 +1,5 @@
+import type { V1LabelSelector } from '@kubernetes/client-node';
+
 /**
  * Pure display-formatting helpers that map raw Kubernetes field values into the strings/numbers
  * the renderer models expect. No cluster access — kept here so they are unit-testable in isolation.
@@ -149,6 +151,33 @@ export function joinSelector(selector?: Record<string, string> | null, empty = '
     const entries = Object.entries(selector ?? {});
     if (entries.length === 0) return empty;
     return entries.map(([k, v]) => `${k}=${v}`).join(',');
+}
+
+const EXPRESSION_FORMS: Record<string, (key: string, values: string) => string> = {
+    In: (key, values) => `${key} in (${values})`,
+    NotIn: (key, values) => `${key} notin (${values})`,
+    Exists: (key) => key,
+    DoesNotExist: (key) => `!${key}`,
+};
+
+/**
+ * A label selector in kubectl's syntax, `matchLabels` and `matchExpressions` both, e.g.
+ * "app=web,tier notin (front)". An empty selector and an absent one mean opposite things (every pod
+ * versus none, for the kinds that allow both), so each has its own word.
+ */
+export function formatLabelSelector(
+    selector: V1LabelSelector | null | undefined,
+    words: { everything: string; nothing: string },
+): string {
+    if (!selector) return words.nothing;
+    const parts = [
+        ...Object.entries(selector.matchLabels ?? {}).map(([k, v]) => `${k}=${v}`),
+        ...(selector.matchExpressions ?? []).map(({ key, operator, values }) => {
+            const form = EXPRESSION_FORMS[operator];
+            return form ? form(key, (values ?? []).join(',')) : `${key} ${operator} (${(values ?? []).join(',')})`;
+        }),
+    ];
+    return parts.length === 0 ? words.everything : parts.join(',');
 }
 
 /**

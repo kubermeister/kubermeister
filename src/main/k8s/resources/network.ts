@@ -15,7 +15,7 @@ import type {
 } from '../../../shared/k8s/network.js';
 import { apis, getNamespaced, listItems } from '../client.js';
 import { withK8s } from '../errors.js';
-import { age, dash, joinSelector, toPairs } from '../format.js';
+import { age, dash, formatLabelSelector, toPairs } from '../format.js';
 
 /*
  * Pure transforms first, exported for tests and for the watch stream; thin readers at the end.
@@ -181,7 +181,10 @@ export function toNetworkPolicy(policy: V1NetworkPolicy, now = Date.now()): Netw
     return {
         name: policy.metadata?.name ?? '',
         namespace: policy.metadata?.namespace ?? '',
-        podSelector: joinSelector(policy.spec?.podSelector?.matchLabels, '<all pods>'),
+        podSelector: formatLabelSelector(policy.spec?.podSelector ?? {}, {
+            everything: '<all pods>',
+            nothing: '<all pods>',
+        }),
         policyTypes: (policy.spec?.policyTypes ?? []).join(', ') || '—',
         age: age(policy.metadata?.creationTimestamp, now),
     };

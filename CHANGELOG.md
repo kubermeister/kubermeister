@@ -49,6 +49,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Memory and CPU amounts written with a lower-case `k` or an `m` suffix, as the API server often
   stores them, are read at their real size, so limits, namespace requests and quota usage no longer
   come out a thousand times too small or too large.
+- A pod's Related tab lists the NetworkPolicies with an empty pod selector, which apply to every pod,
+  and no longer lists one whose `matchExpressions` exclude the pod; the Network Policies and Pod
+  Disruption Budgets lists print a selector's expressions and tell a selector matching every pod from
+  one matching none.
 
 ## [0.9.1] - 2026-09-29
 

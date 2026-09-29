@@ -1,4 +1,4 @@
-import type { V1Pod, V1PodSpec, V1Service } from '@kubernetes/client-node';
+import type { V1LabelSelector, V1Pod, V1PodSpec, V1Service } from '@kubernetes/client-node';
 import type { RelatedGroup, RelatedLink } from '../../../shared/k8s/related.js';
 import { ownerPath } from '../../../shared/k8s/owners.js';
 import { apis, readOrNull, resolveObjectNamespace } from '../client.js';
@@ -23,6 +23,37 @@ export function selectorCovers(selector: Record<string, string> | undefined, lab
     const entries = Object.entries(selector ?? {});
     if (entries.length === 0) return false;
     return entries.every(([key, value]) => labels[key] === value);
+}
+
+/**
+ * Whether a label selector selects a set of labels, read as the API server reads one: an empty
+ * selector selects everything, an absent one nothing, and every label and expression must hold. An
+ * operator the API does not know makes the selector invalid there, so it selects nothing here either.
+ */
+export function labelSelectorSelects(
+    selector: V1LabelSelector | null | undefined,
+    labels: Record<string, string>,
+): boolean {
+    if (!selector) return false;
+    const matchLabels = Object.entries(selector.matchLabels ?? {}).every(([key, value]) => labels[key] === value);
+    return (
+        matchLabels &&
+        (selector.matchExpressions ?? []).every(({ key, operator, values }) => {
+            const has = Object.hasOwn(labels, key);
+            switch (operator) {
+                case 'In':
+                    return has && (values ?? []).includes(labels[key]!);
+                case 'NotIn':
+                    return !has || !(values ?? []).includes(labels[key]!);
+                case 'Exists':
+                    return has;
+                case 'DoesNotExist':
+                    return !has;
+                default:
+                    return false;
+            }
+        })
+    );
 }
 
 /** The config maps, secrets and claims a pod spec names, each with the way it names them. */
@@ -103,7 +134,8 @@ export function getRelated(kind: string, name: string, namespace?: string): Prom
         const links = [
             ...servicesFor(services.items, labels, ns),
             ...policies.items
-                .filter((policy) => selectorCovers(policy.spec?.podSelector?.matchLabels, labels))
+                // The pod selector is required and `{}` is its empty form, which selects every pod.
+                .filter((policy) => labelSelectorSelects(policy.spec?.podSelector ?? {}, labels))
                 .map((policy) => link('NetworkPolicy', policy.metadata?.name ?? '', ns, 'applies to these pods')),
             ...specReferences(pod.spec, ns),
         ];

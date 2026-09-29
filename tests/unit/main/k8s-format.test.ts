@@ -8,6 +8,7 @@ import {
     duration,
     formatBytes,
     formatQuantityDelta,
+    formatLabelSelector,
     joinSelector,
     memToBytes,
     memToGiB,
@@ -143,6 +144,26 @@ describe('duration / formatBytes / joinSelector', () => {
         expect(joinSelector({ role: 'db', tier: 'data' })).toBe('role=db,tier=data');
         expect(joinSelector({})).toBe('<none>');
         expect(joinSelector(null, '<all pods>')).toBe('<all pods>');
+    });
+
+    it('formats a label selector the way kubectl prints one', () => {
+        expect(formatLabelSelector({}, { everything: '<all pods>', nothing: '—' })).toBe('<all pods>');
+        expect(formatLabelSelector(undefined, { everything: '<all pods>', nothing: '—' })).toBe('—');
+        expect(formatLabelSelector(null, { everything: '<all pods>', nothing: '—' })).toBe('—');
+        expect(
+            formatLabelSelector(
+                {
+                    matchLabels: { app: 'web' },
+                    matchExpressions: [
+                        { key: 'tier', operator: 'In', values: ['front'] },
+                        { key: 'zone', operator: 'NotIn', values: ['a', 'b'] },
+                        { key: 'canary', operator: 'Exists' },
+                        { key: 'legacy', operator: 'DoesNotExist' },
+                    ],
+                },
+                { everything: '<all pods>', nothing: '—' },
+            ),
+        ).toBe('app=web,tier in (front),zone notin (a,b),canary,!legacy');
     });
 });
 

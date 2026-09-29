@@ -49,6 +49,43 @@ describe('selector matching', () => {
         expect(related.selectorCovers({}, { app: 'web' })).toBe(false);
         expect(related.selectorCovers(undefined, { app: 'web' })).toBe(false);
     });
+
+    it('reads a label selector as the API does, expressions included', () => {
+        const labels = { app: 'web', tier: 'front' };
+        // An empty label selector selects everything, and an absent one nothing.
+        expect(related.labelSelectorSelects({}, labels)).toBe(true);
+        expect(related.labelSelectorSelects({ matchLabels: {}, matchExpressions: [] }, labels)).toBe(true);
+        expect(related.labelSelectorSelects(undefined, labels)).toBe(false);
+        expect(related.labelSelectorSelects(null, labels)).toBe(false);
+        expect(related.labelSelectorSelects({ matchLabels: { app: 'web' } }, labels)).toBe(true);
+        expect(related.labelSelectorSelects({ matchLabels: { app: 'db' } }, labels)).toBe(false);
+        const expression = (operator: string, key: string, values?: string[]) => ({
+            matchExpressions: [{ key, operator, values }],
+        });
+        expect(related.labelSelectorSelects(expression('In', 'tier', ['front', 'back']), labels)).toBe(true);
+        expect(related.labelSelectorSelects(expression('In', 'tier', ['back']), labels)).toBe(false);
+        expect(related.labelSelectorSelects(expression('In', 'zone', ['a']), labels)).toBe(false);
+        expect(related.labelSelectorSelects(expression('NotIn', 'tier', ['front']), labels)).toBe(false);
+        expect(related.labelSelectorSelects(expression('NotIn', 'tier', ['back']), labels)).toBe(true);
+        // NotIn also selects a pod without the key at all.
+        expect(related.labelSelectorSelects(expression('NotIn', 'zone', ['a']), labels)).toBe(true);
+        expect(related.labelSelectorSelects(expression('Exists', 'tier'), labels)).toBe(true);
+        expect(related.labelSelectorSelects(expression('Exists', 'zone'), labels)).toBe(false);
+        expect(related.labelSelectorSelects(expression('DoesNotExist', 'zone'), labels)).toBe(true);
+        expect(related.labelSelectorSelects(expression('DoesNotExist', 'tier'), labels)).toBe(false);
+        // An operator the API does not know is refused there, so it is no reason to link anything.
+        expect(related.labelSelectorSelects(expression('Like', 'tier', ['front']), labels)).toBe(false);
+        // Labels and expressions must both hold.
+        expect(
+            related.labelSelectorSelects(
+                {
+                    matchLabels: { app: 'web' },
+                    matchExpressions: [{ key: 'tier', operator: 'NotIn', values: ['front'] }],
+                },
+                labels,
+            ),
+        ).toBe(false);
+    });
 });
 
 describe('what a pod spec names', () => {
@@ -131,6 +168,32 @@ describe('getRelated', () => {
         // Only the service whose selector actually covers the pod's labels is a relation.
         expect(traffic.map((one) => one.name)).toEqual(['web', 'deny-all']);
         expect(traffic[0]!.why).toBe('selects these pods');
+    });
+
+    it('links a policy selecting every pod and never one whose expressions exclude the pod', async () => {
+        net.listNamespacedNetworkPolicy.mockResolvedValue({
+            items: [
+                { metadata: { name: 'default-deny' }, spec: { podSelector: {} } },
+                { metadata: { name: 'no-selector' }, spec: {} },
+                {
+                    metadata: { name: 'not-front' },
+                    spec: {
+                        podSelector: {
+                            matchLabels: { app: 'web' },
+                            matchExpressions: [{ key: 'tier', operator: 'NotIn', values: ['front'] }],
+                        },
+                    },
+                },
+                {
+                    metadata: { name: 'front-only' },
+                    spec: { podSelector: { matchExpressions: [{ key: 'tier', operator: 'In', values: ['front'] }] } },
+                },
+            ],
+        });
+        const groups = await related.getRelated('Pod', 'web-1', 'team-a');
+        const policies = groups[0]!.items.filter((one) => one.kind === 'NetworkPolicy');
+        // A policy with no pod selector at all selects every pod too: the field is required and `{}` is its empty form.
+        expect(policies.map((one) => one.name)).toEqual(['default-deny', 'no-selector', 'front-only']);
     });
 
     it('answers nothing for a kind it cannot explain yet, and refuses without a namespace', async () => {
