@@ -1,4 +1,5 @@
 import * as net from 'node:net';
+import { Writable } from 'node:stream';
 import { PortForward, type V1Endpoints, type V1Service } from '@kubernetes/client-node';
 import { streamSchemas, type StreamController, type StreamSend } from '../../shared/streams.js';
 import { kubeConfig } from './client.js';
@@ -42,9 +43,12 @@ type PodWebSocket = Awaited<ReturnType<PortForward['portForward']>>;
 
 /**
  * Forward a loopback TCP port to a pod port. Each incoming connection gets its own websocket to
- * the pod, piped both ways, and that websocket is closed when the local socket closes: the client
- * only closes it on stream `end`, while a destroyed socket emits `close`, so without this every
- * connection alive at stop would leak a websocket to the API server.
+ * the pod, piped both ways, and each side's close ends the other. The websocket is closed when the
+ * local socket closes: the client only closes it on stream `end`, while a destroyed socket emits
+ * `close`, so without this every connection alive at stop would leak a websocket to the API server.
+ * The local socket is ended when the websocket closes, which is how the pod side hangs up, since the
+ * client adds no close handler of its own: without it a connection the server let go stays open
+ * locally and the next request on it hangs.
  */
 export async function startPodPortForward(rawInput: unknown, send: StreamSend): Promise<StreamController> {
     const input = streamSchemas['pods.portForward'].parse(rawInput);
@@ -115,15 +119,36 @@ export async function startPodPortForward(rawInput: unknown, send: StreamSend): 
                         },
                     });
                 }
+                // The error channel carries the kubelet's sentence when it cannot reach the pod port,
+                // such as a connection refused, and the websocket closes right after it.
+                let failure = '';
+                const errors = new Writable({
+                    write(chunk: Buffer, _encoding, done) {
+                        failure += chunk.toString('utf8');
+                        done();
+                    },
+                });
                 const podSocket = await forward.portForward(
                     input.namespace,
                     target.pod,
                     [target.port],
                     socket,
-                    null,
+                    errors,
                     socket,
                 );
                 ws = podSocket;
+                podSocket.on('close', () => {
+                    ws = undefined;
+                    if (socket.destroyed) return;
+                    if (!failure) {
+                        // Ended rather than destroyed, so what the pod sent before hanging up still arrives.
+                        socket.end();
+                        return;
+                    }
+                    send({ type: 'error', message: failure.trim() });
+                    // A reset is what the client would have got from the pod port itself.
+                    socket.resetAndDestroy();
+                });
                 if (socket.destroyed) closeWs();
             })
             .catch((error: unknown) => {

@@ -1,5 +1,6 @@
-import { once } from 'node:events';
+import { EventEmitter, once } from 'node:events';
 import * as net from 'node:net';
+import { Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const portForward = vi.fn();
@@ -110,7 +111,11 @@ describe('resolving a service port to a pod port', () => {
 describe('startPodPortForward', () => {
     // One per test: a connection a test leaves closing reaches the websocket it was handed, so a
     // shared one counted the previous test's close in the next test's assertions.
-    let ws: { close: ReturnType<typeof vi.fn> };
+    let ws: FakeWebSocket;
+
+    class FakeWebSocket extends EventEmitter {
+        close = vi.fn();
+    }
 
     /**
      * The local socket the next connection is handed to the pod with, once the forward reaches it.
@@ -118,9 +123,14 @@ describe('startPodPortForward', () => {
      * second `vi.waitFor` allows by default.
      */
     function nextForward(): Promise<net.Socket> {
+        return nextForwardWithErrors().then(({ local }) => local);
+    }
+
+    /** The same, with the writable the forward's error channel is copied into. */
+    function nextForwardWithErrors(): Promise<{ local: net.Socket; errors: Writable }> {
         return new Promise((resolve) => {
             portForward.mockImplementationOnce(async (...args: unknown[]) => {
-                resolve(args[3] as net.Socket);
+                resolve({ local: args[3] as net.Socket, errors: args[4] as Writable });
                 return ws;
             });
         });
@@ -128,7 +138,7 @@ describe('startPodPortForward', () => {
 
     beforeEach(() => {
         portForward.mockReset();
-        ws = { close: vi.fn() };
+        ws = new FakeWebSocket();
         readOrNull.mockReset();
         readOrNull.mockResolvedValue({ metadata: { name: 'web-1' } });
         portForward.mockResolvedValue(ws);
@@ -150,7 +160,7 @@ describe('startPodPortForward', () => {
         const forwarded = nextForward();
         const client = await connect(localPort);
         const local = await forwarded;
-        expect(portForward).toHaveBeenCalledWith('team-a', 'web-1', [8080], local, null, local);
+        expect(portForward).toHaveBeenCalledWith('team-a', 'web-1', [8080], local, expect.any(Writable), local);
         await new Promise((resolve) => setImmediate(resolve));
 
         const closed = Promise.all([once(local, 'close'), once(client, 'close')]);
@@ -186,7 +196,7 @@ describe('startPodPortForward', () => {
         const forwarded = nextForward();
         const client = await connect(localPort);
         const local = await forwarded;
-        expect(portForward).toHaveBeenCalledWith('team-a', 'web-2', [8080], local, null, local);
+        expect(portForward).toHaveBeenCalledWith('team-a', 'web-2', [8080], local, expect.any(Writable), local);
         const closed = once(local, 'close');
         client.destroy();
         await closed;
@@ -207,6 +217,61 @@ describe('startPodPortForward', () => {
         client.destroy();
         await closed;
         expect(ws.close).toHaveBeenCalledOnce();
+        ctl.stop();
+    });
+
+    it('ends the local connection when the pod side closes, after what it sent', async () => {
+        const localPort = await freePort();
+        const send = vi.fn();
+        const ctl = await startPodPortForward({ name: 'web-1', namespace: 'team-a', targetPort: 80, localPort }, send);
+        const forwarded = nextForward();
+        const client = await connect(localPort);
+        const local = await forwarded;
+        await new Promise((resolve) => setImmediate(resolve));
+
+        const received: Buffer[] = [];
+        client.on('data', (chunk: Buffer) => received.push(chunk));
+        const ended = once(client, 'end');
+        local.write('HTTP/1.1 200 OK\r\n\r\n');
+        ws.emit('close');
+        await ended;
+        expect(Buffer.concat(received).toString()).toBe('HTTP/1.1 200 OK\r\n\r\n');
+        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+        ctl.stop();
+    });
+
+    it('reports what the error channel says and resets the local connection', async () => {
+        const localPort = await freePort();
+        const send = vi.fn();
+        const ctl = await startPodPortForward({ name: 'web-1', namespace: 'team-a', targetPort: 80, localPort }, send);
+        const forwarded = nextForwardWithErrors();
+        const client = await connect(localPort);
+        const { errors } = await forwarded;
+        await new Promise((resolve) => setImmediate(resolve));
+
+        const failed = new Promise<NodeJS.ErrnoException>((resolve) => client.once('error', resolve));
+        const message = 'error forwarding port 80 to pod abc, uid : failed to connect: connection refused';
+        await new Promise<void>((resolve) => errors.write(Buffer.from(message), () => resolve()));
+        ws.emit('close');
+        expect((await failed).code).toBe('ECONNRESET');
+        expect(send).toHaveBeenCalledWith({ type: 'error', message });
+        ctl.stop();
+    });
+
+    it('leaves a local connection that already closed alone when the pod side follows', async () => {
+        const localPort = await freePort();
+        const send = vi.fn();
+        const ctl = await startPodPortForward({ name: 'web-1', namespace: 'team-a', targetPort: 80, localPort }, send);
+        const forwarded = nextForwardWithErrors();
+        const client = await connect(localPort);
+        const { local, errors } = await forwarded;
+        await new Promise((resolve) => setImmediate(resolve));
+        const closed = once(local, 'close');
+        client.destroy();
+        await closed;
+        errors.write(Buffer.from('error copying'));
+        ws.emit('close');
+        expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
         ctl.stop();
     });
 
