@@ -8,7 +8,7 @@ import type {
     ReleaseUninstallInput,
     ReleaseWriteResult,
 } from '../../../shared/k8s/addons.js';
-import { isClusterScopedKind } from '../../../shared/k8s/registry.js';
+import { apiGroupOf, isClusterScopedKind } from '../../../shared/k8s/registry.js';
 import { apis, listItems } from '../client.js';
 import { K8sError, withK8s } from '../errors.js';
 import { ago } from '../format.js';
@@ -305,9 +305,13 @@ export function inReleaseNamespace<T extends RenderedObject>(object: T, namespac
     return object;
 }
 
-/** Identity of one rendered object, so two revisions' manifests can be compared. */
+/**
+ * Identity of one rendered object, so two revisions' manifests can be compared. The version is left
+ * out, as Helm leaves it out: `autoscaling/v1` and `autoscaling/v2` HorizontalPodAutoscaler "web" are
+ * one object the server serves at both, so a chart moving it to a new version must not remove it.
+ */
 export const objectKey = (object: RenderedObject): string =>
-    `${object.apiVersion}/${object.kind}/${object.metadata.namespace ?? ''}/${object.metadata.name}`;
+    `${apiGroupOf(object.apiVersion)}/${object.kind}/${object.metadata.namespace ?? ''}/${object.metadata.name}`;
 
 /** An object as a sentence names it: its kind, its name and, when it has one, its namespace. */
 export const describeObject = (object: RenderedObject): string =>
