@@ -34,6 +34,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A certificate the app does not trust because its issuer is unknown or it is not valid yet, such as one a
   TLS-inspecting proxy presents, and a proxy answering HTTPS in plain text read as **Cluster
   unreachable** with its hints instead of an unknown "fetch failed" error.
+- A chart values schema whose key patterns escape punctuation the way Go allows, such as `\_` or `\:`, no
+  longer marks every key those patterns cover as not allowed.
 - Usage charts and pod and node usage keep updating when a metrics read hangs on a cluster that never
   answers or a credential plugin waiting for a sign-in, and after a context switch they no longer
   start with a point from the cluster just left.

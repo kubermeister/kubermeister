@@ -96,10 +96,32 @@ export function expand(root: JsonSchema, nodes: unknown[]): SchemaPart[] {
     return out;
 }
 
+/** Punctuation that the `u` flag lets a backslash escape; Go's regexp lets it escape any ASCII punctuation. */
+const ESCAPABLE_UNDER_U = new Set('^$\\.*+?()[]{}|/');
+
+/**
+ * Go's escape of other ASCII punctuation (`\_`, `\:`) spelled as the hex escape the `u` flag accepts,
+ * so a pattern Helm's schema check reads compiles here too.
+ */
+function goEscapes(source: string): string {
+    let out = '';
+    for (let i = 0; i < source.length; i++) {
+        const next = source[i + 1];
+        if (source[i] !== '\\' || next === undefined) {
+            out += source[i];
+            continue;
+        }
+        const punctuation = /^[!-/:-@[-`{-~]$/.test(next) && !ESCAPABLE_UNDER_U.has(next);
+        out += punctuation ? `\\x${next.charCodeAt(0).toString(16).padStart(2, '0')}` : `\\${next}`;
+        i++;
+    }
+    return out;
+}
+
 /** A pattern from the schema, or null for one JavaScript cannot compile, which then matches nothing. */
 export function patternOf(source: string): RegExp | null {
     try {
-        return new RegExp(source, 'u');
+        return new RegExp(goEscapes(source), 'u');
     } catch {
         return null;
     }

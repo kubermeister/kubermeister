@@ -93,6 +93,32 @@ describe('checking values against the chart’s schema', () => {
         ]);
     });
 
+    it('reads a patternProperties key with the identity escapes Go accepts, such as \\_ and \\:', () => {
+        const closed: JsonSchema = {
+            type: 'object',
+            additionalProperties: false,
+            patternProperties: {
+                '^[a-z\\_]+$': { type: 'string' },
+                '^port\\:[0-9]+$': { type: 'integer' },
+                '^x\\-[\\-a-z]+$': { type: 'string' },
+            },
+        };
+        expect(marks('app_name: web\nport:80: 8080\nx-a-b: c\n', closed)).toEqual([]);
+        expect(marks('app_name: 1\nOther: x\n', closed)).toEqual([
+            expect.objectContaining({ at: '1', severity: 'error' }),
+            expect.objectContaining({ at: 'Other', severity: 'error' }),
+        ]);
+    });
+
+    it('matches a pattern outside the Basic Multilingual Plane as one character, as Go does', () => {
+        const closed: JsonSchema = {
+            type: 'object',
+            additionalProperties: false,
+            patternProperties: { '^.$': { type: 'string' } },
+        };
+        expect(marks('"😀": x\n', closed)).toEqual([]);
+    });
+
     it('holds every half of an allOf, and items through a $ref into $defs', () => {
         // Read as YAML 1.2, where `yes` is a string rather than true.
         expect(marks('ingress:\n  enabled: yes\n')).toEqual([
