@@ -298,7 +298,15 @@ function AddRepositoryDialog() {
                 </div>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction disabled={!ready || add.isPending} onClick={() => void submit()}>
+                    <AlertDialogAction
+                        disabled={!ready || add.isPending}
+                        onClick={(event) => {
+                            // Keep the dialog open, with what was typed, until the write settles: a refusal leaves it
+                            // up to be corrected rather than only a toast.
+                            event.preventDefault();
+                            void submit();
+                        }}
+                    >
                         Add
                     </AlertDialogAction>
                 </AlertDialogFooter>
