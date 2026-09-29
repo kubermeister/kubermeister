@@ -254,12 +254,14 @@ jobs:
           done
           exit "$failed"
 
+  # No ubuntu-latest here: e2e and package smoke (linux x64) run this same install and build on that
+  # image before doing more with it, so a third copy would catch nothing they miss.
   build:
     name: build (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
