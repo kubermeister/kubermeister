@@ -33,6 +33,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   instead of Pending.
 - A crash-loop alert found from back-off events gives the span its count covers, so a pod that has
   been backing off for days no longer reads as hundreds of back-offs in the last 10 minutes.
+- An event that keeps repeating, such as the scheduler's FailedScheduling, sorts and shows its time by
+  when it last happened rather than when it first did.
 - Saving a custom resource's manifest shows the saved text on its Manifest tab and the new values on its
   screens at once, instead of the text from before the save until the page was reopened.
 - A pod owned by a custom resource that shares a built-in kind's name, such as an OpenKruise
