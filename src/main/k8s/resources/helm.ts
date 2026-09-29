@@ -4,7 +4,6 @@ import { dump as dumpYaml, loadAll as loadAllYaml } from 'js-yaml';
 import type {
     Release,
     ReleaseRevision,
-    ReleaseRollbackInput,
     ReleaseStatus,
     ReleaseUninstallInput,
     ReleaseWriteResult,
@@ -309,6 +308,10 @@ export function inReleaseNamespace<T extends RenderedObject>(object: T, namespac
 export const objectKey = (object: RenderedObject): string =>
     `${object.apiVersion}/${object.kind}/${object.metadata.namespace ?? ''}/${object.metadata.name}`;
 
+/** An object as a sentence names it: its kind, its name and, when it has one, its namespace. */
+export const describeObject = (object: RenderedObject): string =>
+    `${object.kind} "${object.metadata.name}"${object.metadata.namespace ? ` in ${object.metadata.namespace}` : ''}`;
+
 /** What the old revision had and the new one does not: the objects a rollback takes away. */
 export function goneBetween(from: RenderedObject[], to: RenderedObject[]): RenderedObject[] {
     const wanted = new Set(to.map(objectKey));
@@ -368,26 +371,6 @@ export function releaseSecretBody(data: HelmReleaseData): V1Secret {
     };
 }
 
-/**
- * Apply one rendered object for a release: create it, or replace the one already there. Either way
- * it carries Helm's ownership metadata, since a replace sends the whole object and would otherwise
- * strip what Helm stamped when it installed it.
- */
-export async function applyObject(rendered: RenderedObject, release: string, namespace: string): Promise<void> {
-    const object = withHelmOwnership(rendered, release, namespace);
-    try {
-        await apis().objects.create(object);
-    } catch (error) {
-        if (!(error instanceof ApiException) || error.code !== 409) throw error;
-        // Already there: a replace needs the version it was read with, so read it first.
-        const existing = await apis().objects.read(object);
-        await apis().objects.replace({
-            ...object,
-            metadata: { ...object.metadata, resourceVersion: existing.metadata?.resourceVersion },
-        });
-    }
-}
-
 /** Delete one rendered object, treating one that is already gone as done. */
 export async function removeObject(object: RenderedObject): Promise<void> {
     try {
@@ -409,63 +392,6 @@ export async function restatusRevision(secret: V1Secret, data: HelmReleaseData, 
             data: undefined,
             stringData: { release: encodeRelease(next) },
         },
-    });
-}
-
-/**
- * Roll a release back to one of its own revisions: re-apply that revision's rendered objects, take
- * away what it never had, and record the result as a new revision. Helm numbers forward through a
- * rollback rather than rewinding, and the description says where it came from, so the history reads
- * the same whether the Helm CLI or this app did it.
- */
-export function rollbackRelease(input: ReleaseRollbackInput): Promise<ReleaseWriteResult> {
-    const op = 'releases.rollback';
-    return withK8s(op, async () => {
-        assertContext(input.context, op);
-        const revisions = await releaseSecrets(input.name, input.namespace);
-        if (revisions.length === 0) {
-            throw new K8sError('notFound', `No Helm release "${input.name}" in namespace ${input.namespace}.`, op);
-        }
-        const current = revisions[0]!;
-        const target = revisions.find((one) => one.data.version === input.revision);
-        if (!target) {
-            throw new K8sError('notFound', `Release "${input.name}" has no revision ${input.revision}.`, op);
-        }
-        if (target.data.version === current.data.version) {
-            throw new K8sError('invalid', `Release "${input.name}" already runs revision ${input.revision}.`, op);
-        }
-
-        const wanted = manifestObjects(target.data.manifest, input.namespace);
-        const present = manifestObjects(current.data.manifest, input.namespace);
-        for (const object of wanted) await applyObject(object, input.name, input.namespace);
-
-        const removable = goneBetween(present, wanted);
-        const kept = removable.filter(isKept);
-        for (const object of removable.filter((one) => !isKept(one))) await removeObject(object);
-
-        const revision = (current.data.version ?? 0) + 1;
-        await apis().core.createNamespacedSecret({
-            namespace: input.namespace,
-            body: releaseSecretBody({
-                ...target.data,
-                version: revision,
-                info: {
-                    ...target.data.info,
-                    status: 'deployed',
-                    last_deployed: new Date().toISOString(),
-                    description: `Rollback to ${input.revision}`,
-                },
-            }),
-        });
-        await restatusRevision(current.secret, current.data, 'superseded');
-
-        return {
-            name: input.name,
-            namespace: input.namespace,
-            revision,
-            removed: removable.length - kept.length,
-            kept: kept.length,
-        };
     });
 }
 

@@ -661,6 +661,9 @@ test('rolls the seeded release back to its first revision, then uninstalls it', 
     await window.getByTestId('sidebar').getByRole('link', { name: 'Config Maps' }).click();
     await expect(window.getByTestId('configmaps-table').locator('[data-configmap="demo-extra"]')).toBeVisible();
 
+    // A field another manager sets on a release's object: a replace would drop it, an apply keeps it.
+    clusterKubectl(['-n', NAMESPACE, 'annotate', 'configmap', 'demo-config', 'km-e2e.test/note=set-by-kubectl']);
+
     await window.getByTestId('sidebar').getByRole('link', { name: 'Releases' }).click();
     await window.getByTestId('releases-table').locator('[data-release="demo"]').getByRole('link').click();
     const page = window.getByTestId('release-page');
@@ -679,8 +682,21 @@ test('rolls the seeded release back to its first revision, then uninstalls it', 
         timeout: 30_000,
     });
 
-    // The seed applied demo-config without Helm's ownership metadata, so the rollback's replace is
-    // what stamps it, as Helm stamps every object it writes.
+    // The rollback applied revision 1's colour server-side as helm, and kubectl's annotation is still
+    // there, since another manager owns it and the render leaves it out.
+    const applied = clusterKubectl([
+        '-n',
+        NAMESPACE,
+        'get',
+        'configmap',
+        'demo-config',
+        '-o',
+        String.raw`jsonpath={.data.colour} {.metadata.annotations.km-e2e\.test/note}`,
+    ]);
+    expect(applied).toBe('blue set-by-kubectl');
+
+    // The seed applied demo-config without Helm's ownership metadata, so the rollback's apply is what
+    // stamps it, as Helm stamps every object it writes.
     const owner = clusterKubectl([
         '-n',
         NAMESPACE,

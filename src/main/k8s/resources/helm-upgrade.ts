@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import type { KubernetesObject, V1Secret } from '@kubernetes/client-node';
+import type { V1Secret } from '@kubernetes/client-node';
 import type {
     JsonValue,
     ReleaseInstallInput,
@@ -26,6 +26,7 @@ import { yamlToText } from '../yaml.js';
 import { cleanForExport } from './export.js';
 import {
     chartLabel,
+    describeObject,
     manifestObjects,
     objectKey,
     ownedByRelease,
@@ -45,7 +46,6 @@ import {
     DRY_RUN_CONCURRENCY,
     BEFORE_HOOK_CREATION,
     REVIEW_TTL_MS,
-    describeObject,
     dryRun,
     effectiveDeletePolicies,
     failureMessage,
@@ -55,18 +55,10 @@ import {
     placed,
     reviewStore,
     runHooks,
-    statusCode,
     step,
     type HookRun,
 } from './helm-install.js';
-import {
-    applyConflicts,
-    applyForRelease,
-    clientSideOwnership,
-    conflictError,
-    HELM_FIELD_MANAGER,
-    moveClientSideOwnership,
-} from './helm-apply.js';
+import { applyConflicts, applyReleaseObject, conflictError, dryRunForRelease, readLive } from './helm-apply.js';
 import { assertContext } from './write.js';
 
 /*
@@ -147,15 +139,6 @@ const diffText = (object: object): string => yamlToText(cleanForExport(object));
 /** Values in the form both sides of the values diff take; empty when there are none. */
 const valuesText = (config: Record<string, unknown> | undefined): string => releaseValues({ config }) ?? '';
 
-async function readLive(object: RenderedObject): Promise<KubernetesObject | null> {
-    try {
-        return await apis().objects.read(object);
-    } catch (error) {
-        if (statusCode(error) === 404) return null;
-        throw error;
-    }
-}
-
 /** The hooks an upgrade runs, in the order it runs them, followed by those it only records. */
 function upgradeHooks(hooks: RenderedHook[]): RenderedHook[] {
     const pre = hooksFor(hooks, 'pre-upgrade');
@@ -204,7 +187,7 @@ async function checkObject(
         );
     }
     try {
-        const answer = await dryRunApply(rendered.object, release, namespace, current);
+        const answer = await dryRunForRelease(rendered.object, release, namespace, current);
         const next = diffText(answer);
         return {
             ...base,
@@ -217,47 +200,6 @@ async function checkObject(
         const conflicts = applyConflicts(error);
         if (conflicts) return refused(conflictError(REVIEW_OP, describeObject(object), conflicts).detail);
         return refused(failureMessage(error, object, REVIEW_OP));
-    }
-}
-
-/**
- * A dry run of the apply. Ownership Helm holds client-side moves to its apply entry before the real
- * apply, which a dry run cannot carry into the next request, so conflicts with that entry alone are
- * Helm's own and the dry run is forced past them, as the real apply will not need to be.
- */
-async function dryRunApply(
-    object: RenderedObject,
-    release: string,
-    namespace: string,
-    current: KubernetesObject | null,
-): Promise<KubernetesObject> {
-    try {
-        return await applyForRelease(object, release, namespace, { dryRun: true });
-    } catch (error) {
-        const conflicts = applyConflicts(error);
-        const ownOnly =
-            !!current &&
-            clientSideOwnership(current) !== null &&
-            !!conflicts &&
-            conflicts.every((one) => one.manager === HELM_FIELD_MANAGER);
-        if (!ownOnly) throw error;
-        return applyForRelease(object, release, namespace, { dryRun: true, force: true });
-    }
-}
-
-/**
- * Apply one object for the upgrade: Helm's client-side ownership moved onto its apply entry first, then
- * the apply, never forced. A conflict fails the upgrade with the field and its manager named.
- */
-async function applyUpgraded(object: RenderedObject, release: string, namespace: string): Promise<void> {
-    const current = await readLive(object);
-    if (current) await moveClientSideOwnership(current);
-    try {
-        await applyForRelease(object, release, namespace);
-    } catch (error) {
-        const conflicts = applyConflicts(error);
-        if (conflicts) throw conflictError(UPGRADE_OP, describeObject(object), conflicts);
-        throw error;
     }
 }
 
@@ -443,7 +385,7 @@ export async function upgradeRelease(input: ReleaseInstallInput): Promise<Releas
     try {
         await runHooks(UPGRADE_OP, context, hooksFor(entry.render.hooks, 'pre-upgrade'), runs);
         for (const { object } of entry.render.objects) {
-            await step(UPGRADE_OP, context, () => applyUpgraded(object, name, namespace));
+            await step(UPGRADE_OP, context, () => applyReleaseObject(object, name, namespace, UPGRADE_OP));
         }
         for (const object of entry.removed.filter((one) => !isKept(one))) {
             await step(UPGRADE_OP, context, () => removeObject(object));

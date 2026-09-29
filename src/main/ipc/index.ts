@@ -43,13 +43,8 @@ import {
     triggerCronJob,
     updateAutoscaler,
 } from '../k8s/resources/lifecycle.js';
-import {
-    getRelease,
-    getReleaseRevisions,
-    listReleases,
-    rollbackRelease,
-    uninstallRelease,
-} from '../k8s/resources/helm.js';
+import { getRelease, getReleaseRevisions, listReleases, uninstallRelease } from '../k8s/resources/helm.js';
+import { rollbackRelease } from '../k8s/resources/helm-rollback.js';
 import { getReleaseObjects } from '../k8s/resources/helm-objects.js';
 import { installRelease, reviewChart } from '../k8s/resources/helm-install.js';
 import { reviewUpgrade, upgradeRelease } from '../k8s/resources/helm-upgrade.js';

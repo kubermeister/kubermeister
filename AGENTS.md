@@ -649,12 +649,17 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - The writes (`releases.rollback`, `releases.uninstall`, and `releases.install` and
   `releases.upgrade` below) act on the objects a revision's stored `manifest` rendered and then keep Helm's own bookkeeping straight — same Secret names, labels and
   status words — so a release this app rolls back stays one the Helm CLI can read and act on.
-- A rollback re-applies the target revision's objects, removes what that revision never had,
-  records the result as a **new** revision (Helm numbers forward, it never rewinds) and marks the
-  previous one superseded. Every object it creates or replaces carries Helm's ownership metadata
-  (`withHelmOwnership`, as an install stamps it), because a replace sends the whole object and the
-  stored manifest has none; the new revision stores the render without it. The end-to-end spec has
-  the Helm CLI uninstall the rolled-back release.
+- A rollback (`src/main/k8s/resources/helm-rollback.ts`) re-applies the target revision's objects,
+  removes what that revision never had, records the result as a **new** revision (Helm numbers
+  forward, it never rewinds) with `apply_method: "ssa"` and marks the previous one superseded. Its
+  objects go through the upgrade's server-side apply (`applyReleaseObject`, see Upgrading a release),
+  never a replace, which would drop the replicas an autoscaler owns; every one is dry-run first
+  (`dryRunForRelease`), so a conflict refuses the rollback before anything is written rather than
+  leaving it half done. Every object it applies carries Helm's ownership metadata
+  (`withHelmOwnership`, as an install stamps it), since the stored manifest has none; the new
+  revision stores the render without it. The end-to-end spec seeds the release's objects under the
+  `helm` field manager client-side, annotates one with kubectl, asserts the annotation survives the
+  rollback and has the Helm CLI uninstall the rolled-back release.
 - An uninstall deletes the current revision's objects and either forgets the history or marks it
   uninstalled.
 - Objects annotated `helm.sh/resource-policy: keep` are never deleted by either, and are counted
@@ -866,10 +871,12 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   Helm 4 refuses conflicts unless `--force-conflicts`. A field another manager owns and the render
   leaves out survives (an HPA's replicas when the chart sets none), a field only `helm` owned that
   the render drops is removed, and a conflict is a `conflict` error naming each field and its
-  manager (`applyConflicts`, `conflictError`), read from the Status's `FieldManagerConflict` causes.
+  manager (`applyConflicts`, `conflictError`), read from the Status's `FieldManagerConflict` causes:
+  the client library hands that Status over as unparsed text, and a cause names its kind in `reason`
+  (Go's `Type`), which is why 0.9.0 recognised no real conflict at all.
   Every rendered object is applied, unchanged ones too, as Helm applies them all. A replace would drop
-  what other managers own, which is why the upgrade never replaces; the rollback still does
-  (`applyObject`), and moving it is its own change.
+  what other managers own, which is why neither the upgrade nor the rollback ever replaces; both write
+  through `applyReleaseObject`.
 - **Helm's client-side ownership moves first**: a release Helm 3, or Helm 4 with `--server-side=false`,
   wrote holds its fields as `helm`/`Update`, which Helm's own apply would conflict with and never
   remove. `moveClientSideOwnership` folds those entries into the `helm`/`Apply` one with a merge patch

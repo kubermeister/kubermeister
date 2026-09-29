@@ -1,7 +1,7 @@
 import { ApiException, PatchStrategy, type KubernetesObject, type V1ManagedFieldsEntry } from '@kubernetes/client-node';
 import { apis } from '../client.js';
 import { K8sError } from '../errors.js';
-import { withHelmOwnership, type RenderedObject } from './helm.js';
+import { describeObject, withHelmOwnership, type RenderedObject } from './helm.js';
 
 /*
  * Writing a release's objects the way Helm 4 does: server-side apply under Helm's own field manager,
@@ -40,11 +40,27 @@ export interface ApplyConflict {
     manager: string;
 }
 
+interface ConflictStatus {
+    details?: { causes?: { reason?: string; message?: string; field?: string }[] };
+}
+
+/** The Status a refused request carries: the client library hands a patch's over as unparsed text. */
+function statusBody(body: unknown): ConflictStatus | null {
+    if (typeof body !== 'string') return (body as ConflictStatus | null) ?? null;
+    try {
+        return JSON.parse(body) as ConflictStatus;
+    } catch {
+        return null;
+    }
+}
+
 /** The conflicts a refused apply names, or null when the error is not an apply conflict. */
 export function applyConflicts(error: unknown): ApplyConflict[] | null {
     if (!(error instanceof ApiException) || error.code !== 409) return null;
-    const body = error.body as { details?: { causes?: { type?: string; message?: string; field?: string }[] } } | null;
-    const causes = (body?.details?.causes ?? []).filter((cause) => cause.type === 'FieldManagerConflict');
+    // A StatusCause carries its kind as `reason` on the wire (Go's `Type` field), not as `type`.
+    const causes = (statusBody(error.body)?.details?.causes ?? []).filter(
+        (cause) => cause.reason === 'FieldManagerConflict',
+    );
     if (causes.length === 0) return null;
     return causes.map((cause) => ({
         field: cause.field ?? '',
@@ -134,4 +150,61 @@ export async function moveClientSideOwnership(live: KubernetesObject): Promise<b
         PatchStrategy.MergePatch,
     );
     return true;
+}
+
+/** The object the cluster holds for a rendered one, or null when it holds none. */
+export async function readLive(object: RenderedObject): Promise<KubernetesObject | null> {
+    try {
+        return await apis().objects.read(object);
+    } catch (error) {
+        if (error instanceof ApiException && error.code === 404) return null;
+        throw error;
+    }
+}
+
+/**
+ * A dry run of the apply. Ownership Helm holds client-side moves to its apply entry before the real
+ * apply, which a dry run cannot carry into the next request, so conflicts with that entry alone are
+ * Helm's own and the dry run is forced past them, as the real apply will not need to be.
+ */
+export async function dryRunForRelease(
+    object: RenderedObject,
+    release: string,
+    namespace: string,
+    live: KubernetesObject | null,
+): Promise<KubernetesObject> {
+    try {
+        return await applyForRelease(object, release, namespace, { dryRun: true });
+    } catch (error) {
+        const conflicts = applyConflicts(error);
+        const ownOnly =
+            !!live &&
+            clientSideOwnership(live) !== null &&
+            !!conflicts &&
+            conflicts.every((one) => one.manager === HELM_FIELD_MANAGER);
+        if (!ownOnly) throw error;
+        return applyForRelease(object, release, namespace, { dryRun: true, force: true });
+    }
+}
+
+/**
+ * Write one object for a release as Helm 4 does: Helm's client-side ownership moved onto its apply
+ * entry first, then the apply, never forced. A conflict fails the write under `op` with each field
+ * and its manager named.
+ */
+export async function applyReleaseObject(
+    object: RenderedObject,
+    release: string,
+    namespace: string,
+    op: string,
+): Promise<void> {
+    const live = await readLive(object);
+    if (live) await moveClientSideOwnership(live);
+    try {
+        await applyForRelease(object, release, namespace);
+    } catch (error) {
+        const conflicts = applyConflicts(error);
+        if (conflicts) throw conflictError(op, describeObject(object), conflicts);
+        throw error;
+    }
 }

@@ -1,0 +1,19 @@
+# The objects revision 2 of the demo release (seeded in seed.yaml) rendered, applied here the way
+# Helm 3 would have applied them: client-side, under Helm's field manager, so a rollback has to find
+# them in the cluster and move Helm's client-side ownership before it applies them server-side. The
+# harness applies this file with `--field-manager=helm`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: km-e2e
+data:
+  colour: green
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-extra
+  namespace: km-e2e
+data:
+  note: only-in-v2

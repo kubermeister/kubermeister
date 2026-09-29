@@ -21,6 +21,7 @@ import { clusterCapabilities } from '../capabilities.js';
 import { activeContextName, apis } from '../client.js';
 import { K8sError, toK8sError, withK8s } from '../errors.js';
 import {
+    describeObject,
     hasRelease,
     inReleaseNamespace,
     releaseSecretBody,
@@ -171,9 +172,6 @@ export function failureMessage(error: unknown, object: RenderedObject, op = INST
     }
     return toK8sError(op, error).detail;
 }
-
-export const describeObject = (object: RenderedObject): string =>
-    `${object.kind} "${object.metadata.name}"${object.metadata.namespace ? ` in ${object.metadata.namespace}` : ''}`;
 
 type Checked = 'object' | 'hook' | 'crd';
 
