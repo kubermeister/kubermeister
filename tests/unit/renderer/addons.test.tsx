@@ -42,11 +42,19 @@ const release = {
     manifest: '# Source: traefik/templates/service.yaml\napiVersion: v1\nkind: Service\n',
 };
 const chart = {
+    repository: 'traefik',
     name: 'traefik',
-    repository: '—',
     latestVersion: '28.0.0',
     appVersion: '3.0.0',
-    description: 'Upgrade complete',
+    description: 'A Traefik based Kubernetes ingress controller',
+};
+const traefikRepository = {
+    name: 'traefik',
+    kind: 'classic',
+    url: 'https://traefik.github.io/charts',
+    hasCredentials: false,
+    chartCount: 1,
+    refreshedAt: '2026-09-22T10:00:00.000Z',
 };
 const revisions = [
     { rev: '2', status: 'Deployed', chartVersion: '28.0.0', updated: '1h ago', description: 'Upgrade complete' },
@@ -93,28 +101,74 @@ const data: Record<string, unknown> = {
     'releases.get': release,
     'releases.revisions': revisions,
     'releases.resources': releaseObjects,
-    'helmCharts.list': [chart],
+    'charts.list': [chart],
+    'chartRepositories.list': [traefikRepository],
+    'helm.status': { found: true, path: '/usr/local/bin/helm', version: '3.15.1' },
     'releases.rollback': { name: 'traefik', namespace: 'kube-system', revision: 3, removed: 1, kept: 0 },
     'releases.uninstall': { name: 'traefik', namespace: 'kube-system', removed: 4, kept: 1 },
 };
 
+let overrides: Record<string, unknown> = {};
+
 beforeEach(() => {
     invoke.mockReset();
+    overrides = {};
     invoke.mockImplementation(async (channel: string, input: { kind?: string }) => {
         if (channel === 'resources.list') return { kind: input.kind, items: [crd, clusterCrd] };
         if (channel === 'resources.get') return { kind: input.kind, item: { ...crd, labels: [], annotations: [] } };
-        return data[channel];
+        return channel in overrides ? overrides[channel] : data[channel];
     });
 });
 
 describe('add-on lists', () => {
-    it('lists the charts derived from the installed releases', async () => {
-        renderRoutes(routeTree, '/helm/charts');
+    it('lists the charts the configured repositories publish, each installable at its latest version', async () => {
+        const { router } = renderRoutes(routeTree, '/helm/charts');
         const table = await screen.findByTestId('charts-table');
-        const row = table.querySelector('[data-chart="traefik"]') as HTMLElement;
+        const row = table.querySelector('[data-chart="traefik/traefik"]') as HTMLElement;
         expect(row).toHaveTextContent('28.0.0');
         expect(row).toHaveTextContent('3.0.0');
-        expect(row).toHaveTextContent('Upgrade complete');
+        expect(row).toHaveTextContent('A Traefik based Kubernetes ingress controller');
+        await userEvent.click(within(row).getByRole('button', { name: 'Install traefik' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/helm/charts/install/traefik/traefik/28.0.0'));
+    });
+
+    it('says Helm is required instead of opening an install that cannot render', async () => {
+        overrides['helm.status'] = { found: false };
+        const { router } = renderRoutes(routeTree, '/helm/charts');
+        const table = await screen.findByTestId('charts-table');
+        const row = table.querySelector('[data-chart="traefik/traefik"]') as HTMLElement;
+        await userEvent.click(within(row).getByRole('button', { name: 'Install traefik' }));
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByTestId('helm-required')).toHaveTextContent('Helm is required to install a chart');
+        expect(router.state.location.pathname).toBe('/helm/charts');
+    });
+
+    it('points at Settings › Charts when no repository is configured', async () => {
+        overrides['chartRepositories.list'] = [];
+        overrides['charts.list'] = [];
+        const { router } = renderRoutes(routeTree, '/helm/charts');
+        const empty = await screen.findByTestId('charts-empty');
+        expect(empty).toHaveTextContent('No chart repository is configured');
+        await userEvent.click(within(empty).getByRole('link', { name: 'Settings › Charts' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+    });
+
+    it('says an OCI registry publishes no list of its charts', async () => {
+        overrides['chartRepositories.list'] = [
+            { ...traefikRepository, name: 'ghcr', kind: 'oci', url: 'oci://ghcr.io/example', chartCount: null },
+        ];
+        overrides['charts.list'] = [];
+        renderRoutes(routeTree, '/helm/charts');
+        expect(await screen.findByTestId('charts-empty')).toHaveTextContent('OCI registries publish no list');
+    });
+
+    it('says the repositories list no charts when their indexes hold none', async () => {
+        overrides['chartRepositories.list'] = [{ ...traefikRepository, chartCount: null, refreshedAt: null }];
+        overrides['charts.list'] = [];
+        renderRoutes(routeTree, '/helm/charts');
+        expect(await screen.findByTestId('charts-empty')).toHaveTextContent(
+            'The configured repositories list no charts',
+        );
     });
 
     it('lists releases with a toned status and definitions marking the cluster-scoped ones', async () => {

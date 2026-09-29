@@ -87,10 +87,12 @@ The chart sources Kubermeister reads, each a **Classic repository**, which serve
 or an **OCI registry**, addressed as `oci://host`. **Add repository** takes a name (lowercase
 letters, digits, dashes, dots or underscores), the URL, and an optional username and password. Each
 row shows its source, how many charts its index holds, when it was last read, and buttons to
-refresh or remove it. Up to 50 can be added.
+install a chart from it, refresh it or remove it. Up to 50 can be added.
 
-A chart version from one of these sources can be
-[installed as a Helm release](/docs/operations/helm/#installing-a-chart); there is no upgrade.
+A classic repository's charts are listed under
+[**Helm › Charts**](/docs/operations/helm/#helm-charts). **Install a chart** on a row opens the
+[install dialog](/docs/operations/helm/#where-to-start) on that source: a chart picked from its index,
+or for an OCI registry a chart name and version typed in. There is no upgrade.
 
 Chart sources are a fact about your install, not about the cluster you are pointed at, so a context
 switch leaves them alone. Three things are kept in step: the entry in settings, the cached index,
@@ -194,7 +196,7 @@ app would refuse before the app ever reads it. A file Kubermeister creates start
 | `charts.repositories`        | a list of `{ "name", "kind": "classic" or "oci", "url" }`, up to 50 | `[]`    |
 
 The file may take values Settings does not offer, within the ranges above. A chart repository listed
-there is read the first time you refresh it in Settings, and its username and password never go in the file: add them in Settings and they are kept in the system
+there is read the first time you refresh it in Settings or open **Helm › Charts**, and its username and password never go in the file: add them in Settings and they are kept in the system
 keychain. `version` is optional; the app adds it the first time it saves.
 
 An edit to the file takes effect within a second of being saved, while the app runs, exactly as the

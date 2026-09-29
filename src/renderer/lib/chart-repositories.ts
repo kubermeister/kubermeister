@@ -3,10 +3,11 @@ import { useIpcMutation, useIpcQuery } from './query';
 
 /**
  * The configured chart sources. These are facts about this install rather than about the cluster,
- * so every write disturbs exactly one query — the list itself — and nothing cluster-scoped.
+ * so every write disturbs the list itself and the charts their indexes hold, and nothing
+ * cluster-scoped.
  */
 
-const listKey: () => QueryKey[] = () => [['chartRepositories.list']];
+const listKey: () => QueryKey[] = () => [['chartRepositories.list'], ['charts.list']];
 
 export function useChartRepositories() {
     return useIpcQuery('chartRepositories.list', {});

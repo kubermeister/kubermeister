@@ -20,6 +20,8 @@ const data: Record<string, unknown> = {
     'update.state': { status: 'up-to-date' },
     'settings.get': settingsFixture({ updates: { mode: 'check' } }),
     'chartRepositories.list': [],
+    'charts.list': [],
+    'helm.status': { found: false },
     'update.check': { status: 'checking' },
     'contexts.list': [
         { name: 'alpha', cluster: 'a', user: 'u', current: true },
@@ -85,6 +87,17 @@ describe('command palette', () => {
             'networkpolicies',
         );
         expect(await within(dialog).findByRole('option', { name: 'Network Policies' })).toBeInTheDocument();
+    });
+
+    it('opens the chart install dialog, which says Helm is required when it is missing', async () => {
+        renderRoutes(routeTree, '/overview/summary');
+        await userEvent.click(await screen.findByTestId('quick-actions'));
+        const palette = await screen.findByRole('dialog', { name: 'Quick actions' });
+        await userEvent.type(within(palette).getByPlaceholderText('Switch cluster, namespace or resource…'), 'helm');
+        await userEvent.click(await within(palette).findByRole('option', { name: /Install a chart/ }));
+        const dialog = await screen.findByRole('dialog', { name: 'Install a chart' });
+        expect(await within(dialog).findByTestId('helm-required')).toBeInTheDocument();
+        expect(screen.queryByRole('dialog', { name: 'Quick actions' })).toBeNull();
     });
 
     it('starts an update check and opens Settings, where the outcome shows', async () => {

@@ -92,6 +92,24 @@ export const chartSummarySchema = z.object({
 });
 
 /**
+ * One chart a configured repository publishes, as a list of what can be installed shows it: the
+ * summary its cached index holds, less the versions, which only the install screen needs.
+ */
+export const availableChartSchema = z.object({
+    repository: chartRepositoryNameSchema,
+    name: z.string().min(1),
+    latestVersion: z.string().min(1),
+    appVersion: z.string(),
+    description: z.string(),
+});
+
+/** A chart name as it may appear in a URL path and a `Chart.yaml`. */
+export const CHART_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
+
+/** A chart version: SemVer's alphabet, which is also what makes it safe in a URL and a tag. */
+export const CHART_VERSION = /^[A-Za-z0-9][A-Za-z0-9.+_-]{0,127}$/;
+
+/**
  * Where one chart version's archive is published, as its index entry says: the URLs to try in
  * order, possibly relative to the repository, and the SHA-256 the archive must hash to, when the
  * index gives one.
@@ -127,6 +145,7 @@ export type ChartRepository = z.infer<typeof chartRepositorySchema>;
 export type ChartRepositoryInput = z.infer<typeof chartRepositoryInputSchema>;
 export type ChartRepositoryStatus = z.infer<typeof chartRepositoryStatusSchema>;
 export type ChartSummary = z.infer<typeof chartSummarySchema>;
+export type AvailableChart = z.infer<typeof availableChartSchema>;
 export type ChartIndex = z.infer<typeof chartIndexSchema>;
 export type ChartArchiveLocation = z.infer<typeof chartArchiveLocationSchema>;
 export type ChartArchiveLocations = z.infer<typeof chartArchiveLocationsSchema>;

@@ -146,7 +146,6 @@ function releaseKeys() {
         ['releases.list'],
         ['releases.get'],
         ['releases.revisions'],
-        ['helmCharts.list'],
         ['resources.list'],
         ['resources.get'],
         ['metrics.alerts'],

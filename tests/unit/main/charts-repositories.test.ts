@@ -21,8 +21,14 @@ vi.mock('../../../src/main/charts/registry.js', async (importOriginal) => ({
     ...registry,
 }));
 
-const { addChartRepository, listChartRepositories, listChartVersions, refreshChartRepository, removeChartRepository } =
-    await import('../../../src/main/charts/repositories.js');
+const {
+    addChartRepository,
+    listChartRepositories,
+    listChartVersions,
+    listCharts,
+    refreshChartRepository,
+    removeChartRepository,
+} = await import('../../../src/main/charts/repositories.js');
 
 const bitnami: ChartRepository = { name: 'bitnami', kind: 'classic', url: 'https://charts.example.com' };
 const ghcr: ChartRepository = { name: 'ghcr', kind: 'oci', url: 'oci://ghcr.io/example' };
@@ -300,6 +306,83 @@ describe('chart repositories', () => {
             store.getSettings.mockReturnValue(settingsWith([ghcr]));
             await expect(listChartVersions('ghcr', 'nginx')).resolves.toBeNull();
             await expect(listChartVersions('nowhere', 'nginx')).rejects.toMatchObject({ kind: 'notFound' });
+        });
+    });
+
+    describe('listCharts', () => {
+        const summary = (name: string, latestVersion: string) => ({
+            name,
+            latestVersion,
+            appVersion: '1.0',
+            description: `The ${name} chart`,
+            versions: [latestVersion],
+        });
+        const indexOf = (url: string, charts: ReturnType<typeof summary>[]) => ({
+            url,
+            refreshedAt: '2026-09-22T10:00:00.000Z',
+            charts,
+            archives: {},
+        });
+        const other: ChartRepository = { name: 'other', kind: 'classic', url: 'https://other.example.com' };
+
+        it('lists every classic repository’s cached charts, each row naming its repository', async () => {
+            store.getSettings.mockReturnValue(settingsWith([bitnami, ghcr, other]));
+            cache.readIndex.mockImplementation((name: string, url: string) =>
+                name === 'bitnami'
+                    ? indexOf(url, [summary('nginx', '18.2.0'), summary('redis', '20.0.1')])
+                    : name === 'other'
+                      ? indexOf(url, [summary('nginx', '1.0.0')])
+                      : null,
+            );
+            await expect(listCharts()).resolves.toEqual([
+                {
+                    repository: 'bitnami',
+                    name: 'nginx',
+                    latestVersion: '18.2.0',
+                    appVersion: '1.0',
+                    description: 'The nginx chart',
+                },
+                {
+                    repository: 'bitnami',
+                    name: 'redis',
+                    latestVersion: '20.0.1',
+                    appVersion: '1.0',
+                    description: 'The redis chart',
+                },
+                {
+                    repository: 'other',
+                    name: 'nginx',
+                    latestVersion: '1.0.0',
+                    appVersion: '1.0',
+                    description: 'The nginx chart',
+                },
+            ]);
+            // An OCI registry publishes no index, so it is never asked for one.
+            expect(cache.readIndex).not.toHaveBeenCalledWith('ghcr', expect.anything());
+            expect(fetchMock).not.toHaveBeenCalled();
+        });
+
+        it('reads a repository with no cached index once, and leaves out one that does not answer', async () => {
+            store.getSettings.mockReturnValue(settingsWith([bitnami, other]));
+            fetchMock.mockImplementation(async (url: URL | string) =>
+                String(url).startsWith(bitnami.url) ? okIndex() : new Response('down', { status: 503 }),
+            );
+            const listed = await listCharts();
+            expect(listed.map((one) => `${one.repository}/${one.name}`)).toEqual(['bitnami/nginx', 'bitnami/redis']);
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            // What was read is cached, so the next list answers from disk.
+            expect(cache.writeIndex).toHaveBeenCalledWith('bitnami', expect.objectContaining({ url: bitnami.url }));
+        });
+
+        it('is empty with no repository configured', async () => {
+            await expect(listCharts()).resolves.toEqual([]);
+        });
+
+        it('classifies a failure as the list’s own', async () => {
+            store.getSettings.mockImplementation(() => {
+                throw new Error('EACCES');
+            });
+            await expect(listCharts()).rejects.toMatchObject({ op: 'charts.list' });
         });
     });
 });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRoundIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react';
+import { DownloadIcon, KeyRoundIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     CHART_REPOSITORY_NAME,
@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { InstallChartDialog } from '@/components/chart/install-chart-dialog';
 import { FormCard } from '@/components/templates/settings-form';
 import {
     useAddChartRepository,
@@ -72,7 +73,7 @@ export function ChartRepositoriesCard() {
                                 <TableHead>Source</TableHead>
                                 <TableHead className="w-[80px] text-right">Charts</TableHead>
                                 <TableHead className="w-[150px]">Last read</TableHead>
-                                <TableHead className="w-[80px] text-right">Actions</TableHead>
+                                <TableHead className="w-[104px] text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -90,6 +91,7 @@ export function ChartRepositoriesCard() {
 function RepositoryRow({ repository }: { repository: ChartRepositoryStatus }) {
     const refresh = useRefreshChartRepository();
     const remove = useRemoveChartRepository();
+    const [installing, setInstalling] = useState(false);
     const { name, kind, url, hasCredentials, chartCount, refreshedAt } = repository;
 
     const runRefresh = async () => {
@@ -127,6 +129,20 @@ function RepositoryRow({ repository }: { repository: ChartRepositoryStatus }) {
                 {refreshedAt ? new Date(refreshedAt).toLocaleString() : 'Never'}
             </TableCell>
             <TableCell className="text-right whitespace-nowrap">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={`Install a chart from ${name}`}
+                            onClick={() => setInstalling(true)}
+                        >
+                            <DownloadIcon />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Install a chart</TooltipContent>
+                </Tooltip>
+                <InstallChartDialog open={installing} onOpenChange={setInstalling} repository={name} />
                 <Button
                     variant="ghost"
                     size="icon-xs"

@@ -7,7 +7,7 @@ import {
     type ChartReview,
     type ReleaseInstallResult,
 } from '../../../shared/chart-install';
-import { HELM_INSTALL_URL } from '../../../shared/helm-tool';
+import { HelmRequired } from '@/components/chart/helm-required';
 import { ChartValuesEditor } from '@/components/chart/values-editor';
 import { InstallReview } from '@/components/chart/install-review';
 import { NavLink, useNavigateTo } from '@/components/layout/nav-link';
@@ -103,15 +103,12 @@ export function InstallChart({
         return (
             <div className="flex h-full flex-col bg-background" data-testid="install-chart-page">
                 {heading}
-                <Notice title="Helm is required to install a chart" testId="install-no-helm">
-                    Kubermeister renders a chart with the <span className="font-mono">helm</span> installed on this
-                    machine, using <span className="font-mono">helm template</span> and nothing else, and none was found
-                    on the PATH.{' '}
-                    <a href={HELM_INSTALL_URL} target="_blank" rel="noreferrer" className="text-primary underline">
-                        Install Helm 3 or later
-                    </a>
-                    , then open this screen again.
-                </Notice>
+                <div
+                    className="m-4.5 rounded-card border border-border bg-card px-4 py-3.5"
+                    data-testid="install-no-helm"
+                >
+                    <HelmRequired />
+                </div>
             </div>
         );
     }

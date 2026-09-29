@@ -2,7 +2,6 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import { ApiException, type KubernetesObject, type V1Secret } from '@kubernetes/client-node';
 import { dump as dumpYaml, loadAll as loadAllYaml } from 'js-yaml';
 import type {
-    HelmChart,
     Release,
     ReleaseRevision,
     ReleaseRollbackInput,
@@ -177,22 +176,6 @@ export function toRevisions(releases: HelmReleaseData[], now = Date.now()): Rele
 }
 
 /** No repository index exists in a cluster, so the chart list is what the releases installed. */
-export function toCharts(releases: HelmReleaseData[]): HelmChart[] {
-    const byChart = new Map<string, HelmChart>();
-    for (const release of latestPerRelease(releases)) {
-        const meta = release.chart?.metadata;
-        if (!meta?.name || byChart.has(meta.name)) continue;
-        byChart.set(meta.name, {
-            name: meta.name,
-            repository: '—',
-            latestVersion: meta.version ?? '—',
-            appVersion: meta.appVersion ?? '—',
-            description: release.info?.description ?? '',
-        });
-    }
-    return [...byChart.values()];
-}
-
 function matching(releases: HelmReleaseData[], name: string, namespace: string): HelmReleaseData[] {
     return releases.filter((release) => release.name === name && release.namespace === namespace);
 }
@@ -220,10 +203,6 @@ export function getReleaseRevisions(name: string, namespace: string): Promise<Re
     return withK8s('releases.revisions', async () =>
         toRevisions(matching(await decodedReleases(namespace), name, namespace)),
     );
-}
-
-export function listHelmCharts(): Promise<HelmChart[]> {
-    return withK8s('helmCharts.list', async () => toCharts(await decodedReleases()));
 }
 
 /*

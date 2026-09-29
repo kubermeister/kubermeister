@@ -67,8 +67,9 @@ const APP_LEVEL_CHANNELS = new Set<string>([
     'helm.status',
     // A chart's values come from its archive, which no cluster has a say in.
     'charts.values',
-    // So do the versions a source lists for one of its charts.
+    // So do the versions a source lists for one of its charts, and the charts themselves.
     'charts.versions',
+    'charts.list',
 ]);
 
 function isClusterQuery(queryKey: QueryKey): boolean {

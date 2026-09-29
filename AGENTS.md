@@ -819,8 +819,22 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   and hooks with no `last_run` until they ran, since Go cannot parse an empty time. The end-to-end
   spec has the real Helm list, read and uninstall a release the app installed.
 - The screen is `/helm/charts/install/$source/$chart/$version` (`charts_.install...` so it renders
-  beside the Charts list); switching the version replaces the path and keeps edited values. Its entry
-  points are #420's. The e2e job installs a pinned Helm with `azure/setup-helm`.
+  beside the Charts list); switching the version replaces the path and keeps edited values. The e2e
+  job installs a pinned Helm with `azure/setup-helm`.
+- **Helm › Charts lists what can be installed**: `charts.list` (`listCharts` in `repositories.ts`,
+  app-level) answers every classic repository's cached index, one row per repository and chart. The
+  list polls nothing and reads a repository only when it has no cache yet (settings written by hand),
+  leaving one that does not answer out rather than failing the rest. An OCI registry publishes no
+  index, so it has no rows. The charts installed releases came from are not listed; a release
+  records no source, and the Releases list already names its chart.
+- **Three ways in, one dialog**: **Install** on a Charts row opens the latest version directly; the
+  row button under Settings › Charts and the palette's **Install a chart…** open
+  `InstallChartDialog` (`components/chart/install-chart-dialog.tsx`), which picks a classic chart
+  from `charts.list` or takes an OCI chart name and version (`CHART_NAME`, `CHART_VERSION` in
+  `src/shared/charts.ts`, the same patterns `fetchChart` refuses others with) and opens the install
+  screen on the latest version, where the version is still switched. Without Helm every entry point
+  shows `HelmRequired` instead of navigating, the Charts row by opening the same dialog; its
+  **Check again** refetches `helm.status`, which main never caches as missing.
 
 ### Container detail
 

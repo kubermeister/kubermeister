@@ -63,7 +63,6 @@ const helmMod = {
     listReleases: vi.fn(),
     getRelease: vi.fn(),
     getReleaseRevisions: vi.fn(),
-    listHelmCharts: vi.fn(),
     rollbackRelease: vi.fn(),
     uninstallRelease: vi.fn(),
 };
@@ -73,6 +72,7 @@ const chartsMod = {
     refreshChartRepository: vi.fn(),
     removeChartRepository: vi.fn(),
     listChartVersions: vi.fn(),
+    listCharts: vi.fn(),
 };
 const helmInstallMod = { reviewChart: vi.fn(), installRelease: vi.fn() };
 const helmCliMod = { helmStatus: vi.fn() };
@@ -807,9 +807,6 @@ describe('registerHandlers', () => {
         helmMod.getReleaseRevisions.mockResolvedValue([
             { rev: '2', status: 'Deployed', chartVersion: '28.0.0', updated: '1h ago', description: 'Upgrade' },
         ]);
-        helmMod.listHelmCharts.mockResolvedValue([
-            { name: 'traefik', repository: '—', latestVersion: '28.0.0', appVersion: '3.0.0', description: '' },
-        ]);
         await expect(invoke('releases.list', {})).resolves.toHaveLength(1);
         await expect(invoke('releases.get', { name: 'traefik', namespace: 'kube-system' })).resolves.toMatchObject({
             revision: 2,
@@ -819,7 +816,6 @@ describe('registerHandlers', () => {
             1,
         );
         expect(helmMod.getReleaseRevisions).toHaveBeenCalledWith('traefik', 'kube-system');
-        await expect(invoke('helmCharts.list', {})).resolves.toHaveLength(1);
         await expect(invoke('releases.get', { name: '', namespace: 'kube-system' })).rejects.toThrow();
         // A release is looked up where its screen says it is, so the namespace is not optional.
         await expect(invoke('releases.get', { name: 'traefik' })).rejects.toThrow();
@@ -852,6 +848,20 @@ describe('registerHandlers', () => {
             invoke('charts.values', { source: '../escape', chart: 'nginx', version: '1.0.0' }),
         ).rejects.toThrow();
         expect(chartValuesMod.readChartValues).toHaveBeenCalledOnce();
+    });
+
+    it('lists the charts the configured repositories publish', async () => {
+        const chart = {
+            repository: 'bitnami',
+            name: 'nginx',
+            latestVersion: '18.2.0',
+            appVersion: '1.27.1',
+            description: 'A web server',
+        };
+        chartsMod.listCharts.mockResolvedValueOnce([chart]).mockResolvedValueOnce([{ ...chart, name: '' }]);
+        await expect(invoke('charts.list', {})).resolves.toEqual([chart]);
+        // The output is validated too, so a row main could not have meant never reaches a screen.
+        await expect(invoke('charts.list', {})).rejects.toThrow();
     });
 
     it('lists a chart’s versions, answering null for a registry that lists none', async () => {

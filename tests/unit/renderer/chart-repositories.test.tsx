@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderWithQuery } from './helpers';
+import { renderInRouter } from './helpers';
 
 const invoke = vi.fn();
 const subscribe = vi.fn(() => () => {});
@@ -56,13 +56,15 @@ describe('the chart repositories card', () => {
         invoke.mockReset();
         invoke.mockImplementation(async (channel: string) => {
             if (channel === 'chartRepositories.list') return repositories;
+            if (channel === 'helm.status') return { found: true, path: '/usr/local/bin/helm', version: '3.15.1' };
+            if (channel === 'charts.list') return [];
             return undefined;
         });
     });
 
     it('lists the configured sources with what the cache holds for each', async () => {
         repositories = [bitnami, ghcr];
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const classic = await screen.findByTestId('repository-bitnami');
         expect(classic).toHaveTextContent('bitnami');
         expect(classic).toHaveTextContent('https://charts.example.com');
@@ -75,15 +77,29 @@ describe('the chart repositories card', () => {
         expect(within(classic).queryByTestId('repository-credentials-bitnami')).not.toBeInTheDocument();
     });
 
+    it('installs a chart from one repository, the dialog opening on that repository', async () => {
+        repositories = [bitnami, ghcr];
+        const { router } = renderInRouter(<ChartRepositoriesCard />);
+        const oci = await screen.findByTestId('repository-ghcr');
+        await userEvent.click(within(oci).getByRole('button', { name: 'Install a chart from ghcr' }));
+        const dialog = await screen.findByRole('dialog');
+        // An OCI registry lists nothing, so the chart is named rather than picked.
+        await userEvent.type(await within(dialog).findByLabelText('Chart name'), 'podinfo');
+        expect(dialog).toHaveTextContent('From ghcr');
+        await userEvent.type(within(dialog).getByLabelText('Chart version'), '6.7.0');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/helm/charts/install/ghcr/podinfo/6.7.0'));
+    });
+
     it('says the list is empty rather than showing an empty table', async () => {
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const table = await screen.findByTestId('chart-repositories');
         expect(table).toHaveTextContent(/No chart repositories yet/i);
         expect(within(table).queryByRole('row')).not.toBeInTheDocument();
     });
 
     it('adds a classic repository through the bridge', async () => {
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const dialog = await addRepository({ name: 'bitnami', url: 'https://charts.example.com' });
         await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
         await waitFor(() =>
@@ -96,7 +112,7 @@ describe('the chart repositories card', () => {
     });
 
     it('adds an OCI registry with the credential the user typed', async () => {
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const dialog = await addRepository({
             name: 'ghcr',
             url: 'oci://ghcr.io/example',
@@ -117,14 +133,14 @@ describe('the chart repositories card', () => {
     });
 
     it('will not submit a URL the chosen kind is never published under', async () => {
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const dialog = await addRepository({ name: 'ghcr', url: 'https://ghcr.io/example', oci: true });
         expect(within(dialog).getByRole('button', { name: 'Add' })).toBeDisabled();
         expect(dialog).toHaveTextContent(/oci:\/\//);
     });
 
     it('will not send a password to a plaintext http repository', async () => {
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const dialog = await addRepository({
             name: 'local',
             url: 'http://charts.example.com',
@@ -137,7 +153,7 @@ describe('the chart repositories card', () => {
 
     it('refreshes one repository without touching the others', async () => {
         repositories = [bitnami, ghcr];
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const row = await screen.findByTestId('repository-bitnami');
         await userEvent.click(within(row).getByRole('button', { name: 'Refresh bitnami' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('chartRepositories.refresh', { name: 'bitnami' }));
@@ -145,7 +161,7 @@ describe('the chart repositories card', () => {
 
     it('asks before removing a repository, since its credential goes with it', async () => {
         repositories = [bitnami];
-        renderWithQuery(<ChartRepositoriesCard />);
+        renderInRouter(<ChartRepositoriesCard />);
         const row = await screen.findByTestId('repository-bitnami');
         await userEvent.click(within(row).getByRole('button', { name: 'Remove bitnami' }));
         const confirm = await screen.findByRole('alertdialog');
