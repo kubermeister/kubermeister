@@ -49,6 +49,9 @@ runs:
         IN_APPLE_ID: ${{ inputs.apple-id }}
         IN_APPLE_APP_SPECIFIC_PASSWORD: ${{ inputs.apple-app-specific-password }}
         IN_APPLE_TEAM_ID: ${{ inputs.apple-team-id }}
+        # fpm compresses the deb through `tar -J` with only a level in XZ_OPT, so xz runs on one core
+        # unless XZ_DEFAULTS gives it threads. CI's package smoke sets the same, to build what ships.
+        XZ_DEFAULTS: -T0
       run: |
         flags=()
         if [ "$RUNNER_OS" = macOS ]; then

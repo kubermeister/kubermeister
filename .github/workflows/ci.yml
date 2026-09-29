@@ -61,9 +61,14 @@ jobs:
 
   # End to end against a disposable k3s container: ubuntu only, since Docker is available there.
   # Electron needs a display, hence xvfb. No Playwright browsers are installed: the suite drives
-  # the built Electron app itself.
-  e2e:
-    name: e2e
+  # the built Electron app itself. The suite is two Playwright projects of about equal length, each
+  # on its own runner and cluster, so neither waits on the other.
+  e2e-project:
+    name: e2e (${{ matrix.project }})
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [app, actions]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,16 +87,30 @@ jobs:
         with:
           version: v4.3.0
       - run: npm run build
-      - run: xvfb-run --auto-servernum npm run test:e2e
+      - run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
+        env:
+          PROJECT: ${{ matrix.project }}
       # A flake that passes on rerun leaves nothing behind but this: the traces, the window's state
       # and its last screenshot, which the harness keeps for failed tests only.
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: e2e-test-results
+          name: e2e-test-results-${{ matrix.project }}
           path: test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+  # The one check the main ruleset requires for end to end, whichever projects the suite is split in.
+  e2e:
+    name: e2e
+    needs: e2e-project
+    # A failed or cancelled project must fail this check rather than skip it, which would pass it.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "$RESULT" = success
+        env:
+          RESULT: ${{ needs.e2e-project.result }}
 
   # The artifact users install, started. Everything else in this file tests `out/` through the
   # development Electron binary, so a packaged build that cannot launch passes every other gate —
@@ -123,7 +142,12 @@ jobs:
       - run: npm run build
       # electron-builder builds the rpm with the host's own rpmbuild, as the package action does.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+      # fpm compresses the deb through `tar -J` with only a level in XZ_OPT, so xz runs on one core
+      # unless XZ_DEFAULTS gives it threads. The package action sets the same, so this builds what a
+      # release ships.
       - run: npm run package
+        env:
+          XZ_DEFAULTS: -T0
 
       # The release runs this same script before it uploads anything, so what it finds here — the
       # installers, and the feed this architecture's updater reads — is what a release would ship.
@@ -138,78 +162,97 @@ jobs:
           done
 
       # A window that stays open is the signal: the app is meant to keep running, so `timeout`
-      # killing it is success and anything else is the process giving up on its own.
-      - name: The AppImage starts
-        run: |
-          app=$(ls release/*.AppImage)
-          chmod +x "$app"
-          # The step's shell runs under `-e`: without this the timeout's own exit status would
-          # abort before it can be read, and a killed process is what success looks like here.
-          set +e
-          KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
-            timeout --signal=TERM 30 xvfb-run --auto-servernum "$app" > appimage.log 2>&1
-          code=$?
-          set -e
-          cat appimage.log
-          if grep -qi 'libfuse' appimage.log; then
-            echo "::error::the AppImage runtime still wants libfuse"
-            exit 1
-          fi
-          if [ "$code" -ne 124 ]; then
-            echo "::error::the AppImage exited on its own with $code"
-            exit 1
-          fi
-
-      - name: The deb installs and starts
+      # killing it is success and anything else is the process giving up on its own. The three checks
+      # share nothing, so they run at once and each log is printed whole afterwards; the two on the
+      # runner get a display each, since two `--auto-servernum` starting together can pick the same.
+      - name: The AppImage, the deb and the rpm start
         run: |
           set -euo pipefail
-          deb=$(ls release/*.deb)
-          sudo apt-get install -y "./$deb"
-          name=$(dpkg-deb -f "$deb" Package)
-          # The package registers /usr/bin/<name> through update-alternatives, so what gets started
-          # here is the command a user would type rather than a path under /opt we guessed at.
-          bin=$(command -v "$name")
-          echo "installed $name, starting $bin"
-          set +e
-          KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
-            timeout --signal=TERM 30 xvfb-run --auto-servernum "$bin" > deb.log 2>&1
-          code=$?
-          set -e
-          cat deb.log
-          if [ "$code" -ne 124 ]; then
-            echo "::error::the installed app exited on its own with $code"
-            exit 1
-          fi
 
-      # A Fedora container is what resolves the rpm's dependencies against the names a dnf-based
-      # distribution really uses, which the Ubuntu runner cannot. The app runs as an ordinary user,
-      # as it would for anybody who installed it, since Chromium refuses to start as root.
-      # Docker's default seccomp profile and capability set refuse the PID and network namespaces
-      # Chromium's sandbox creates, which a real Fedora install is allowed; the container is given
-      # them rather than the app `--no-sandbox`, so the sandbox the package sets up is what starts.
-      - name: The rpm installs and starts on Fedora
-        run: |
-          set -euo pipefail
-          rpm=$(ls release/*.rpm)
-          docker run --rm --cap-add SYS_ADMIN --security-opt seccomp=unconfined \
-            -v "$PWD/release:/release:ro" -e RPM="/release/$(basename "$rpm")" \
-            fedora:latest bash -euo pipefail -c '
-              dnf install -y "$RPM" /usr/bin/xvfb-run
-              name=$(rpm -qp --queryformat "%{NAME}" "$RPM")
-              # The package links /usr/bin/<name> as it installs, so this is the command a user types.
-              bin=$(command -v "$name")
-              echo "installed $name, starting $bin"
-              useradd --create-home tester
-              set +e
-              su tester -c "KUBERMEISTER_USER_DATA=\$(mktemp -d) KUBECONFIG=/nonexistent timeout --signal=TERM 30 xvfb-run --auto-servernum $bin" > /tmp/rpm.log 2>&1
-              code=$?
-              set -e
-              cat /tmp/rpm.log
-              if [ "$code" -ne 124 ]; then
-                echo "::error::the installed app exited on its own with $code"
-                exit 1
-              fi
-            '
+          start_appimage() {
+            app=$(ls release/*.AppImage)
+            chmod +x "$app"
+            # Errexit is on: without this the timeout's own exit status would abort before it can be
+            # read, and a killed process is what success looks like here.
+            set +e
+            KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
+              timeout --signal=TERM 30 xvfb-run --server-num=91 "$app" > appimage-run.log 2>&1
+            code=$?
+            set -e
+            cat appimage-run.log
+            if grep -qi 'libfuse' appimage-run.log; then
+              echo "::error::the AppImage runtime still wants libfuse"
+              return 1
+            fi
+            if [ "$code" -ne 124 ]; then
+              echo "::error::the AppImage exited on its own with $code"
+              return 1
+            fi
+          }
+
+          start_deb() {
+            deb=$(ls release/*.deb)
+            sudo apt-get install -y "./$deb"
+            name=$(dpkg-deb -f "$deb" Package)
+            # The package registers /usr/bin/<name> through update-alternatives, so what gets started
+            # here is the command a user would type rather than a path under /opt we guessed at.
+            bin=$(command -v "$name")
+            echo "installed $name, starting $bin"
+            set +e
+            KUBERMEISTER_USER_DATA=$(mktemp -d) KUBECONFIG=/nonexistent \
+              timeout --signal=TERM 30 xvfb-run --server-num=92 "$bin"
+            code=$?
+            set -e
+            if [ "$code" -ne 124 ]; then
+              echo "::error::the installed deb exited on its own with $code"
+              return 1
+            fi
+          }
+
+          # A Fedora container is what resolves the rpm's dependencies against the names a dnf-based
+          # distribution really uses, which the Ubuntu runner cannot. The app runs as an ordinary user,
+          # as it would for anybody who installed it, since Chromium refuses to start as root.
+          # Docker's default seccomp profile and capability set refuse the PID and network namespaces
+          # Chromium's sandbox creates, which a real Fedora install is allowed; the container is given
+          # them rather than the app `--no-sandbox`, so the sandbox the package sets up is what starts.
+          start_rpm() {
+            rpm=$(ls release/*.rpm)
+            docker run --rm --cap-add SYS_ADMIN --security-opt seccomp=unconfined \
+              -v "$PWD/release:/release:ro" -e RPM="/release/$(basename "$rpm")" \
+              fedora:latest bash -euo pipefail -c '
+                dnf install -y "$RPM" /usr/bin/xvfb-run
+                name=$(rpm -qp --queryformat "%{NAME}" "$RPM")
+                # The package links /usr/bin/<name> as it installs, so this is the command a user types.
+                bin=$(command -v "$name")
+                echo "installed $name, starting $bin"
+                useradd --create-home tester
+                set +e
+                su tester -c "KUBERMEISTER_USER_DATA=\$(mktemp -d) KUBECONFIG=/nonexistent timeout --signal=TERM 30 xvfb-run --auto-servernum $bin" > /tmp/rpm.log 2>&1
+                code=$?
+                set -e
+                cat /tmp/rpm.log
+                if [ "$code" -ne 124 ]; then
+                  echo "::error::the installed rpm exited on its own with $code"
+                  exit 1
+                fi
+              '
+          }
+
+          checks=(start_appimage start_deb start_rpm)
+          start_appimage > start_appimage.log 2>&1 &
+          pids=("$!")
+          start_deb > start_deb.log 2>&1 &
+          pids+=("$!")
+          start_rpm > start_rpm.log 2>&1 &
+          pids+=("$!")
+          failed=0
+          for i in "${!checks[@]}"; do
+            if wait "${pids[$i]}"; then result=passed; else result=failed; failed=1; fi
+            echo "::group::${checks[$i]} $result"
+            cat "${checks[$i]}.log"
+            echo "::endgroup::"
+          done
+          exit "$failed"
 
   build:
     name: build (${{ matrix.os }})
