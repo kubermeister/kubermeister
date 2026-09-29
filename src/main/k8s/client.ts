@@ -264,7 +264,9 @@ export function invalidateApis(): void {
  */
 export function reloadKubeConfig({ keepSelection = false }: { keepSelection?: boolean } = {}): void {
     const current = kc?.getCurrentContext();
-    keptSelection = keepSelection && current ? { context: current, namespace: activeNamespace } : null;
+    if (!keepSelection) keptSelection = null;
+    // With nothing loaded since the last reload, the selection that one kept is still the one in use.
+    else if (kc) keptSelection = current ? { context: current, namespace: activeNamespace } : null;
     kc = null;
     apiCache = null;
     activeNamespace = null;
