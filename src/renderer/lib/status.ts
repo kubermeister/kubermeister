@@ -1,4 +1,5 @@
 import type { DryRunCheck } from '../../shared/chart-install';
+import type { UpgradeChange } from '../../shared/chart-upgrade';
 import type { ReleaseObjectState, ReleaseStatus, ReleaseStatusKind } from '../../shared/k8s/addons';
 import type { ReleaseHealth } from './release-health';
 import type { ClusterStatus, NodeStatus } from '../../shared/k8s/status';
@@ -120,6 +121,19 @@ export const DRY_RUN_TONE: Record<DryRunState, StatusTone> = {
     deferred: 'neutral',
     exists: 'neutral',
     failed: 'danger',
+};
+
+/** What an upgrade does to each object its render names; `unchanged` is written not at all. */
+export const UPGRADE_CHANGE_TONE: Record<UpgradeChange, StatusTone> = {
+    create: 'ok',
+    update: 'accent',
+    unchanged: 'neutral',
+};
+
+export const UPGRADE_CHANGE_LABEL: Record<UpgradeChange, string> = {
+    create: 'Created',
+    update: 'Changed',
+    unchanged: 'Unchanged',
 };
 
 export const DRY_RUN_LABEL: Record<DryRunState, string> = {

@@ -1,11 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { CodeIcon, FileTextIcon, HistoryIcon, RocketIcon } from 'lucide-react';
+import { ArrowUpCircleIcon, CodeIcon, FileTextIcon, HistoryIcon, RocketIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { YamlEditor } from '@/components/data-display/yaml-editor';
+import { NavLink } from '@/components/layout/nav-link';
 import { releaseResourcesTab } from '@/components/release/release-resources-tab';
 import { ReleaseRollbackButton } from '@/components/release/release-rollback-button';
 import { UninstallReleaseButton } from '@/components/release/uninstall-release-button';
+import { upgradePath } from '@/components/release/upgrade-release';
 import { DetailCard } from '@/components/templates/detail-cards';
+import { Button } from '@/components/ui/button';
 import { ResourceDetail, type DetailTabGroup } from '@/components/templates/resource-detail';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useIpcQuery } from '@/lib/query';
@@ -139,7 +142,17 @@ function ReleaseDetailPage() {
             query={query}
             found={!!release}
             status={release ? { label: release.status, tone: RELEASE_TONE[release.status] } : undefined}
-            actions={<UninstallReleaseButton name={name} namespace={namespace} />}
+            actions={
+                <>
+                    <Button variant="ghost" size="sm" asChild>
+                        <NavLink to={upgradePath(namespace, name)}>
+                            <ArrowUpCircleIcon />
+                            Upgrade
+                        </NavLink>
+                    </Button>
+                    <UninstallReleaseButton name={name} namespace={namespace} />
+                </>
+            }
             meta={
                 release
                     ? [`chart: ${release.chart}`, `revision: ${release.revision}`, `namespace: ${release.namespace}`]

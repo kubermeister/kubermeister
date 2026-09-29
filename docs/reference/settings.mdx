@@ -92,7 +92,8 @@ install a chart from it, refresh it or remove it. Up to 50 can be added.
 A classic repository's charts are listed under
 [**Helm › Charts**](/docs/operations/helm/#helm-charts). **Install a chart** on a row opens the
 [install dialog](/docs/operations/helm/#where-to-start) on that source: a chart picked from its index,
-or for an OCI registry a chart name and version typed in. There is no upgrade.
+or for an OCI registry a chart name and version typed in. A release can be
+[upgraded](/docs/operations/helm/#upgrading-a-release) to a chart version from any of them.
 
 Chart sources are a fact about your install, not about the cluster you are pointed at, so a context
 switch leaves them alone. Three things are kept in step: the entry in settings, the cached index,

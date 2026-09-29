@@ -125,6 +125,9 @@ vi.mock('../../../src/main/charts/repositories.js', () => chartsMod);
 vi.mock('../../../src/main/charts/helm-cli.js', () => helmCliMod);
 vi.mock('../../../src/main/charts/values.js', () => chartValuesMod);
 vi.mock('../../../src/main/k8s/resources/helm-install.js', () => helmInstallMod);
+
+const helmUpgradeMod = { reviewUpgrade: vi.fn(), upgradeRelease: vi.fn() };
+vi.mock('../../../src/main/k8s/resources/helm-upgrade.js', () => helmUpgradeMod);
 vi.mock('../../../src/main/k8s/resources/manifest.js', () => manifestMod);
 vi.mock('../../../src/main/k8s/resources/export.js', () => exportMod);
 vi.mock('node:fs/promises', () => fsMod);
@@ -907,6 +910,34 @@ describe('registerHandlers', () => {
         await expect(invoke('releases.install', { context: 'alpha', reviewId: 'r-1' })).resolves.toEqual(failed);
         expect(helmInstallMod.installRelease).toHaveBeenCalledWith({ context: 'alpha', reviewId: 'r-1' });
         await expect(invoke('releases.install', { reviewId: 'r-1' })).rejects.toThrow();
+    });
+
+    it('renders an upgrade for review and writes it, with the context stamp on both', async () => {
+        const input = {
+            context: 'alpha',
+            source: 'bitnami',
+            chart: 'nginx',
+            version: '1.1.0',
+            name: 'web',
+            namespace: 'team-a',
+            values: { replicas: 3 },
+        };
+        helmUpgradeMod.reviewUpgrade.mockResolvedValue({ rendered: false, reason: 'template', message: 'no host' });
+        await expect(invoke('charts.renderUpgrade', input)).resolves.toEqual({
+            rendered: false,
+            reason: 'template',
+            message: 'no host',
+        });
+        expect(helmUpgradeMod.reviewUpgrade).toHaveBeenCalledWith(input);
+        await expect(invoke('charts.renderUpgrade', { ...input, context: undefined })).rejects.toThrow();
+        await expect(invoke('charts.renderUpgrade', { ...input, values: { ratio: NaN } })).rejects.toThrow();
+        expect(helmUpgradeMod.reviewUpgrade).toHaveBeenCalledOnce();
+
+        const done = { name: 'web', namespace: 'team-a', revision: 4, status: 'deployed', message: null };
+        helmUpgradeMod.upgradeRelease.mockResolvedValue(done);
+        await expect(invoke('releases.upgrade', { context: 'alpha', reviewId: 'r-2' })).resolves.toEqual(done);
+        expect(helmUpgradeMod.upgradeRelease).toHaveBeenCalledWith({ context: 'alpha', reviewId: 'r-2' });
+        await expect(invoke('releases.upgrade', { reviewId: 'r-2' })).rejects.toThrow();
     });
 
     it('forwards the chart repository calls and refuses an input the contract does not allow', async () => {

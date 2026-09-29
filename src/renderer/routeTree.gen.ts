@@ -79,6 +79,7 @@ import { Route as StorageVolumesNameChar123TabChar125RouteImport } from './route
 import { Route as AccessRolebindingsNamespaceNameChar123TabChar125RouteImport } from './routes/access/rolebindings/$namespace.$name.{-$tab}';
 import { Route as AccessRolesNamespaceNameChar123TabChar125RouteImport } from './routes/access/roles/$namespace.$name.{-$tab}';
 import { Route as AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport } from './routes/access/serviceaccounts/$namespace.$name.{-$tab}';
+import { Route as HelmReleasesNamespaceNameUpgradeRouteImport } from './routes/helm/releases/$namespace.$name.upgrade';
 import { Route as HelmReleasesNamespaceNameChar123TabChar125RouteImport } from './routes/helm/releases/$namespace.$name.{-$tab}';
 import { Route as NetworkEndpointsNamespaceNameChar123TabChar125RouteImport } from './routes/network/endpoints/$namespace.$name.{-$tab}';
 import { Route as NetworkIngressesNamespaceNameChar123TabChar125RouteImport } from './routes/network/ingresses/$namespace.$name.{-$tab}';
@@ -491,6 +492,12 @@ const AccessServiceaccountsNamespaceNameChar123TabChar125Route =
     path: '/access/serviceaccounts/$namespace/$name/{-$tab}',
     getParentRoute: () => rootRouteImport,
   } as any);
+const HelmReleasesNamespaceNameUpgradeRoute =
+  HelmReleasesNamespaceNameUpgradeRouteImport.update({
+    id: '/helm/releases/$namespace/$name/upgrade',
+    path: '/helm/releases/$namespace/$name/upgrade',
+    getParentRoute: () => rootRouteImport,
+  } as any);
 const HelmReleasesNamespaceNameChar123TabChar125Route =
   HelmReleasesNamespaceNameChar123TabChar125RouteImport.update({
     id: '/helm/releases/$namespace/$name/{-$tab}',
@@ -703,6 +710,7 @@ export interface FileRoutesByFullPath {
   '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
   '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  '/helm/releases/$namespace/$name/upgrade': typeof HelmReleasesNamespaceNameUpgradeRoute;
   '/helm/releases/$namespace/$name/{-$tab}': typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
@@ -798,6 +806,7 @@ export interface FileRoutesByTo {
   '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
   '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  '/helm/releases/$namespace/$name/upgrade': typeof HelmReleasesNamespaceNameUpgradeRoute;
   '/helm/releases/$namespace/$name/{-$tab}': typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
@@ -894,6 +903,7 @@ export interface FileRoutesById {
   '/access/rolebindings/$namespace/$name/{-$tab}': typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   '/access/roles/$namespace/$name/{-$tab}': typeof AccessRolesNamespaceNameChar123TabChar125Route;
   '/access/serviceaccounts/$namespace/$name/{-$tab}': typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  '/helm/releases/$namespace/$name/upgrade': typeof HelmReleasesNamespaceNameUpgradeRoute;
   '/helm/releases/$namespace/$name/{-$tab}': typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   '/network/endpoints/$namespace/$name/{-$tab}': typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   '/network/ingresses/$namespace/$name/{-$tab}': typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
@@ -991,6 +1001,7 @@ export interface FileRouteTypes {
     | '/access/rolebindings/$namespace/$name/{-$tab}'
     | '/access/roles/$namespace/$name/{-$tab}'
     | '/access/serviceaccounts/$namespace/$name/{-$tab}'
+    | '/helm/releases/$namespace/$name/upgrade'
     | '/helm/releases/$namespace/$name/{-$tab}'
     | '/network/endpoints/$namespace/$name/{-$tab}'
     | '/network/ingresses/$namespace/$name/{-$tab}'
@@ -1086,6 +1097,7 @@ export interface FileRouteTypes {
     | '/access/rolebindings/$namespace/$name/{-$tab}'
     | '/access/roles/$namespace/$name/{-$tab}'
     | '/access/serviceaccounts/$namespace/$name/{-$tab}'
+    | '/helm/releases/$namespace/$name/upgrade'
     | '/helm/releases/$namespace/$name/{-$tab}'
     | '/network/endpoints/$namespace/$name/{-$tab}'
     | '/network/ingresses/$namespace/$name/{-$tab}'
@@ -1181,6 +1193,7 @@ export interface FileRouteTypes {
     | '/access/rolebindings/$namespace/$name/{-$tab}'
     | '/access/roles/$namespace/$name/{-$tab}'
     | '/access/serviceaccounts/$namespace/$name/{-$tab}'
+    | '/helm/releases/$namespace/$name/upgrade'
     | '/helm/releases/$namespace/$name/{-$tab}'
     | '/network/endpoints/$namespace/$name/{-$tab}'
     | '/network/ingresses/$namespace/$name/{-$tab}'
@@ -1277,6 +1290,7 @@ export interface RootRouteChildren {
   AccessRolebindingsNamespaceNameChar123TabChar125Route: typeof AccessRolebindingsNamespaceNameChar123TabChar125Route;
   AccessRolesNamespaceNameChar123TabChar125Route: typeof AccessRolesNamespaceNameChar123TabChar125Route;
   AccessServiceaccountsNamespaceNameChar123TabChar125Route: typeof AccessServiceaccountsNamespaceNameChar123TabChar125Route;
+  HelmReleasesNamespaceNameUpgradeRoute: typeof HelmReleasesNamespaceNameUpgradeRoute;
   HelmReleasesNamespaceNameChar123TabChar125Route: typeof HelmReleasesNamespaceNameChar123TabChar125Route;
   NetworkEndpointsNamespaceNameChar123TabChar125Route: typeof NetworkEndpointsNamespaceNameChar123TabChar125Route;
   NetworkIngressesNamespaceNameChar123TabChar125Route: typeof NetworkIngressesNamespaceNameChar123TabChar125Route;
@@ -1794,6 +1808,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccessServiceaccountsNamespaceNameChar123TabChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/helm/releases/$namespace/$name/upgrade': {
+      id: '/helm/releases/$namespace/$name/upgrade';
+      path: '/helm/releases/$namespace/$name/upgrade';
+      fullPath: '/helm/releases/$namespace/$name/upgrade';
+      preLoaderRoute: typeof HelmReleasesNamespaceNameUpgradeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/helm/releases/$namespace/$name/{-$tab}': {
       id: '/helm/releases/$namespace/$name/{-$tab}';
       path: '/helm/releases/$namespace/$name/{-$tab}';
@@ -2049,6 +2070,7 @@ const rootRouteChildren: RootRouteChildren = {
     AccessRolesNamespaceNameChar123TabChar125Route,
   AccessServiceaccountsNamespaceNameChar123TabChar125Route:
     AccessServiceaccountsNamespaceNameChar123TabChar125Route,
+  HelmReleasesNamespaceNameUpgradeRoute: HelmReleasesNamespaceNameUpgradeRoute,
   HelmReleasesNamespaceNameChar123TabChar125Route:
     HelmReleasesNamespaceNameChar123TabChar125Route,
   NetworkEndpointsNamespaceNameChar123TabChar125Route:

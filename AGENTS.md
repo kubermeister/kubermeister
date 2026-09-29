@@ -646,8 +646,8 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - Helm (`src/main/k8s/resources/helm.ts`) has no API of its own: a release is a Secret of type
   `helm.sh/release.v1` whose `release` field is base64(gzip(json)), base64'd again by the API, with
   one Secret per revision named `sh.helm.release.v1.<name>.v<n>`. Reads decode those Secrets.
-- The writes (`releases.rollback`, `releases.uninstall`) act on the objects a revision's stored
-  `manifest` rendered and then keep Helm's own bookkeeping straight — same Secret names, labels and
+- The writes (`releases.rollback`, `releases.uninstall`, and `releases.install` and
+  `releases.upgrade` below) act on the objects a revision's stored `manifest` rendered and then keep Helm's own bookkeeping straight — same Secret names, labels and
   status words — so a release this app rolls back stays one the Helm CLI can read and act on.
 - A rollback re-applies the target revision's objects, removes what that revision never had,
   records the result as a **new** revision (Helm numbers forward, it never rewinds) and marks the
@@ -798,7 +798,7 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   is the one sentence both the screen and main refuse an install with.
 - **The write order is Helm's:** CRDs from `crds/` (a 409 skipped, each waited on until
   `Established`), the release Secret v1 as `pending-install`, the `pre-install` hooks by weight then
-  name, the objects in the order `helm template` printed them (Helm's install order), the
+  name, the objects in the order `helm template` printed them (Helm's install order), applied server-side as `helm` (see Upgrading a release), the
   `post-install` hooks, then the Secret replaced as `deployed`. A hook with no delete policy gets
   `before-hook-creation`, as Helm's `execHook` gives it; a Job is waited on until Complete or
   Failed, a Pod until Succeeded or Failed, anything else not at all, each for Helm's five minutes.
@@ -808,7 +808,7 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   write recording the failure. A failure once the Secret exists marks it `failed` with Helm's
   description and answers `status: 'failed'` rather than an error, so the screen offers **Uninstall**;
   a context switch mid-install writes nothing more and says the release was left pending.
-- **Every object an install or a rollback writes carries Helm's ownership metadata** (`withHelmOwnership` in
+- **Every object an install, an upgrade or a rollback writes carries Helm's ownership metadata** (`withHelmOwnership` in
   `helm.ts`: the `app.kubernetes.io/managed-by: Helm` label and the `meta.helm.sh/release-name` and
   `release-namespace` annotations), as Helm stamps it; hooks and CRDs are not stamped, and the stored
   manifest stays the render without it. Helm 4.3 `uninstall` leaves an object without it in place as
@@ -835,6 +835,63 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   screen on the latest version, where the version is still switched. Without Helm every entry point
   shows `HelmRequired` instead of navigating, the Charts row by opening the same dialog; its
   **Check again** refetches `helm.status`, which main never caches as missing.
+
+### Upgrading a release
+
+- **An upgrade is the install's two calls over again, through the same parts**
+  (`src/main/k8s/resources/helm-upgrade.ts`): `charts.renderUpgrade` fetches, renders and checks the
+  chart version and keeps the render under a `reviewId` (the install's `reviewStore`, its own store),
+  and `releases.upgrade` writes that render and nothing else. The hooks, the per-step ceiling with
+  its context re-check and the dry run are `helm-install.ts`'s, taking the op they report under.
+- **The starting revision is Helm's `prepareUpgrade` choice** (`upgradeBase`): the newest when it is
+  deployed, else the deployed one under it, else a newest that failed or was superseded; the number
+  follows the newest. A newest `pending-*` revision is refused as an operation in progress and an
+  uninstalled release has nothing to upgrade. The write re-reads the history and refuses a review
+  made before another revision was recorded.
+- **The values editor starts from the current revision's `config`**, and what it holds is the whole
+  of the new `config`, merged over the new chart's defaults by Helm: `helm upgrade -f` with the old
+  values, never `--reuse-values`, so nothing reaches the render that the screen did not show. The
+  render passes `--is-upgrade` (`ReleaseInfo.upgrade`), so `.Release.IsUpgrade` answers as in
+  `helm upgrade`.
+- **Objects are written by server-side apply, as Helm 4 writes them** (`src/main/k8s/resources/helm-apply.ts`):
+  `apis().objects.patch` with `PatchStrategy.ServerSideApply`, the field manager `helm`
+  (`HELM_FIELD_MANAGER`, the name the Helm CLI applies as, after its binary) and `force: false`, since
+  Helm 4 refuses conflicts unless `--force-conflicts`. A field another manager owns and the render
+  leaves out survives (an HPA's replicas when the chart sets none), a field only `helm` owned that
+  the render drops is removed, and a conflict is a `conflict` error naming each field and its
+  manager (`applyConflicts`, `conflictError`), read from the Status's `FieldManagerConflict` causes.
+  Every rendered object is applied, unchanged ones too, as Helm applies them all. A replace would drop
+  what other managers own, which is why the upgrade never replaces; the rollback still does
+  (`applyObject`), and moving it is its own change.
+- **Helm's client-side ownership moves first**: a release Helm 3, or Helm 4 with `--server-side=false`,
+  wrote holds its fields as `helm`/`Update`, which Helm's own apply would conflict with and never
+  remove. `moveClientSideOwnership` folds those entries into the `helm`/`Apply` one with a merge patch
+  on `metadata.managedFields` conditional on the `resourceVersion` it read (`clientSideOwnership` is
+  the pure part), as `helm upgrade --server-side` does through Kubernetes' `csaupgrade`. A dry run
+  cannot carry that move into the next request, so the review forces past conflicts naming no manager
+  but `helm` on such an object, and only then. The new revision records `apply_method: "ssa"`, so a
+  later `helm upgrade` with its default `--server-side=auto` applies server-side too, and the install
+  applies its objects the same way (Helm 4's install default), so a release installed here never
+  needs the move.
+- **The object diff is two answers from the server**: the live object and a server-side dry run of
+  the very apply the upgrade sends, both through `cleanForExport` and `yamlToText`, so a defaulted
+  field or one another manager owns is not a change. The values diff is both `config`s through
+  `releaseValues`' dump. An object already in the cluster that the current revision did not render is
+  refused unless it carries this release's ownership (`ownedByRelease`), as Helm refuses to adopt it.
+- **The write order is Helm's `performUpgrade`**: the new revision's Secret as `pending-upgrade`
+  ("Preparing upgrade", `first_deployed` carried over), `pre-upgrade` hooks, the objects in render
+  order, the deletions of what the new render drops (never `helm.sh/resource-policy: keep`), the
+  `post-upgrade` hooks, the previous revision `superseded`, the new one `deployed` ("Upgrade
+  complete"). A failure once the Secret exists marks it `failed` (`Upgrade "<name>" failed: …`) and
+  leaves the previous revision deployed. `crds/` is never touched, as Helm installs CRDs on install
+  alone.
+- The screen is `/helm/releases/$namespace/$name/upgrade`, a static last segment beside the detail's
+  `{-$tab}`, so `upgrade` can never be a tab id; the header's **Upgrade** opens it. A release does not
+  record its source, so the default is the first classic repository whose index lists the chart
+  (`defaultSource`, asking `charts.versions` of each), else the first registry. The e2e spec has the
+  Helm CLI install a release, `kubectl scale` and annotate its Deployment under other managers,
+  upgrades it here to a version that renders no replicas, and asserts both survive, then has Helm
+  read the history and uninstall it.
 
 ### Container detail
 

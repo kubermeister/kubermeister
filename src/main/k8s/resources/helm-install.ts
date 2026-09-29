@@ -23,13 +23,13 @@ import { K8sError, toK8sError, withK8s } from '../errors.js';
 import {
     hasRelease,
     inReleaseNamespace,
-    withHelmOwnership,
     releaseSecretBody,
     releaseSecretName,
     type HelmHookRecord,
     type HelmReleaseData,
     type RenderedObject,
 } from './helm.js';
+import { applyForRelease } from './helm-apply.js';
 import { assertContext } from './write.js';
 
 /*
@@ -61,9 +61,9 @@ export const HOOK_TIMEOUT_MS = 5 * 60 * 1000;
 const SETTLE_TIMEOUT_MS = 60 * 1000;
 const POLL_MS = 1000;
 /** Dry runs in flight at once, so a chart of a hundred objects does not open a hundred requests. */
-const DRY_RUN_CONCURRENCY = 6;
+export const DRY_RUN_CONCURRENCY = 6;
 
-const BEFORE_HOOK_CREATION = 'before-hook-creation';
+export const BEFORE_HOOK_CREATION = 'before-hook-creation';
 const HOOK_SUCCEEDED = 'hook-succeeded';
 const HOOK_FAILED = 'hook-failed';
 
@@ -76,14 +76,32 @@ interface Pending {
     expires: number;
 }
 
-const pending = new Map<string, Pending>();
-
-function remember(entry: Pending): void {
-    const now = Date.now();
-    for (const [id, one] of pending) if (one.expires <= now) pending.delete(id);
-    while (pending.size >= MAX_REVIEWS) pending.delete(pending.keys().next().value!);
-    pending.set(entry.review.reviewId, entry);
+/**
+ * Reviews waiting for the write they were rendered for, each kept until it expires, is displaced by
+ * newer ones or is spent. An upgrade keeps its own, since its review carries different things.
+ */
+export function reviewStore<T extends { review: { reviewId: string }; expires: number }>() {
+    const entries = new Map<string, T>();
+    return {
+        remember(entry: T): void {
+            const now = Date.now();
+            for (const [id, one] of entries) if (one.expires <= now) entries.delete(id);
+            while (entries.size >= MAX_REVIEWS) entries.delete(entries.keys().next().value!);
+            entries.set(entry.review.reviewId, entry);
+        },
+        /** The review under this id, which taking it spends, or null for one expired or never made. */
+        take(id: string): T | null {
+            const entry = entries.get(id);
+            entries.delete(id);
+            return entry && entry.expires > Date.now() ? entry : null;
+        },
+        clear(): void {
+            entries.clear();
+        },
+    };
 }
+
+const pending = reviewStore<Pending>();
 
 /** Forget every review, which a test and nothing else needs. */
 export function clearReviews(): void {
@@ -140,21 +158,21 @@ function crdKinds(crds: RenderedManifest[]): Set<string> {
     return kinds;
 }
 
-const groupOf = (apiVersion: string): string => (apiVersion.includes('/') ? apiVersion.split('/')[0]! : '');
+export const groupOf = (apiVersion: string): string => (apiVersion.includes('/') ? apiVersion.split('/')[0]! : '');
 
-function statusCode(error: unknown): number | undefined {
+export function statusCode(error: unknown): number | undefined {
     return error instanceof ApiException ? error.code : undefined;
 }
 
-function failureMessage(error: unknown, object: RenderedObject): string {
+export function failureMessage(error: unknown, object: RenderedObject, op = INSTALL_OP): string {
     if (statusCode(error) === 404) return `The cluster serves no ${object.apiVersion} ${object.kind}.`;
     if (error instanceof Error && error.message.startsWith('Unrecognized API version and kind')) {
         return `The cluster serves no ${object.apiVersion} ${object.kind}.`;
     }
-    return toK8sError(INSTALL_OP, error).detail;
+    return toK8sError(op, error).detail;
 }
 
-const describeObject = (object: RenderedObject): string =>
+export const describeObject = (object: RenderedObject): string =>
     `${object.kind} "${object.metadata.name}"${object.metadata.namespace ? ` in ${object.metadata.namespace}` : ''}`;
 
 type Checked = 'object' | 'hook' | 'crd';
@@ -165,7 +183,7 @@ type Checked = 'object' | 'hook' | 'crd';
  * and a hook that is deleted before it is created again. A kind one of the chart's own CRDs defines
  * cannot be checked before that CRD is served, so it waits for the install.
  */
-async function dryRun(
+export async function dryRun(
     object: RenderedObject,
     role: Checked,
     chartKinds: Set<string>,
@@ -193,7 +211,7 @@ async function dryRun(
     }
 }
 
-async function mapLimited<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
+export async function mapLimited<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
     const out = new Array<R>(items.length);
     let next = 0;
     const worker = async () => {
@@ -220,7 +238,7 @@ function reviewed(rendered: RenderedManifest, check: DryRunCheck): ReviewedObjec
 }
 
 /** Every rendered object placed in the release's namespace, the way the install will write it. */
-function placed(render: ChartRender, namespace: string): ChartRender {
+export function placed(render: ChartRender, namespace: string): ChartRender {
     const place = <T extends RenderedManifest>(one: T): T => ({
         ...one,
         object: inReleaseNamespace(one.object, namespace),
@@ -296,7 +314,7 @@ export async function reviewChart(input: ChartRenderInput): Promise<ChartRenderO
         })),
         usesLookup: render.usesLookup,
     };
-    remember({
+    pending.remember({
         review,
         context: input.context,
         render: { ...render, hooks },
@@ -342,28 +360,34 @@ export function firstRevision(
         config: entry.values,
         manifest: entry.render.manifest,
         hooks,
+        apply_method: 'ssa',
     };
 }
 
 /** One cluster call under its own read ceiling, refused if the app has moved to another context. */
-function step<T>(context: string, run: () => Promise<T>): Promise<T> {
-    return withK8s(INSTALL_OP, async () => {
-        assertContext(context, INSTALL_OP);
+export function step<T>(op: string, context: string, run: () => Promise<T>): Promise<T> {
+    return withK8s(op, async () => {
+        assertContext(context, op);
         return run();
     });
 }
 
-async function until<T>(deadline: number, poll: () => Promise<T | undefined>, onTimeout: () => string): Promise<T> {
+async function until<T>(
+    op: string,
+    deadline: number,
+    poll: () => Promise<T | undefined>,
+    onTimeout: () => string,
+): Promise<T> {
     for (;;) {
         const answer = await poll();
         if (answer !== undefined) return answer;
-        if (Date.now() >= deadline) throw new K8sError('timeout', onTimeout(), INSTALL_OP);
+        if (Date.now() >= deadline) throw new K8sError('timeout', onTimeout(), op);
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
     }
 }
 
-async function exists(context: string, object: RenderedObject): Promise<boolean> {
-    return step(context, () =>
+async function exists(op: string, context: string, object: RenderedObject): Promise<boolean> {
+    return step(op, context, () =>
         apis()
             .objects.read(object)
             .then(
@@ -377,8 +401,8 @@ async function exists(context: string, object: RenderedObject): Promise<boolean>
 }
 
 /** Delete an object and wait until the name is free, which a hook recreated under it needs. */
-async function removeAndWait(context: string, object: RenderedObject): Promise<void> {
-    await step(context, () =>
+async function removeAndWait(op: string, context: string, object: RenderedObject): Promise<void> {
+    await step(op, context, () =>
         apis()
             .objects.delete(object, undefined, undefined, undefined, undefined, 'Background')
             .catch((error: unknown) => {
@@ -386,8 +410,9 @@ async function removeAndWait(context: string, object: RenderedObject): Promise<v
             }),
     );
     await until(
+        op,
         Date.now() + SETTLE_TIMEOUT_MS,
-        async () => ((await exists(context, object)) ? undefined : true),
+        async () => ((await exists(op, context, object)) ? undefined : true),
         () => `${describeObject(object)} is still being deleted.`,
     );
 }
@@ -395,7 +420,7 @@ async function removeAndWait(context: string, object: RenderedObject): Promise<v
 /** Create the chart's CRDs, leaving any already there alone, and wait until each is served. */
 async function installCrds(context: string, crds: RenderedManifest[]): Promise<void> {
     for (const { object } of crds) {
-        await step(context, () =>
+        await step(INSTALL_OP, context, () =>
             apis()
                 .objects.create(structuredClone(object))
                 .catch((error: unknown) => {
@@ -405,9 +430,10 @@ async function installCrds(context: string, crds: RenderedManifest[]): Promise<v
     }
     for (const { object } of crds) {
         await until(
+            INSTALL_OP,
             Date.now() + SETTLE_TIMEOUT_MS,
             async () => {
-                const live = (await step(context, () => apis().objects.read(object))) as {
+                const live = (await step(INSTALL_OP, context, () => apis().objects.read(object))) as {
                     status?: { conditions?: { type?: string; status?: string }[] };
                 };
                 const established = live.status?.conditions?.some(
@@ -420,7 +446,7 @@ async function installCrds(context: string, crds: RenderedManifest[]): Promise<v
     }
 }
 
-interface HookRun {
+export interface HookRun {
     hook: RenderedHook;
     lastRun: NonNullable<HelmHookRecord['last_run']>;
 }
@@ -430,33 +456,35 @@ interface HookRun {
  * that fails or runs out of time is deleted when it asked for `hook-failed` and stops the install;
  * once every hook succeeded, those that asked for `hook-succeeded` are deleted.
  */
-async function runHooks(context: string, hooks: RenderedHook[], runs: Map<RenderedHook, HookRun>): Promise<void> {
+export async function runHooks(
+    op: string,
+    context: string,
+    hooks: RenderedHook[],
+    runs: Map<RenderedHook, HookRun>,
+): Promise<void> {
     for (const hook of hooks) {
         const policies = effectiveDeletePolicies(hook);
-        if (policies.includes(BEFORE_HOOK_CREATION)) await removeAndWait(context, hook.object);
+        if (policies.includes(BEFORE_HOOK_CREATION)) await removeAndWait(op, context, hook.object);
         const run: HookRun = {
             hook,
             lastRun: { started_at: new Date().toISOString(), completed_at: '', phase: 'Running' },
         };
         runs.set(hook, run);
-        await step(context, () => apis().objects.create(structuredClone(hook.object)));
+        await step(op, context, () => apis().objects.create(structuredClone(hook.object)));
         let failure: unknown = null;
         try {
             const failed = await until(
+                op,
                 Date.now() + HOOK_TIMEOUT_MS,
                 async () => {
-                    const progress = hookProgress(await step(context, () => apis().objects.read(hook.object)));
+                    const progress = hookProgress(await step(op, context, () => apis().objects.read(hook.object)));
                     return progress.done ? progress.failed : undefined;
                 },
                 () =>
                     `The ${hook.events.join(', ')} hook ${describeObject(hook.object)} did not finish in ${HOOK_TIMEOUT_MS / 60_000} minutes.`,
             );
             if (failed)
-                failure = new K8sError(
-                    'invalid',
-                    `The hook ${describeObject(hook.object)} failed: ${failed}.`,
-                    INSTALL_OP,
-                );
+                failure = new K8sError('invalid', `The hook ${describeObject(hook.object)} failed: ${failed}.`, op);
         } catch (error) {
             failure = error;
         }
@@ -466,12 +494,12 @@ async function runHooks(context: string, hooks: RenderedHook[], runs: Map<Render
             phase: failure ? 'Failed' : 'Succeeded',
         };
         if (failure) {
-            if (policies.includes(HOOK_FAILED)) await removeAndWait(context, hook.object);
+            if (policies.includes(HOOK_FAILED)) await removeAndWait(op, context, hook.object);
             throw failure;
         }
     }
     for (const hook of hooks) {
-        if (effectiveDeletePolicies(hook).includes(HOOK_SUCCEEDED)) await removeAndWait(context, hook.object);
+        if (effectiveDeletePolicies(hook).includes(HOOK_SUCCEEDED)) await removeAndWait(op, context, hook.object);
     }
 }
 
@@ -482,9 +510,8 @@ async function runHooks(context: string, hooks: RenderedHook[], runs: Map<Render
  * error: the release is marked `failed` and the screen offers to uninstall it.
  */
 export async function installRelease(input: ReleaseInstallInput): Promise<ReleaseInstallResult> {
-    const entry = pending.get(input.reviewId);
-    pending.delete(input.reviewId);
-    if (!entry || entry.expires <= Date.now()) {
+    const entry = pending.take(input.reviewId);
+    if (!entry) {
         throw new K8sError(
             'invalid',
             'This review has expired. Review the chart again before installing it.',
@@ -504,7 +531,7 @@ export async function installRelease(input: ReleaseInstallInput): Promise<Releas
 
     const { name, namespace } = entry.review;
     const context = entry.context;
-    await step(context, async () => {
+    await step(INSTALL_OP, context, async () => {
         if (await hasRelease(name, namespace)) {
             throw new K8sError(
                 'conflict',
@@ -524,7 +551,7 @@ export async function installRelease(input: ReleaseInstallInput): Promise<Releas
     const secretName = releaseSecretName(name, 1);
     const write = async (next: HelmReleaseData) => {
         const body = releaseSecretBody(next);
-        await step(context, async () => {
+        await step(INSTALL_OP, context, async () => {
             const live = await apis().core.readNamespacedSecret({ name: secretName, namespace });
             await apis().core.replaceNamespacedSecret({
                 name: secretName,
@@ -534,16 +561,17 @@ export async function installRelease(input: ReleaseInstallInput): Promise<Releas
         });
         record = next;
     };
-    await step(context, () => apis().core.createNamespacedSecret({ namespace, body: releaseSecretBody(record) }));
+    await step(INSTALL_OP, context, () =>
+        apis().core.createNamespacedSecret({ namespace, body: releaseSecretBody(record) }),
+    );
 
     try {
-        await runHooks(context, hooksFor(entry.render.hooks, 'pre-install'), runs);
+        await runHooks(INSTALL_OP, context, hooksFor(entry.render.hooks, 'pre-install'), runs);
         for (const { object } of entry.render.objects) {
-            await step(context, () =>
-                apis().objects.create(withHelmOwnership(structuredClone(object), name, namespace)),
-            );
+            // Applied server-side as Helm, as Helm 4 installs, so a later upgrade's apply owns what this wrote.
+            await step(INSTALL_OP, context, () => applyForRelease(object, name, namespace));
         }
-        await runHooks(context, hooksFor(entry.render.hooks, 'post-install'), runs);
+        await runHooks(INSTALL_OP, context, hooksFor(entry.render.hooks, 'post-install'), runs);
         await write({
             ...record,
             info: {

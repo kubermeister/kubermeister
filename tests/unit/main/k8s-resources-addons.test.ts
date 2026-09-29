@@ -206,6 +206,9 @@ describe('helm releases', () => {
                 name: 'traefik',
                 namespace: 'kube-system',
                 chart: 'traefik-28.0.0',
+                // Apart as well as joined, since a name and a version may both hold dashes.
+                chartName: 'traefik',
+                chartVersion: '28.0.0',
                 revision: 2,
                 status: 'Deployed',
                 updated: expect.any(String),

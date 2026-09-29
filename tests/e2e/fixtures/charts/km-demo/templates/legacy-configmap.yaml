@@ -1,0 +1,7 @@
+{{- /* Gone from 0.2.0, so the upgrade spec sees an upgrade delete what the new version drops. */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-legacy
+data:
+  retired: 'in 0.2.0'

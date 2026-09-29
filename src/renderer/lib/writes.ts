@@ -22,6 +22,8 @@ type WriteChannel =
     | 'releases.uninstall'
     | 'releases.install'
     | 'charts.render'
+    | 'charts.renderUpgrade'
+    | 'releases.upgrade'
     | 'pods.evict'
     | 'jobs.retry'
     | 'cronJobs.trigger'
@@ -182,6 +184,24 @@ export function useRenderChart() {
 export function useInstallRelease() {
     return useIpcMutation<'releases.install', WriteVariables<'releases.install'>>('releases.install', {
         prepare: (variables, client) => stamp('releases.install', variables, client),
+        invalidates: () => [...releaseKeys(), ['releases.resources']],
+    });
+}
+
+/**
+ * Render a chart version as an upgrade of a release and diff it against the cluster, for the review
+ * an upgrade writes. Stamped like a write, since the review is bound to the context it checked.
+ */
+export function useRenderUpgrade() {
+    return useIpcMutation<'charts.renderUpgrade', WriteVariables<'charts.renderUpgrade'>>('charts.renderUpgrade', {
+        prepare: (variables, client) => stamp('charts.renderUpgrade', variables, client),
+    });
+}
+
+/** Upgrade a release to the render its review showed. A failed upgrade is recorded as a revision too. */
+export function useUpgradeRelease() {
+    return useIpcMutation<'releases.upgrade', WriteVariables<'releases.upgrade'>>('releases.upgrade', {
+        prepare: (variables, client) => stamp('releases.upgrade', variables, client),
         invalidates: () => [...releaseKeys(), ['releases.resources']],
     });
 }

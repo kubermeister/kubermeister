@@ -143,6 +143,16 @@ describe('templateArgs', () => {
             '/charts/demo.tgz',
         ]);
         expect(args).not.toContain('--validate');
+        expect(args).not.toContain('--is-upgrade');
+    });
+
+    it('renders an upgrade as one, so a chart reading .Release.IsUpgrade sees what helm upgrade shows it', () => {
+        const args = templateArgs('/scratch/values.json', '/charts/demo.tgz', capabilities, {
+            ...release,
+            upgrade: true,
+        });
+        expect(args.slice(0, 5)).toEqual(['template', '--namespace', 'shop', '--include-crds', '--is-upgrade']);
+        expect(args.slice(-3)).toEqual(['--', 'web', '/charts/demo.tgz']);
     });
 });
 

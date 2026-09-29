@@ -39,6 +39,8 @@ export interface HelmReleaseData {
     /** The rendered manifests of this revision, as one multi-document YAML string. */
     manifest?: string;
     hooks?: HelmHookRecord[];
+    /** How the objects were written, as Helm 4 records it; absent means client-side, as Helm reads it. */
+    apply_method?: 'ssa' | 'csa';
 }
 
 /** One hook as a release records it, in Helm's own field names. */
@@ -99,7 +101,7 @@ async function decodedReleases(namespace?: string): Promise<HelmReleaseData[]> {
     return items.map(decodeRelease).filter((release): release is HelmReleaseData => release !== null);
 }
 
-function chartLabel(release: HelmReleaseData): string {
+export function chartLabel(release: HelmReleaseData): string {
     const meta = release.chart?.metadata;
     return meta?.name ? `${meta.name}-${meta.version ?? ''}` : '—';
 }
@@ -144,6 +146,8 @@ export function toRelease(release: HelmReleaseData, detail: ReleaseDetail = {}, 
         name: release.name ?? '',
         namespace: release.namespace ?? '',
         chart: chartLabel(release),
+        chartName: release.chart?.metadata?.name,
+        chartVersion: release.chart?.metadata?.version,
         revision: release.version ?? 0,
         status: helmStatus(release.info?.status),
         updated: ago(release.info?.last_deployed, now),
@@ -277,6 +281,20 @@ export function withHelmOwnership<T extends RenderedObject>(object: T, release: 
 }
 
 /**
+ * Whether a live object carries the ownership metadata of this release. Helm adopts an object it did
+ * not render last time only when it does, and refuses the upgrade otherwise, rather than taking over
+ * something another release or somebody's `kubectl apply` put there.
+ */
+export function ownedByRelease(object: KubernetesObject, release: string, namespace: string): boolean {
+    const metadata = object.metadata ?? {};
+    return (
+        metadata.labels?.['app.kubernetes.io/managed-by'] === 'Helm' &&
+        metadata.annotations?.['meta.helm.sh/release-name'] === release &&
+        metadata.annotations?.['meta.helm.sh/release-namespace'] === namespace
+    );
+}
+
+/**
  * Helm renders namespaced objects without a namespace and applies them into the release's own; a
  * cluster-scoped kind is never given one.
  */
@@ -303,7 +321,10 @@ export function encodeRelease(release: HelmReleaseData): string {
 }
 
 /** Every revision Secret of one release, newest first, with the data each carries. */
-async function releaseSecrets(name: string, namespace: string): Promise<{ secret: V1Secret; data: HelmReleaseData }[]> {
+export async function releaseSecrets(
+    name: string,
+    namespace: string,
+): Promise<{ secret: V1Secret; data: HelmReleaseData }[]> {
     const { items } = await apis().core.listNamespacedSecret({
         namespace,
         fieldSelector: `type=${HELM_SECRET_TYPE}`,
@@ -352,7 +373,7 @@ export function releaseSecretBody(data: HelmReleaseData): V1Secret {
  * it carries Helm's ownership metadata, since a replace sends the whole object and would otherwise
  * strip what Helm stamped when it installed it.
  */
-async function applyObject(rendered: RenderedObject, release: string, namespace: string): Promise<void> {
+export async function applyObject(rendered: RenderedObject, release: string, namespace: string): Promise<void> {
     const object = withHelmOwnership(rendered, release, namespace);
     try {
         await apis().objects.create(object);
@@ -368,7 +389,7 @@ async function applyObject(rendered: RenderedObject, release: string, namespace:
 }
 
 /** Delete one rendered object, treating one that is already gone as done. */
-async function removeObject(object: RenderedObject): Promise<void> {
+export async function removeObject(object: RenderedObject): Promise<void> {
     try {
         await apis().objects.delete(object);
     } catch (error) {
@@ -377,7 +398,7 @@ async function removeObject(object: RenderedObject): Promise<void> {
 }
 
 /** Rewrite one revision's Secret with a new status, keeping everything else it holds. */
-async function restatusRevision(secret: V1Secret, data: HelmReleaseData, status: string): Promise<void> {
+export async function restatusRevision(secret: V1Secret, data: HelmReleaseData, status: string): Promise<void> {
     const next: HelmReleaseData = { ...data, info: { ...data.info, status } };
     await apis().core.replaceNamespacedSecret({
         name: secret.metadata!.name!,

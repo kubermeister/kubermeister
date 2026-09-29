@@ -39,6 +39,8 @@ export interface ChartCapabilities {
 export interface ReleaseInfo {
     name: string;
     namespace: string;
+    /** Rendered for an upgrade of a release that exists, so `.Release.IsUpgrade` answers true, as in `helm upgrade`. */
+    upgrade?: boolean;
 }
 
 export interface RenderedManifest {
@@ -109,6 +111,7 @@ export function templateArgs(
         '--namespace',
         release.namespace,
         '--include-crds',
+        ...(release.upgrade ? ['--is-upgrade'] : []),
         '--kube-version',
         capabilities.kubeVersion,
         ...capabilities.apiVersions.flatMap((version) => ['--api-versions', version]),

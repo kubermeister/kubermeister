@@ -6,7 +6,7 @@ import { ApiException, type V1Secret } from '@kubernetes/client-node';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { gzipOf } from './chart-archive-fixture';
 
-const objects = { create: vi.fn(), read: vi.fn(), delete: vi.fn(), replace: vi.fn() };
+const objects = { create: vi.fn(), read: vi.fn(), delete: vi.fn(), replace: vi.fn(), patch: vi.fn() };
 const core = {
     listNamespacedSecret: vi.fn(),
     createNamespacedSecret: vi.fn(),
@@ -134,6 +134,10 @@ beforeEach(() => {
         if (!dryRun) cluster.add(object.metadata.name);
         return Promise.resolve({});
     });
+    // An apply of an object nobody has yet is a create, so it answers as the create a test set up does.
+    objects.patch.mockImplementation((object: Named, pretty?: string, dryRun?: string) =>
+        objects.create.getMockImplementation()!(object, pretty, dryRun),
+    );
     objects.read.mockImplementation((object: Named) => {
         if (!cluster.has(object.metadata.name)) return Promise.reject(apiError(404));
         if (object.kind === 'CustomResourceDefinition') {
@@ -276,11 +280,19 @@ async function reviewed(): Promise<string> {
     const outcome = await install.reviewChart(INPUT);
     if (!outcome.rendered) throw new Error('expected a review');
     objects.create.mockClear();
+    objects.patch.mockClear();
     return outcome.review.reviewId;
 }
 
+/** Every object written, created or applied, in the order it was written. */
+const writes = () =>
+    [objects.create, objects.patch]
+        .flatMap((mock) => mock.mock.calls.map((call, i) => ({ call, at: mock.mock.invocationCallOrder[i]! })))
+        .sort((a, b) => a.at - b.at)
+        .map(({ call }) => call);
+
 const createdKinds = () =>
-    objects.create.mock.calls.map(
+    writes().map(
         ([object]) =>
             `${(object as { kind: string }).kind}/${(object as { metadata: { name: string } }).metadata.name}`,
     );
@@ -301,7 +313,16 @@ describe('installRelease', () => {
             'Job/post',
         ]);
         // Nothing is a dry run once the install writes.
-        for (const call of objects.create.mock.calls) expect(call[2]).toBeUndefined();
+        for (const call of writes()) expect(call[2]).toBeUndefined();
+        // The objects are applied server-side as Helm, never forcing a conflict, as Helm 4 installs them.
+        expect(objects.patch.mock.calls.map(([object]) => (object as Named).metadata.name)).toEqual([
+            'web',
+            'web-reader',
+            'w',
+        ]);
+        for (const call of objects.patch.mock.calls) {
+            expect(call.slice(3)).toEqual(['helm', false, 'application/apply-patch+yaml']);
+        }
         // The release is recorded before the first hook runs, so a failure after it has a release to mark.
         expect(core.createNamespacedSecret.mock.invocationCallOrder[0]).toBeLessThan(
             objects.create.mock.invocationCallOrder[1]!,
@@ -327,6 +348,7 @@ describe('installRelease', () => {
             chart: { metadata: { name: 'demo', version: '0.1.0', appVersion: '1.10', apiVersion: 'v2' } },
             config: { enabled: 'yes', replicas: 2 },
             manifest: chartRender().manifest,
+            apply_method: 'ssa',
         });
         const info = release.info as Record<string, string>;
         expect(Date.parse(info.first_deployed!)).not.toBeNaN();
@@ -350,7 +372,7 @@ describe('installRelease', () => {
         const reviewId = await reviewed();
         await install.installRelease({ context: 'alpha', reviewId });
         const written = (name: string) =>
-            objects.create.mock.calls
+            writes()
                 .map(([object]) => object as Named & { metadata: { labels?: object; annotations?: object } })
                 .find((object) => object.metadata.name === name)!.metadata;
         for (const name of ['web', 'web-reader', 'w']) {
@@ -390,7 +412,7 @@ describe('installRelease', () => {
         );
         const reviewId = await reviewed();
         await expect(install.installRelease({ context: 'alpha', reviewId })).rejects.toThrow(/data: Invalid value/);
-        expect(objects.create).not.toHaveBeenCalled();
+        expect(writes()).toEqual([]);
         expect(core.createNamespacedSecret).not.toHaveBeenCalled();
     });
 

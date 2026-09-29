@@ -16,6 +16,9 @@ export const releaseSchema = z.object({
     name: z.string(),
     namespace: z.string(),
     chart: z.string(),
+    /** The chart's own name and version, apart, since the label joins two strings that may hold dashes. */
+    chartName: z.string().optional(),
+    chartVersion: z.string().optional(),
     revision: z.number(),
     status: releaseStatusSchema,
     updated: z.string(),
