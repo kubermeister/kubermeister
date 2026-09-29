@@ -314,6 +314,25 @@ describe('startUpdater', () => {
         await expect(checkForUpdates()).resolves.toEqual({ status: 'error', message: 'offline' });
     });
 
+    it('never announces a failed scheduled check, even for the error the library emits first', async () => {
+        // electron-updater emits `error` and then rejects the same check.
+        autoUpdater.checkForUpdates.mockImplementation(async () => {
+            const error = new Error('offline');
+            autoUpdater.emit('error', error);
+            throw error;
+        });
+        const { startUpdater, getUpdateState, checkForUpdates } = await loadUpdater();
+        startUpdater();
+        await vi.advanceTimersByTimeAsync(15_000);
+        const errors = broadcast.mock.calls
+            .map(([, next]) => next as { status: string })
+            .filter((next) => next.status === 'error');
+        expect(errors).not.toHaveLength(0);
+        for (const next of errors) expect(next).toEqual({ status: 'error', message: 'offline', background: true });
+        expect(getUpdateState()).toEqual({ status: 'error', message: 'offline', background: true });
+        await expect(checkForUpdates()).resolves.toEqual({ status: 'error', message: 'offline' });
+    });
+
     it('reports library errors and a failed download as errors the user sees', async () => {
         const { startUpdater, getUpdateState, downloadUpdate } = await loadUpdater();
         startUpdater();
