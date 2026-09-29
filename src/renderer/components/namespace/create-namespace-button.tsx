@@ -62,7 +62,15 @@ export function CreateNamespaceButton() {
                 />
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction disabled={!valid || create.isPending} onClick={() => void submit()}>
+                    <AlertDialogAction
+                        disabled={!valid || create.isPending}
+                        onClick={(event) => {
+                            // Keep the dialog open, with what was typed, until the write settles: a refusal leaves it
+                            // up to be corrected rather than only a toast.
+                            event.preventDefault();
+                            void submit();
+                        }}
+                    >
                         Create
                     </AlertDialogAction>
                 </AlertDialogFooter>

@@ -61,6 +61,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Rebooted and the pressure conditions.
 - The Manifest tab follows the object after every refresh or scale instead of stopping at the first,
   and a change made elsewhere while editing no longer counts as an unsaved edit of yours.
+- **Add repository** and **New namespace** stay open until the cluster or the source answers, so a
+  refused URL or a name already taken leaves what you typed there to correct instead of closing on
+  an error toast.
 
 ## [0.9.1] - 2026-09-29
 

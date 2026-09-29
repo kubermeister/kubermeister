@@ -1253,6 +1253,10 @@ through the next release.
 
 - `playwright.config.ts`, `tests/e2e/`. Drives the built app, so run `npm run build` before
   `npm run test:e2e`. Needs Docker; ubuntu only in CI.
+- The specs are two Playwright projects, `app` and `actions`, which CI runs on separate runners and
+  clusters at once; locally both run, one after the other, on the one cluster. Specs in a file run in
+  order and some build on the one above, so a file belongs to one project whole and a spec moves
+  only with what it depends on. A new file lands in `actions`; keep the two about equally long.
 - `harness/cluster.ts` starts the k3s container, `harness/isolation.ts` is the guard,
   `harness/launch.ts` launches the app with a throwaway `KUBERMEISTER_USER_DATA` and
   `KUBERMEISTER_SHOW_INACTIVE`, so the window never takes focus and keystrokes typed during a local

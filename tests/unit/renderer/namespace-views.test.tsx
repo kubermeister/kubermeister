@@ -14,6 +14,7 @@ vi.mock('@/lib/ipc', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
+const { IpcError } = await import('@/lib/ipc');
 
 const pod = (name: string, node: string, owner: string) => ({
     name,
@@ -117,6 +118,28 @@ describe('namespace detail', () => {
                 expect.objectContaining({ manifest: expect.stringContaining('name: team-b') }),
             ),
         );
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    });
+
+    it('keeps the new namespace dialog open when the cluster refuses the name', async () => {
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'resources.create')
+                throw new IpcError({
+                    kind: 'conflict',
+                    detail: 'namespaces "team-a" already exists',
+                    op: 'resources.create',
+                });
+            return data[channel];
+        });
+        renderRoutes(routeTree, '/overview/namespaces');
+        await userEvent.click(await screen.findByTestId('create-namespace'));
+        const dialog = await screen.findByRole('alertdialog');
+        await userEvent.type(within(dialog).getByLabelText('Namespace name'), 'team-a');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
+        await waitFor(() => expect(invoke).toHaveBeenCalledWith('resources.create', expect.anything()));
+        await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Create' })).toBeEnabled());
+        expect(screen.getByRole('alertdialog')).toBe(dialog);
+        expect(within(dialog).getByLabelText('Namespace name')).toHaveValue('team-a');
     });
 });
 
