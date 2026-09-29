@@ -89,6 +89,30 @@ describe('pingRegistry', () => {
         expect((retry.headers as Record<string, string>).authorization).toBe('Bearer issued-token');
     });
 
+    it('never sends the credential to a token realm on plaintext http, asking it anonymously instead', async () => {
+        fetchMock
+            .mockResolvedValueOnce(reply(401, { 'www-authenticate': 'Bearer realm="http://auth.example.com/token"' }))
+            .mockResolvedValueOnce(reply(200, {}, JSON.stringify({ token: 'anonymous-token' })))
+            .mockResolvedValueOnce(reply(200));
+        await expect(pingRegistry(OP, 'oci://reg.example.com/charts', credential)).resolves.toBeUndefined();
+        const [tokenUrl, tokenInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+        expect(tokenUrl).toBe('http://auth.example.com/token');
+        expect((tokenInit.headers as Record<string, string>).authorization).toBeUndefined();
+        expect((fetchMock.mock.calls[2][1].headers as Record<string, string>).authorization).toBe(
+            'Bearer anonymous-token',
+        );
+    });
+
+    it('reports the credential as rejected when a plaintext realm will not issue an anonymous token', async () => {
+        fetchMock
+            .mockResolvedValueOnce(reply(401, { 'www-authenticate': 'Bearer realm="http://auth.example.com/token"' }))
+            .mockResolvedValueOnce(reply(401));
+        await expect(pingRegistry(OP, 'oci://reg.example.com/charts', credential)).rejects.toMatchObject({
+            kind: 'unauthorized',
+        });
+        expect((fetchMock.mock.calls[1][1].headers as Record<string, string>).authorization).toBeUndefined();
+    });
+
     it('takes the access_token some registries answer with instead', async () => {
         fetchMock
             .mockResolvedValueOnce(reply(401, { 'www-authenticate': 'Bearer realm="https://auth.ghcr.io/token"' }))

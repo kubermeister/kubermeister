@@ -108,7 +108,8 @@ and the credential.
   repository can be added without a credential. A credential this machine can no longer open, such
   as one copied from another machine, reads as absent.
 - **A password is refused for a plaintext `http` address** ("A password needs an https URL."). That
-  repository is still usable anonymously.
+  repository is still usable anonymously. The same holds for the token server an OCI registry names:
+  one on plaintext `http` is asked for a token without the password.
 - An **OCI registry** publishes no index, so it is verified the way `helm registry login` does: the
   registry must answer and accept the credential. Its row shows no chart count, because there is
   nothing to count.

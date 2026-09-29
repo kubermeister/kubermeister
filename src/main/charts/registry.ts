@@ -1,3 +1,4 @@
+import { sendsCredentialsInClear } from '../../shared/charts.js';
 import { K8sError, toK8sError } from '../k8s/errors.js';
 
 /**
@@ -61,12 +62,18 @@ export function httpFailure(op: string, status: number, what: string): K8sError 
     return new K8sError('unknown', `${what} answered ${status}.`, op);
 }
 
+/**
+ * The realm is whatever the registry's header named, so it is held to the rule a repository URL is:
+ * over plaintext http it is asked for a token anonymously, and the password never crosses the
+ * network readable.
+ */
 async function tokenFor(challenge: RegistryChallenge, credential: RegistryCredential | null): Promise<string | null> {
     const url = new URL(challenge.realm);
     if (challenge.service) url.searchParams.set('service', challenge.service);
     if (challenge.scope) url.searchParams.set('scope', challenge.scope);
+    const authorization = sendsCredentialsInClear(challenge.realm) ? {} : basicAuth(credential);
     const response = await fetch(url.toString(), {
-        headers: { accept: 'application/json', ...basicAuth(credential) },
+        headers: { accept: 'application/json', ...authorization },
         signal: AbortSignal.timeout(REGISTRY_TIMEOUT_MS),
     });
     if (!response.ok) return null;

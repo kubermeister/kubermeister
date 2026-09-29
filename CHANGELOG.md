@@ -122,6 +122,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   in that moment no longer keeps its row and a changed one no longer keeps its old status.
 - A `NO_PROXY` or **Never proxy these hosts** entry written as `*.corp.example` or as a bare IPv6
   address sends matching clusters direct, as kubectl does, instead of through the proxy.
+- An OCI registry whose token server is on plaintext `http` is asked for a token without the
+  registry's password, instead of being sent it in the clear.
 
 ## [0.9.1] - 2026-09-29
 
