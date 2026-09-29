@@ -1,4 +1,6 @@
+import { EventEmitter } from 'node:events';
 import type { Readable, Writable } from 'node:stream';
+import type { V1Status } from '@kubernetes/client-node';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const exec = vi.fn();
@@ -17,14 +19,21 @@ vi.mock('../../../src/main/k8s/pod-target.js', async () => ({
 }));
 vi.mock('../../../src/main/k8s/client.js', () => ({ kubeConfig: () => ({}), apis: vi.fn(), readOrNull: vi.fn() }));
 
-const { startPodExecStream, terminalSink } = await import('../../../src/main/k8s/exec.js');
+const { execFailure, startPodExecStream, terminalSink } = await import('../../../src/main/k8s/exec.js');
 
 describe('startPodExecStream', () => {
-    const socket = { close: vi.fn() };
-    let captured: { stdout: Writable; stderr: Writable; stdin: Readable; onStatus: () => void; command: unknown };
+    const socket = Object.assign(new EventEmitter(), { close: vi.fn() });
+    let captured: {
+        stdout: Writable;
+        stderr: Writable;
+        stdin: Readable;
+        onStatus: (status: V1Status) => void;
+        command: unknown;
+    };
 
     beforeEach(() => {
         exec.mockReset();
+        socket.removeAllListeners();
         socket.close.mockReset();
         target.mockReset();
         target.mockResolvedValue({ name: 'web-1', namespace: 'team-a', container: 'web' });
@@ -54,11 +63,47 @@ describe('startPodExecStream', () => {
             { type: 'data', data: '$ ' },
             { type: 'data', data: 'warn\n' },
         ]);
-        captured.onStatus();
+        captured.onStatus({ status: 'Success' });
         expect(send).toHaveBeenLastCalledWith({ type: 'end' });
         ctl.stop();
         ctl.stop();
         expect(socket.close).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports a failed command in its own words before ending', async () => {
+        const send = vi.fn();
+        await startPodExecStream({ name: 'web-1', namespace: 'team-a' }, send);
+        const message = 'OCI runtime exec failed: exec: "/bin/sh": stat /bin/sh: no such file or directory';
+        captured.onStatus({ status: 'Failure', reason: 'InternalError', message });
+        socket.emit('close');
+        expect(send.mock.calls.map((c) => c[0])).toEqual([{ type: 'error', message }, { type: 'end' }]);
+    });
+
+    it('ends the session when the socket closes without a status', async () => {
+        const send = vi.fn();
+        await startPodExecStream({ name: 'web-1', namespace: 'team-a' }, send);
+        socket.emit('close');
+        socket.emit('close');
+        expect(send.mock.calls.map((c) => c[0])).toEqual([
+            { type: 'error', message: 'The connection to the container was lost.' },
+            { type: 'end' },
+        ]);
+    });
+
+    it('ends only once when the status is followed by the close', async () => {
+        const send = vi.fn();
+        await startPodExecStream({ name: 'web-1', namespace: 'team-a' }, send);
+        captured.onStatus({ status: 'Success' });
+        socket.emit('close');
+        expect(send.mock.calls.map((c) => c[0])).toEqual([{ type: 'end' }]);
+    });
+
+    it('sends nothing more once stopped', async () => {
+        const send = vi.fn();
+        const ctl = await startPodExecStream({ name: 'web-1', namespace: 'team-a' }, send);
+        ctl.stop();
+        socket.emit('close');
+        expect(send).not.toHaveBeenCalled();
     });
 
     it('feeds string keystrokes to stdin and ignores anything else', async () => {
@@ -121,6 +166,12 @@ describe('startPodExecStream', () => {
         await expect(
             startPodExecStream({ name: 'web-1', namespace: 'team-a', command: [] }, vi.fn()),
         ).rejects.toThrow();
+    });
+
+    it('execFailure reads only a failure, falling back to its reason', () => {
+        expect(execFailure({ status: 'Success' })).toBeNull();
+        expect(execFailure({ status: 'Failure', reason: 'NonZeroExitCode' })).toBe('NonZeroExitCode');
+        expect(execFailure({ status: 'Failure' })).toBe('the command failed');
     });
 
     it('terminalSink reports its own errors', () => {

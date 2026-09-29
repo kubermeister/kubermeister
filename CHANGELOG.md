@@ -53,6 +53,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   and no longer lists one whose `matchExpressions` exclude the pod; the Network Policies and Pod
   Disruption Budgets lists print a selector's expressions and tell a selector matching every pod from
   one matching none.
+- A shell whose connection drops ends and says so instead of staying open with every keystroke lost,
+  and a shell that fails to start, such as on an image with no `/bin/sh`, prints the cluster's reason.
 
 ## [0.9.1] - 2026-09-29
 
