@@ -130,3 +130,36 @@ describe('startPodExecStream', () => {
         expect(send).toHaveBeenCalledWith({ type: 'error', message: 'closed' });
     });
 });
+
+describe('terminalSink decoding', () => {
+    it('keeps a character split across two frames whole', async () => {
+        const send = vi.fn();
+        const sink = terminalSink(send);
+        const bytes = Buffer.from('héllo 世界 🙂', 'utf8');
+        // Cut inside the four-byte emoji and inside the three-byte CJK character.
+        const cuts = [2, 9, bytes.length - 2];
+        let from = 0;
+        for (const cut of [...cuts, bytes.length]) {
+            sink.write(bytes.subarray(from, cut));
+            from = cut;
+        }
+        sink.end();
+        await new Promise((resolve) => setImmediate(resolve));
+        const text = send.mock.calls.map((c) => (c[0] as { data: string }).data).join('');
+        expect(text).toBe('héllo 世界 🙂');
+        expect(text).not.toContain('�');
+    });
+
+    it('sends what is left of a character the stream ended inside of', async () => {
+        const send = vi.fn();
+        const sink = terminalSink(send);
+        sink.write(Buffer.from('ok '));
+        sink.write(Buffer.from('世', 'utf8').subarray(0, 2));
+        sink.end();
+        await new Promise((resolve) => setImmediate(resolve));
+        expect(send.mock.calls.map((c) => c[0])).toEqual([
+            { type: 'data', data: 'ok ' },
+            { type: 'data', data: '�' },
+        ]);
+    });
+});

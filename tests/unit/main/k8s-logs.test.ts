@@ -113,6 +113,19 @@ describe('startPodLogStream', () => {
         expect(send).toHaveBeenLastCalledWith({ type: 'end' });
     });
 
+    it('keeps a character split across two body chunks whole', async () => {
+        const send = vi.fn();
+        await logs.startPodLogStream({ name: 'web-1', namespace: 'team-a' }, send);
+        const bytes = Buffer.from('2026-09-15T12:00:00Z 世界 🙂\n', 'utf8');
+        const cut = bytes.indexOf(Buffer.from('界', 'utf8')) + 1;
+        sink!.write(bytes.subarray(0, cut));
+        sink!.write(bytes.subarray(cut, bytes.length - 3));
+        sink!.write(bytes.subarray(bytes.length - 3));
+        expect(send.mock.calls.map((c) => c[0])).toEqual([
+            { type: 'data', data: { timestamp: '2026-09-15T12:00:00Z', message: '世界 🙂' } },
+        ]);
+    });
+
     it('treats the failure an abort raises on the body as the follow ending, not an error', async () => {
         const send = vi.fn();
         const ctl = await logs.startPodLogStream({ name: 'web-1', namespace: 'team-a' }, send);
@@ -330,6 +343,25 @@ describe('readPodLogText', () => {
         expect(result.truncated).toBe(true);
         expect(result.text.startsWith('x')).toBe(false);
         expect(result.text).toContain('last line');
+    });
+
+    it('keeps the first line whole when the cut falls exactly at its start', async () => {
+        const kept = 'y'.repeat(logs.LOG_DOWNLOAD_BYTES - 11) + '\nlast line\n';
+        readNamespacedPodLog.mockResolvedValue('dropped\n' + kept);
+        const result = await logs.readPodLogText({ name: 'web-1', namespace: 'team-a' });
+        expect(result).toEqual({ text: kept, truncated: true });
+    });
+
+    it('starts on a character boundary when the kept tail holds no newline', async () => {
+        // One line longer than the cap, of three-byte characters, cut one byte into a character.
+        const line = '世'.repeat(Math.ceil(logs.LOG_DOWNLOAD_BYTES / 3) + 1);
+        readNamespacedPodLog.mockResolvedValue(line);
+        const result = await logs.readPodLogText({ name: 'web-1', namespace: 'team-a' });
+        expect(result.truncated).toBe(true);
+        expect(result.text).not.toContain('\uFFFD');
+        expect(result.text.length).toBeGreaterThan(0);
+        expect(line.endsWith(result.text)).toBe(true);
+        expect(Buffer.byteLength(result.text, 'utf8')).toBeLessThanOrEqual(logs.LOG_DOWNLOAD_BYTES);
     });
 
     it('reads the previous run when asked, and answers empty for a pod that is gone', async () => {
