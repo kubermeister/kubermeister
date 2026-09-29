@@ -213,6 +213,127 @@ describe('stream registry', () => {
         expect(activeStreamCount()).toBe(0);
     });
 
+    it('tears down a stream still starting when its window reloads, and keeps the one started after', async () => {
+        const sender = new FakeSender(1);
+        const stale = controller();
+        const fresh = controller();
+        let resolveStale: (value: StreamController) => void = () => {};
+        handler
+            .mockImplementationOnce(() => new Promise<StreamController>((resolve) => (resolveStale = resolve)))
+            .mockResolvedValueOnce(fresh);
+        const pending = start(sender);
+        sender.emit('did-start-navigation', { isMainFrame: true, isSameDocument: false });
+        // The reloaded preload's counter starts over, so the new document reuses the subId.
+        await start(sender);
+        resolveStale(stale);
+        await pending;
+        expect(stale.stop).toHaveBeenCalledOnce();
+        expect(fresh.stop).not.toHaveBeenCalled();
+        expect(activeStreamCount()).toBe(1);
+        await call('stream.stop', sender, { subId: 'stream:resources.watch:1' });
+        expect(fresh.stop).toHaveBeenCalledOnce();
+    });
+
+    it('tears down a stream still starting when its subId is reused', async () => {
+        const sender = new FakeSender(1);
+        const first = controller();
+        const second = controller();
+        let resolveFirst: (value: StreamController) => void = () => {};
+        handler
+            .mockImplementationOnce(() => new Promise<StreamController>((resolve) => (resolveFirst = resolve)))
+            .mockResolvedValueOnce(second);
+        const pending = start(sender);
+        await start(sender);
+        resolveFirst(first);
+        await pending;
+        expect(first.stop).toHaveBeenCalledOnce();
+        expect(second.stop).not.toHaveBeenCalled();
+        expect(activeStreamCount()).toBe(1);
+        await call('stream.stop', sender, { subId: 'stream:resources.watch:1' });
+    });
+
+    it('tears down a stream still starting when its window is destroyed', async () => {
+        const sender = new FakeSender(1);
+        const ctl = controller();
+        let resolveHandler: (value: StreamController) => void = () => {};
+        handler.mockImplementation(() => new Promise<StreamController>((resolve) => (resolveHandler = resolve)));
+        const pending = start(sender);
+        sender.destroyed = true;
+        sender.emit('destroyed');
+        resolveHandler(ctl);
+        await pending;
+        expect(ctl.stop).toHaveBeenCalledOnce();
+        expect(activeStreamCount()).toBe(0);
+    });
+
+    it('tears down a stream whose window was destroyed before its start resolved, event or not', async () => {
+        const sender = new FakeSender(1);
+        const ctl = controller();
+        let resolveHandler: (value: StreamController) => void = () => {};
+        handler.mockImplementation(() => new Promise<StreamController>((resolve) => (resolveHandler = resolve)));
+        const pending = start(sender);
+        sender.destroyed = true;
+        resolveHandler(ctl);
+        await pending;
+        expect(ctl.stop).toHaveBeenCalledOnce();
+        expect(activeStreamCount()).toBe(0);
+    });
+
+    it('starts nothing for a window already destroyed', async () => {
+        const sender = new FakeSender(1);
+        sender.destroyed = true;
+        await start(sender);
+        expect(handler).not.toHaveBeenCalled();
+        expect(activeStreamCount()).toBe(0);
+    });
+
+    it("sweeps a window's streams when its renderer process is gone", async () => {
+        const sender = new FakeSender(1);
+        const live = controller();
+        const later = controller();
+        let resolveLater: (value: StreamController) => void = () => {};
+        handler
+            .mockResolvedValueOnce(live)
+            .mockImplementationOnce(() => new Promise<StreamController>((resolve) => (resolveLater = resolve)));
+        await start(sender, 'stream:nodes.drain:1');
+        const pending = start(sender, 'stream:pods.exec:2');
+        sender.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 });
+        expect(live.stop).toHaveBeenCalledOnce();
+        resolveLater(later);
+        await pending;
+        expect(later.stop).toHaveBeenCalledOnce();
+        expect(activeStreamCount()).toBe(0);
+    });
+
+    it('tells a stream still starting why it ended when the connection is left, and then nothing more', async () => {
+        const sender = new FakeSender(1);
+        const ctl = controller();
+        let resolveHandler: (value: StreamController) => void = () => {};
+        handler.mockImplementation(() => new Promise<StreamController>((resolve) => (resolveHandler = resolve)));
+        const pending = start(sender, 'stream:pods.portForward:1');
+        endAllStreams('The context changed to "beta"');
+        expect(sender.send).toHaveBeenNthCalledWith(1, 'sub.stream:pods.portForward:1', {
+            type: 'error',
+            message: 'The context changed to "beta"',
+        });
+        expect(sender.send).toHaveBeenNthCalledWith(2, 'sub.stream:pods.portForward:1', { type: 'end' });
+        resolveHandler(ctl);
+        await pending;
+        expect(ctl.stop).toHaveBeenCalledOnce();
+        expect(sender.send).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports nothing for a cancelled start that then fails, since its subId may be reused', async () => {
+        const sender = new FakeSender(1);
+        let rejectHandler: (error: Error) => void = () => {};
+        handler.mockImplementation(() => new Promise<StreamController>((_resolve, reject) => (rejectHandler = reject)));
+        const pending = start(sender);
+        await call('stream.stop', sender, { subId: 'stream:resources.watch:1' });
+        rejectHandler(new Error('cannot connect'));
+        await pending;
+        expect(sender.send).not.toHaveBeenCalled();
+    });
+
     it('does not send to a destroyed window', async () => {
         const sender = new FakeSender(1);
         let push: StreamSend = () => {};

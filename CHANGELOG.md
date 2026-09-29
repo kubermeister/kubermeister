@@ -43,6 +43,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Logs and shells show accented letters, CJK characters and emoji intact when one arrives split across
   two chunks, and a downloaded log cut to its size limit no longer drops its first whole line or opens
   mid-character.
+- Reloading the window, closing it, a renderer crash or a context switch while a shell, a port forward,
+  a log follow or a drain is still connecting now ends it, so no exec session stays open and no local
+  port stays bound, and a forward or follow cut short by a context switch says why instead of going quiet.
 
 ## [0.9.1] - 2026-09-29
 

@@ -32,32 +32,35 @@ const HANDLERS: Record<StreamChannel, StreamHandler> = {
  */
 const streamKey = (senderId: number, subId: string): string => `${senderId}:${subId}`;
 
-interface LiveStream {
-    controller: StreamController;
+interface StreamEntry {
+    sender: WebContents;
     /** Kept so main can end a stream on its own initiative and tell the renderer why. */
     send: StreamSend;
+    /** Absent while the handler is still setting up (connecting, listing). */
+    controller?: StreamController;
+    /** Set when the stream was stopped before setup resolved; the controller is stopped on arrival. */
+    cancelled: boolean;
 }
 
-const active = new Map<string, LiveStream>();
-/** Keys whose handler is still setting up (connecting, listing). */
-const starting = new Set<string>();
-/** Keys stopped while still starting; torn down the moment setup resolves. */
-const cancelled = new Set<string>();
+/**
+ * One entry per key, starting or live. A start is tracked against its window before its handler is
+ * awaited, so a reload, a destroyed window or a crash sweeps it as well; each start owns its own
+ * entry, so a cancelled start can never be revived by a later start reusing its subId.
+ */
+const streams = new Map<string, StreamEntry>();
 const senderSubs = new Map<WebContents, Set<string>>();
 const wiredSenders = new WeakSet<WebContents>();
 
 function stop(key: string): void {
-    const live = active.get(key);
-    if (live) {
-        live.controller.stop();
-        active.delete(key);
-        for (const subs of senderSubs.values()) subs.delete(key);
-        return;
-    }
-    if (starting.has(key)) cancelled.add(key);
+    const entry = streams.get(key);
+    if (!entry) return;
+    streams.delete(key);
+    senderSubs.get(entry.sender)?.delete(key);
+    if (entry.controller) entry.controller.stop();
+    else entry.cancelled = true;
 }
 
-/** Track a stream against its window and, once per window, tear everything down on reload or destroy. */
+/** Track a stream against its window and, once per window, tear everything down on reload, crash or destroy. */
 function track(sender: WebContents, key: string): void {
     let subs = senderSubs.get(sender);
     if (!subs) {
@@ -78,6 +81,8 @@ function track(sender: WebContents, key: string): void {
     sender.on('did-start-navigation', (event) => {
         if (event.isMainFrame && !event.isSameDocument) sweep();
     });
+    // Nobody is watching a crashed renderer's streams, and a reload may never come.
+    sender.on('render-process-gone', sweep);
     sender.once('destroyed', sweep);
 }
 
@@ -87,8 +92,7 @@ function track(sender: WebContents, key: string): void {
  * open can hold the shutdown open behind it.
  */
 export function stopAllStreams(): void {
-    for (const key of [...active.keys()]) stop(key);
-    for (const key of starting) cancelled.add(key);
+    for (const key of [...streams.keys()]) stop(key);
     senderSubs.clear();
 }
 
@@ -97,15 +101,15 @@ export function stopAllStreams(): void {
  * kubeconfig. Each stream is told why and then ended, so a terminal prints the reason instead of
  * going quiet, and a port-forward stops listening rather than forwarding new connections to the
  * same-named pod in the next cluster. The streams all share the one live `KubeConfig`, which the
- * client library re-reads on every reconnect, so letting them run would re-target them.
+ * client library re-reads on every reconnect, so letting them run would re-target them. A stream
+ * still starting is told at once too, since its setup may take as long as a credential plugin does.
  */
 export function endAllStreams(reason: string): void {
-    for (const [key, live] of [...active.entries()]) {
+    for (const [key, entry] of [...streams.entries()]) {
         stop(key);
-        live.send({ type: 'error', message: reason });
-        live.send({ type: 'end' });
+        entry.send({ type: 'error', message: reason });
+        entry.send({ type: 'end' });
     }
-    for (const key of starting) cancelled.add(key);
     senderSubs.clear();
 }
 
@@ -120,23 +124,24 @@ export function registerStreamHandlers(): void {
         const send: StreamSend = (message) => {
             if (!sender.isDestroyed()) sender.send(`sub.${subId}`, message);
         };
-        // A reused subId must not overwrite this window's live stream: stop it, then start fresh.
+        // A reused subId must not overwrite this window's stream, live or starting: stop it, then start fresh.
         stop(key);
-        cancelled.delete(key);
-        starting.add(key);
+        if (sender.isDestroyed()) return;
+        const entry: StreamEntry = { sender, send, cancelled: false };
+        streams.set(key, entry);
+        track(sender, key);
         try {
             const controller = await HANDLERS[channel](input, send);
-            starting.delete(key);
-            if (cancelled.has(key)) {
-                cancelled.delete(key);
+            if (entry.cancelled || sender.isDestroyed()) {
+                if (streams.get(key) === entry) stop(key);
                 controller.stop();
                 return;
             }
-            active.set(key, { controller, send });
-            track(sender, key);
+            entry.controller = controller;
         } catch (error) {
-            starting.delete(key);
-            cancelled.delete(key);
+            // A cancelled start was already ended; its subId may belong to a newer stream by now.
+            if (entry.cancelled) return;
+            stop(key);
             send({ type: 'error', message: error instanceof Error ? error.message : String(error) });
             send({ type: 'end' });
         }
@@ -145,7 +150,7 @@ export function registerStreamHandlers(): void {
     ipcMain.handle('stream.send', (event, arg: unknown) => {
         const parsed = streamSendSchema.safeParse(arg);
         if (!parsed.success) return;
-        active.get(streamKey(event.sender.id, parsed.data.subId))?.controller.write?.(parsed.data.data);
+        streams.get(streamKey(event.sender.id, parsed.data.subId))?.controller?.write?.(parsed.data.data);
     });
 
     ipcMain.handle('stream.stop', (event, arg: unknown) => {
@@ -157,5 +162,7 @@ export function registerStreamHandlers(): void {
 
 /** Test hook: how many streams are live. */
 export function activeStreamCount(): number {
-    return active.size;
+    let live = 0;
+    for (const entry of streams.values()) if (entry.controller) live++;
+    return live;
 }
