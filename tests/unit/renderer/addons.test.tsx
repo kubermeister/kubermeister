@@ -239,11 +239,10 @@ describe('add-on details', () => {
         });
         renderRoutes(routeTree, '/helm/releases/kube-system/traefik');
         const page = await screen.findByTestId('release-page');
-        await waitFor(() =>
-            expect(within(page).getByTestId('release-resources-state')).toHaveTextContent(
-                'The cluster did not answer.',
-            ),
-        );
+        const failure = await within(page).findByTestId('read-failure');
+        expect(failure).toHaveTextContent('Cluster timed out');
+        expect(failure).toHaveTextContent('The cluster did not answer.');
+        expect(within(page).getByTestId('read-timeout-hint')).toBeInTheDocument();
     });
 
     it('rolls back to an older revision, and offers no rollback for the one running', async () => {

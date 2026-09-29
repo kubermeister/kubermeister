@@ -1,6 +1,8 @@
 import { type AnyRouter, useRouter } from '@tanstack/react-router';
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import { invoke } from './ipc';
+import { describeError } from './k8s-error';
 import { listPathForSubPage } from './nav';
 import { invalidateClusterQueries, queryClient, useIpcQuery } from './query';
 import { stopAllForwards } from './port-forwards';
@@ -54,16 +56,26 @@ async function isBlocked(router: AnyRouter, to: string): Promise<boolean> {
     return false;
 }
 
+/** A switch is started from a menu that has already closed, so a refusal has nowhere else to be said. */
+function reportFailure(title: string, error: unknown): void {
+    toast.error(title, { description: describeError(error).detail });
+}
+
 /**
  * Switch context from a screen, closing an open detail page first; main ends its streams in any case.
- * Resolves false, having switched nothing, when the page refused to close.
+ * Resolves false when the page refused to close or the switch failed, which it reports itself.
  */
 export function useSwitchContext(): (name: string) => Promise<boolean> {
     const router = useRouter();
     return useCallback(
         async (name: string) => {
             if (!(await closeDetail(router))) return false;
-            await switchContext(name);
+            try {
+                await switchContext(name);
+            } catch (error) {
+                reportFailure(`Could not switch to “${name}”`, error);
+                return false;
+            }
             return true;
         },
         [router],
@@ -80,12 +92,22 @@ export async function selectNamespace(namespace: string | null): Promise<void> {
     await invalidateClusterQueries();
 }
 
-/** Select a namespace from a screen, closing an open detail page first: its object lives in the namespace being left. */
+/** Select a namespace from a screen, closing an open detail page first: its object lives in the namespace being left. A failed switch reports itself. */
 export function useSelectNamespace(): (namespace: string | null) => Promise<void> {
     const router = useRouter();
     return useCallback(
         async (namespace: string | null) => {
-            if (await closeDetail(router)) await selectNamespace(namespace);
+            if (!(await closeDetail(router))) return;
+            try {
+                await selectNamespace(namespace);
+            } catch (error) {
+                reportFailure(
+                    namespace === null
+                        ? 'Could not select all namespaces'
+                        : `Could not select namespace “${namespace}”`,
+                    error,
+                );
+            }
         },
         [router],
     );

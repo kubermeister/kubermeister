@@ -4,8 +4,10 @@ import type { DescribeInput } from '../../../shared/k8s/describe';
 import { describeToText } from '../../../shared/k8s/describe';
 import { Button } from '@/components/ui/button';
 import { DetailCard } from '@/components/templates/detail-cards';
+import { ReadFailure } from '@/components/templates/read-failure';
 import type { DetailTab } from '@/components/templates/resource-detail';
 import { downloadTextFile } from '@/lib/download';
+import { describeError } from '@/lib/k8s-error';
 import { useIpcQuery } from '@/lib/query';
 
 /**
@@ -17,6 +19,13 @@ export function DescribePanel({ kind, name, namespace }: DescribeInput) {
     const query = useIpcQuery('resources.describe', { kind, name, namespace });
     const document = query.data;
 
+    if (query.isError) {
+        return (
+            <DetailCard title="Describe">
+                <ReadFailure error={query.error} subject={{ one: kind }} onRetry={() => void query.refetch()} />
+            </DetailCard>
+        );
+    }
     if (!document) {
         return (
             <DetailCard title="Describe" desc="Reading the object…">
@@ -27,7 +36,12 @@ export function DescribePanel({ kind, name, namespace }: DescribeInput) {
 
     const text = describeToText(document);
     const copy = async () => {
-        await navigator.clipboard.writeText(text);
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (error) {
+            toast.error('Could not copy the description', { description: describeError(error).detail });
+            return;
+        }
         toast.success('Description copied');
     };
 

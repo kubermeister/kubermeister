@@ -2,6 +2,7 @@ import { BoxesIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { NavLink } from '@/components/layout/nav-link';
 import { DetailCard } from '@/components/templates/detail-cards';
+import { ReadFailure } from '@/components/templates/read-failure';
 import type { DetailTab } from '@/components/templates/resource-detail';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useIpcQuery } from '@/lib/query';
@@ -26,21 +27,29 @@ export function releaseResourcesTab(target: ReleaseTarget): DetailTab {
 
 function ReleaseResourcesPanel({ name, namespace }: ReleaseTarget) {
     const refetchInterval = useRefreshIntervalMs();
-    const { data, isPending, isError, error } = useIpcQuery(
-        'releases.resources',
-        { name, namespace },
-        { refetchInterval },
-    );
+    const query = useIpcQuery('releases.resources', { name, namespace }, { refetchInterval });
 
-    if (isPending || isError) {
+    if (query.isPending) {
         return (
             <DetailCard title="Resources">
                 <p className="text-body text-text-muted" data-testid="release-resources-state">
-                    {isPending ? 'Reading the objects this release rendered…' : error.message}
+                    Reading the objects this release rendered…
                 </p>
             </DetailCard>
         );
     }
+    if (query.isError) {
+        return (
+            <DetailCard title="Resources">
+                <ReadFailure
+                    error={query.error}
+                    subject={{ one: 'Helm release' }}
+                    onRetry={() => void query.refetch()}
+                />
+            </DetailCard>
+        );
+    }
+    const data = query.data;
 
     const rollup = rollUp(data);
     return (

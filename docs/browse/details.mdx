@@ -42,6 +42,10 @@ Anything else reads "Failed to load" with the reason under it. If the object is 
 says so and names the namespace it looked in, for a namespaced kind; that includes a custom
 resource or Helm release that has been deleted, which has nothing to retry.
 
+A tab that reads something of its own — **Related**, **Describe**, **Rollout**, a controller's
+**Pods**, a release's **Resources** — says it is reading while it waits, and when that read fails it
+gives the same reason in the same words, with **Retry**, rather than showing an empty tab.
+
 ## The tab rail
 
 The groups are **OBSERVE** and **INSPECT** on every kind, **CONNECT** on pods only, and **DATA**,

@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderInRouter, renderRoutes } from './helpers';
 
@@ -15,6 +16,7 @@ vi.mock('@/lib/ipc', async () => ({
 
 const { routeTree } = await import('@/routeTree.gen');
 const { ContextSelector, NamespaceSelector } = await import('@/components/layout/top-bar');
+const { IpcError } = await import('@/lib/ipc');
 
 const contexts = [
     { name: 'alpha', cluster: 'a', server: 'https://alpha.example.com:6443', user: 'u', current: true },
@@ -120,6 +122,29 @@ describe('ContextSelector', () => {
         expect(within(menu).getAllByRole('menuitem')).toHaveLength(2);
         await userEvent.click(within(menu).getByRole('menuitem', { name: /beta/ }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('context.set', { name: 'beta' }));
+    });
+
+    it('says why a switch failed, and lets the menu switch again', async () => {
+        const error = vi.spyOn(toast, 'error').mockImplementation(() => 0);
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'context.set') {
+                throw new IpcError({ kind: 'kubeconfig', detail: 'context "beta" is gone', op: 'context.set' });
+            }
+            return data[channel];
+        });
+        renderInRouter(<ContextSelector />);
+        const trigger = await screen.findByTestId('context-selector');
+        await waitFor(() => expect(trigger).toHaveTextContent('alpha'));
+        await userEvent.click(trigger);
+        await userEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: /beta/ }));
+        await waitFor(() =>
+            expect(error).toHaveBeenCalledWith('Could not switch to “beta”', { description: 'context "beta" is gone' }),
+        );
+        await userEvent.click(trigger);
+        expect(within(await screen.findByRole('menu')).getByRole('menuitem', { name: /beta/ })).not.toHaveAttribute(
+            'data-disabled',
+        );
+        error.mockRestore();
     });
 
     it('closes a detail page before switching, since its object belongs to the cluster being left', async () => {
@@ -231,6 +256,26 @@ describe('NamespaceSelector', () => {
         await userEvent.click(within(list).getByRole('option', { name: /kube-system/ }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('namespace.set', { namespace: 'kube-system' }));
         await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+    });
+
+    it('says why selecting a namespace failed', async () => {
+        const error = vi.spyOn(toast, 'error').mockImplementation(() => 0);
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'namespace.set') {
+                throw new IpcError({ kind: 'unknown', detail: 'the bridge refused it', op: 'namespace.set' });
+            }
+            return data[channel];
+        });
+        renderInRouter(<NamespaceSelector />);
+        await waitFor(() => expect(screen.getByTestId('active-namespace')).toHaveTextContent('team-a'));
+        await userEvent.click(screen.getByTestId('namespace-selector'));
+        await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /kube-system/ }));
+        await waitFor(() =>
+            expect(error).toHaveBeenCalledWith('Could not select namespace “kube-system”', {
+                description: 'the bridge refused it',
+            }),
+        );
+        error.mockRestore();
     });
 
     it('closes a detail page before rescoping, since its object belongs to the namespace being left', async () => {

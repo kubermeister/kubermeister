@@ -4,6 +4,7 @@ import type { PodDetail } from '../../../shared/k8s/pods';
 import { LogViewer, SINCE_OPTIONS, type SinceOption } from '@/components/data-display/log-viewer';
 import { downloadTextFile } from '@/lib/download';
 import { invoke } from '@/lib/ipc';
+import { describeError } from '@/lib/k8s-error';
 import { isBrokenPattern, visibleLines, NO_SEARCH, type LogSearch } from '@/lib/log-filter';
 import { useLogViewOptions } from '@/lib/log-view-options';
 import { containerChoices } from '@/lib/pod-containers';
@@ -44,13 +45,15 @@ export function LogsTab({ name, namespace, pod }: { name: string; namespace: str
      */
     const download = async () => {
         if (!container) return;
-        const whole = await invoke('pods.logDownload', {
-            name,
-            namespace,
-            container,
-            sinceSeconds: since.seconds,
-        }).catch(() => null);
-        if (!whole) return;
+        let whole;
+        try {
+            whole = await invoke('pods.logDownload', { name, namespace, container, sinceSeconds: since.seconds });
+        } catch (error) {
+            // A plain invoke, not a mutation, so nothing else would say the download failed.
+            const { title, detail } = describeError(error);
+            toast.error(title, { description: detail });
+            return;
+        }
         downloadTextFile(`${name}-${container}.log`, whole.text);
         if (whole.truncated) {
             toast.success('Log downloaded', { description: 'It was long, so the oldest lines were left behind.' });

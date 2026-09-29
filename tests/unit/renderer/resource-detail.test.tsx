@@ -299,6 +299,16 @@ describe('ResourceDetail', () => {
         expect(screen.getByRole('link', { name: 'Back to list' })).toHaveAttribute('href', '/list');
     });
 
+    it.each(['Node', 'Namespace', 'ClusterRole'])('names no namespace for a missing %s', async (kind) => {
+        renderDetail({ found: false, kind });
+        expect(await screen.findByTestId('not-found')).toHaveTextContent(`${kind} “web-1” was not found.`);
+    });
+
+    it('names no namespace when the screen says its object is cluster-scoped', async () => {
+        renderDetail({ found: false, kind: 'Widget', clusterScoped: true });
+        expect(await screen.findByTestId('not-found')).toHaveTextContent('Widget “web-1” was not found.');
+    });
+
     it('falls back to generic copy without a kind or namespace and hides links without backTo', async () => {
         renderDetail({ found: false, kind: undefined, backTo: undefined });
         expect(await screen.findByTestId('not-found')).toHaveTextContent(

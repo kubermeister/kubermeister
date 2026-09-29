@@ -1,6 +1,7 @@
 import { LinkIcon } from 'lucide-react';
 import { DetailCard } from '@/components/templates/detail-cards';
 import { NavLink } from '@/components/layout/nav-link';
+import { ReadFailure } from '@/components/templates/read-failure';
 import { useIpcQuery } from '@/lib/query';
 import type { ManifestKind } from '../../../shared/k8s/manifest';
 import type { DetailTab } from './resource-detail';
@@ -20,7 +21,24 @@ export function relatedTab(target: { kind: ManifestKind; name: string; namespace
 }
 
 function RelatedPanel({ kind, name, namespace }: { kind: ManifestKind; name: string; namespace?: string }) {
-    const groups = useIpcQuery('resources.related', { kind, name, namespace }).data ?? [];
+    const query = useIpcQuery('resources.related', { kind, name, namespace });
+    if (query.isPending) {
+        return (
+            <DetailCard title="Related">
+                <p className="text-body text-text-muted" data-testid="related-pending">
+                    Reading what this object is tied to…
+                </p>
+            </DetailCard>
+        );
+    }
+    if (query.isError) {
+        return (
+            <DetailCard title="Related">
+                <ReadFailure error={query.error} subject={{ one: kind }} onRetry={() => void query.refetch()} />
+            </DetailCard>
+        );
+    }
+    const groups = query.data;
     if (groups.length === 0) {
         return (
             <DetailCard title="Related">

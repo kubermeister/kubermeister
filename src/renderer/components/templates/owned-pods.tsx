@@ -3,6 +3,7 @@ import type { PodOwnerKind } from '../../../shared/k8s/owners';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { NavLink } from '@/components/layout/nav-link';
 import { DetailCard } from '@/components/templates/detail-cards';
+import { ReadFailure } from '@/components/templates/read-failure';
 import type { DetailTab } from '@/components/templates/resource-detail';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useIpcQuery } from '@/lib/query';
@@ -22,7 +23,23 @@ interface OwnedPodsProps {
  */
 export function OwnedPods({ kind, name, namespace }: OwnedPodsProps) {
     const refetchInterval = useRefreshIntervalMs();
-    const pods = useIpcQuery('workloads.pods', { kind, name, namespace }, { refetchInterval }).data ?? [];
+    const query = useIpcQuery('workloads.pods', { kind, name, namespace }, { refetchInterval });
+    if (!query.data) {
+        return (
+            <DetailCard title="Pods">
+                {query.isError ? (
+                    <ReadFailure
+                        error={query.error}
+                        subject={{ plural: 'Pods' }}
+                        onRetry={() => void query.refetch()}
+                    />
+                ) : (
+                    <p className="text-body text-text-muted">Reading the pods this {kind} owns…</p>
+                )}
+            </DetailCard>
+        );
+    }
+    const pods = query.data;
 
     return (
         <DetailCard title="Pods" desc={`${pods.length} ${pods.length === 1 ? 'pod' : 'pods'} owned by this ${kind}`}>
