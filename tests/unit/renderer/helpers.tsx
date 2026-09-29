@@ -63,14 +63,15 @@ export function renderInRouter(ui: ReactElement) {
         routeTree: root.addChildren([index]),
         history: createMemoryHistory({ initialEntries: ['/'] }),
     });
+    const queryClient = testQueryClient();
     const result = render(
         <ThemeProvider>
-            <QueryClientProvider client={testQueryClient()}>
+            <QueryClientProvider client={queryClient}>
                 <TooltipProvider delayDuration={0}>
                     <RouterProvider router={router} />
                 </TooltipProvider>
             </QueryClientProvider>
         </ThemeProvider>,
     );
-    return { ...result, router };
+    return { ...result, router, queryClient };
 }

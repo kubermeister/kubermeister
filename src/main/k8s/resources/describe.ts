@@ -209,12 +209,21 @@ function roles(node: V1Node): string {
     return found.length > 0 ? found.join(', ') : 'worker';
 }
 
-/** Events about one object, the way the detail screens read them. */
-async function eventsFor(name: string, namespace: string | undefined, uid: string | undefined): Promise<CoreV1Event[]> {
-    const res = namespace
-        ? await apis().core.listNamespacedEvent({ namespace })
-        : await apis().core.listEventForAllNamespaces();
+/** Events about one pod, matched on its uid so a same-named predecessor's events are not its. */
+async function podEvents(name: string, namespace: string, uid: string | undefined): Promise<CoreV1Event[]> {
+    const res = await apis().core.listNamespacedEvent({ namespace });
     return res.items.filter((event) => (uid ? event.involvedObject?.uid === uid : event.involvedObject?.name === name));
+}
+
+/**
+ * Events about one node, matched on kind and name: the kubelet records NodeReady, Rebooted and the
+ * pressure conditions against a reference whose uid is the node's name, never its metadata uid.
+ */
+async function nodeEvents(name: string): Promise<CoreV1Event[]> {
+    const res = await apis().core.listEventForAllNamespaces({
+        fieldSelector: `involvedObject.kind=Node,involvedObject.name=${name}`,
+    });
+    return res.items.filter((event) => event.involvedObject?.kind === 'Node' && event.involvedObject.name === name);
 }
 
 /** The describe view of one object, or a classified error when it is not there. */
@@ -232,7 +241,7 @@ export function describeObject(input: DescribeInput): Promise<DescribeDocument> 
             // pods never cross the wire for one node's describe.
             const [pods, events] = await Promise.all([
                 apis().core.listPodForAllNamespaces({ fieldSelector: `spec.nodeName=${input.name}` }),
-                eventsFor(input.name, undefined, node.metadata?.uid),
+                nodeEvents(input.name),
             ]);
             return describeNode(node, pods.items, events);
         }
@@ -243,7 +252,7 @@ export function describeObject(input: DescribeInput): Promise<DescribeDocument> 
         }
         const pod = await readOrNull(() => apis().core.readNamespacedPod({ name: input.name, namespace }));
         if (!pod) throw new K8sError('notFound', `Pod "${input.name}" was not found in namespace ${namespace}.`, op);
-        const events = await eventsFor(input.name, namespace, pod.metadata?.uid);
+        const events = await podEvents(input.name, namespace, pod.metadata?.uid);
         return describePod(pod, events);
     });
 }

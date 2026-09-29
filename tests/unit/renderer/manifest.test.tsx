@@ -44,6 +44,7 @@ const data: Record<string, unknown> = {
 };
 
 beforeEach(() => {
+    data['resources.getYaml'] = { yaml: YAML, kind: 'ConfigMap', namespace: 'team-a' };
     invoke.mockReset();
     downloadTextFile.mockReset();
     invoke.mockImplementation(async (channel: string, input: { kind?: string }) => {
@@ -99,6 +100,42 @@ describe('manifest panel', () => {
         invoke.mockResolvedValue({ yaml: YAML, kind: 'ConfigMap' });
         await userEvent.click(within(panel).getByRole('button', { name: 'Retry' }));
         expect(await screen.findByTestId('manifest-panel')).toBeInTheDocument();
+    });
+
+    it('follows every later read of the object while it is not being edited', async () => {
+        const { queryClient } = renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
+        const panel = await screen.findByTestId('manifest-panel');
+        await waitFor(() => expect(panel.textContent).toContain('name: app-config'));
+
+        for (const replicas of ['2', '3']) {
+            data['resources.getYaml'] = { yaml: `${YAML}data:\n  replicas: '${replicas}'\n`, kind: 'ConfigMap' };
+            await queryClient.refetchQueries();
+            await waitFor(() => expect(panel.textContent).toContain(`replicas: '${replicas}'`));
+        }
+        await userEvent.click(within(panel).getByRole('button', { name: 'Download' }));
+        expect(downloadTextFile).toHaveBeenCalledWith(
+            'app-config.yaml',
+            `${YAML}data:\n  replicas: '3'\n`,
+            'text/yaml',
+        );
+    });
+
+    it('takes a read that lands while editing as the live object, not as an edit', async () => {
+        const { queryClient } = renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
+        const panel = await screen.findByTestId('manifest-panel');
+        await waitFor(() => expect(panel.textContent).toContain('name: app-config'));
+        await userEvent.click(within(panel).getByRole('button', { name: 'Edit' }));
+        await within(panel).findByRole('button', { name: 'Cancel' });
+
+        for (const replicas of ['2', '3']) {
+            data['resources.getYaml'] = { yaml: `${YAML}data:\n  replicas: '${replicas}'\n`, kind: 'ConfigMap' };
+            await queryClient.refetchQueries();
+            await waitFor(() => expect(panel.textContent).toContain(`replicas: '${replicas}'`));
+        }
+
+        await userEvent.click(within(panel).getByRole('button', { name: 'Cancel' }));
+        expect(await within(panel).findByRole('button', { name: 'Edit' })).toBeInTheDocument();
+        expect(screen.queryByText('Discard unsaved changes?')).not.toBeInTheDocument();
     });
 
     it('omits the namespace for a cluster-scoped kind', async () => {
