@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { dump as dumpYaml, load as loadYaml } from 'js-yaml';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { CONTEXT_NAME, KUBECONFIG_PATH, NAMESPACE, clusterKubectl } from '../harness/cluster';
@@ -676,6 +677,39 @@ test('rolls the seeded release back to its first revision, then uninstalls it', 
     await expect(window.getByTestId('configmaps-table').locator('[data-configmap="demo-extra"]')).toHaveCount(0, {
         timeout: 30_000,
     });
+
+    // The seed applied demo-config without Helm's ownership metadata, so the rollback's replace is
+    // what stamps it, as Helm stamps every object it writes.
+    const owner = clusterKubectl([
+        '-n',
+        NAMESPACE,
+        'get',
+        'configmap',
+        'demo-config',
+        '-o',
+        String.raw`jsonpath={.metadata.labels.app\.kubernetes\.io/managed-by} {.metadata.annotations.meta\.helm\.sh/release-name} {.metadata.annotations.meta\.helm\.sh/release-namespace}`,
+    ]);
+    expect(owner).toBe(`Helm demo ${NAMESPACE}`);
+
+    // The Helm CLI deletes only objects carrying that metadata and leaves the rest as "not owned by
+    // this release", so it uninstalling the rolled-back release cleanly is the proof. It keeps the
+    // history, which leaves the app's own uninstall below something to forget.
+    const helmHome = mkdtempSync(join(tmpdir(), 'km-e2e-helm-'));
+    try {
+        const uninstalled = execFileSync(
+            'helm',
+            ['uninstall', 'demo', '--namespace', NAMESPACE, '--keep-history', '--wait', '--timeout', '60s'],
+            {
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'pipe'],
+                env: { PATH: process.env.PATH, HOME: helmHome, KUBECONFIG: KUBECONFIG_PATH },
+            },
+        );
+        expect(uninstalled).not.toContain('not owned by this release');
+    } finally {
+        rmSync(helmHome, { recursive: true, force: true });
+    }
+    expect(clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', 'demo-config', '--ignore-not-found'])).toBe('');
 
     await window.getByTestId('sidebar').getByRole('link', { name: 'Releases' }).click();
     await window.getByTestId('releases-table').locator('[data-release="demo"]').getByRole('link').click();

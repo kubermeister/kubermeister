@@ -368,8 +368,13 @@ export function releaseSecretBody(data: HelmReleaseData): V1Secret {
     };
 }
 
-/** Apply one rendered object: create it, or replace the one already there. */
-async function applyObject(object: RenderedObject): Promise<void> {
+/**
+ * Apply one rendered object for a release: create it, or replace the one already there. Either way
+ * it carries Helm's ownership metadata, since a replace sends the whole object and would otherwise
+ * strip what Helm stamped when it installed it.
+ */
+async function applyObject(rendered: RenderedObject, release: string, namespace: string): Promise<void> {
+    const object = withHelmOwnership(rendered, release, namespace);
     try {
         await apis().objects.create(object);
     } catch (error) {
@@ -432,7 +437,7 @@ export function rollbackRelease(input: ReleaseRollbackInput): Promise<ReleaseWri
 
         const wanted = manifestObjects(target.data.manifest, input.namespace);
         const present = manifestObjects(current.data.manifest, input.namespace);
-        for (const object of wanted) await applyObject(object);
+        for (const object of wanted) await applyObject(object, input.name, input.namespace);
 
         const removable = goneBetween(present, wanted);
         const kept = removable.filter(isKept);
