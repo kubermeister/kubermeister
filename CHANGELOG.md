@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-29
+
 ### Added
 
 - A chart version from a configured repository or registry can be installed as a Helm release: the
@@ -412,7 +414,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/kubermeister/kubermeister/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/kubermeister/kubermeister/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/kubermeister/kubermeister/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/kubermeister/kubermeister/compare/v0.6.1...v0.6.2
