@@ -85,6 +85,35 @@ describe('the forward store', () => {
         await waitFor(() => expect(forwardSnapshot()).toEqual([]));
     });
 
+    it('starts again over a forward that never bound, rather than handing back the dead one', async () => {
+        const target = { kind: 'Pod' as const, name: 'web-1', namespace: 'team-a', targetPort: 8080, localPort: 9090 };
+        const dead = startForward(target);
+        // Main reports a bind failure as an error with no end, so the entry would otherwise stay forever.
+        act(() => handlers[0]!({ type: 'error', message: 'listen EADDRINUSE: address already in use' }));
+        await waitFor(() => expect(forwardSnapshot()[0]!.error).toMatch(/EADDRINUSE/));
+
+        const retried = startForward(target);
+        expect(retried).not.toBe(dead);
+        expect(stream).toHaveBeenCalledTimes(2);
+        expect(stops[0]).toHaveBeenCalledTimes(1);
+        expect(forwardSnapshot()).toEqual([expect.objectContaining({ id: dead.id, status: null, error: null })]);
+
+        // The old stream's late messages no longer reach the new forward.
+        act(() => handlers[0]!({ type: 'end' }));
+        act(() => handlers[1]!(listening(9090)));
+        await waitFor(() => expect(forwardSnapshot()[0]!.status).toMatchObject({ localPort: 9090 }));
+    });
+
+    it('hands back a forward that listened and then saw a failed connection', async () => {
+        const target = { kind: 'Pod' as const, name: 'web-1', namespace: 'team-a', targetPort: 8080, localPort: 9090 };
+        const first = startForward(target);
+        act(() => handlers[0]!(listening(9090)));
+        act(() => handlers[0]!({ type: 'error', message: 'connection refused' }));
+        await waitFor(() => expect(forwardSnapshot()[0]!.error).toBe('connection refused'));
+        expect(startForward(target).id).toBe(first.id);
+        expect(stream).toHaveBeenCalledTimes(1);
+    });
+
     it('stops every forward at once, which is what a context switch does', () => {
         startForward({ kind: 'Pod', name: 'web-1', namespace: 'team-a', targetPort: 8080, localPort: 9090 });
         startForward({ kind: 'Pod', name: 'web-2', namespace: 'team-a', targetPort: 8080, localPort: 9091 });
@@ -138,6 +167,64 @@ describe('the forward manager', () => {
             ),
         );
         expect(toasts.success).toHaveBeenCalledWith('Forwarding api again');
+    });
+
+    it('offers a remembered forward unless that very forward is running', async () => {
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'settings.get')
+                return settingsFixture({
+                    data: {
+                        forwards: [
+                            {
+                                context: 'alpha',
+                                kind: 'Pod',
+                                namespace: 'team-a',
+                                name: 'web',
+                                targetPort: 80,
+                                localPort: 8080,
+                            },
+                            {
+                                context: 'alpha',
+                                kind: 'Pod',
+                                namespace: 'team-a',
+                                name: 'web',
+                                targetPort: 443,
+                                localPort: 8443,
+                            },
+                            {
+                                context: 'alpha',
+                                kind: 'Service',
+                                namespace: 'team-a',
+                                name: 'web',
+                                targetPort: 80,
+                                localPort: 8081,
+                            },
+                        ],
+                    },
+                });
+            if (channel === 'context.current') return { name: 'alpha', cluster: 'a', user: 'u', current: true };
+            return null;
+        });
+        renderWithQuery(<ForwardManager />);
+        startForward({ kind: 'Pod', name: 'web', namespace: 'team-a', targetPort: 80, localPort: 8080 });
+        act(() => handlers[0]!(listening(8080)));
+        await userEvent.click(await screen.findByRole('button', { name: 'Port forwards' }));
+        const list = await screen.findByTestId('forward-list');
+        await waitFor(() => expect(list.querySelectorAll('[data-remembered="web"]')).toHaveLength(2));
+        expect(list).toHaveTextContent('Pod web:8443 → 443');
+        expect(list).toHaveTextContent('Service web:8081 → 80');
+        expect(list).not.toHaveTextContent('Pod web:8080 → 80');
+    });
+
+    it('offers a remembered forward again over one that could not bind', async () => {
+        renderWithQuery(<ForwardManager />);
+        startForward({ kind: 'Service', name: 'api', namespace: 'team-a', targetPort: 80, localPort: 8081 });
+        act(() => handlers[0]!({ type: 'error', message: 'listen EADDRINUSE' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Port forwards' }));
+        const list = await screen.findByTestId('forward-list');
+        await userEvent.click(await within(list).findByRole('button', { name: 'Restore forward api' }));
+        expect(stream).toHaveBeenCalledTimes(2);
+        await waitFor(() => expect(forwardSnapshot()).toEqual([expect.objectContaining({ error: null })]));
     });
 
     it('opens the forwarded address in the browser', async () => {

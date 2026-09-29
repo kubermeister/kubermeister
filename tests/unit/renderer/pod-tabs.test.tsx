@@ -797,6 +797,27 @@ describe('NetworkTab and PortForwardControl', () => {
         expect(screen.getByText('This pod declares no container ports.')).toBeInTheDocument();
     });
 
+    it('starts again once a forward that could not bind is retried', async () => {
+        renderWithQuery(<PortForwardControl name="web-1" namespace="team-a" pod={pod} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        act(() => forwardMessages[0]!({ type: 'error', message: 'listen EADDRINUSE' }));
+        await waitFor(() =>
+            expect(screen.getByTestId('port-forward-status')).toHaveTextContent('error: listen EADDRINUSE'),
+        );
+
+        // Nothing is listening, so the control offers Start again rather than a Stop for nothing.
+        expect(screen.getByRole('textbox', { name: 'Local port' })).toBeEnabled();
+        await userEvent.click(screen.getByRole('button', { name: 'Start' }));
+        expect(stream).toHaveBeenCalledTimes(2);
+        act(() =>
+            forwardMessages[1]!({ type: 'data', data: { status: 'listening', localPort: 8080, targetPort: 8080 } }),
+        );
+        await waitFor(() =>
+            expect(screen.getByTestId('port-forward-status')).toHaveTextContent('Listening on 127.0.0.1:8080 → 8080'),
+        );
+        expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
+    });
+
     it('forwards a service by its own ports, saying so when it exposes none', () => {
         const { rerender } = renderWithQuery(
             <PortForwardControl kind="Service" name="web" namespace="team-a" ports={[80]} />,

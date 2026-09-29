@@ -11,7 +11,15 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { useIpcQuery } from '@/lib/query';
-import { forwardUrl, startForward, stopForward, useForwards, type Forward } from '@/lib/port-forwards';
+import {
+    failedToBind,
+    forwardId,
+    forwardUrl,
+    startForward,
+    stopForward,
+    useForwards,
+    type Forward,
+} from '@/lib/port-forwards';
 import { useSettings } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 
@@ -25,8 +33,10 @@ export function ForwardManager() {
     const context = useIpcQuery('context.current', {}).data?.name ?? null;
     const remembered = (useSettings().data?.data.forwards ?? []).filter((one) => one.context === context);
     const open = forwards.filter((forward) => forward.status);
+    // Matched on the whole forward, kind and local port included: a Pod and a Service can share a
+    // name, and one pod can be forwarded on several ports. One that could not bind is offered again.
     const offer = remembered.filter(
-        (one) => !forwards.some((forward) => forward.namespace === one.namespace && forward.name === one.name),
+        (one) => !forwards.some((forward) => forward.id === forwardId(one) && !failedToBind(forward)),
     );
 
     if (forwards.length === 0 && offer.length === 0) return null;
