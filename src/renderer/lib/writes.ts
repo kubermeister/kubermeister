@@ -79,7 +79,14 @@ export function useCreateResource() {
 export function useReplaceResource() {
     return useIpcMutation<'resources.replace', WriteVariables<'resources.replace'>>('resources.replace', {
         prepare: (variables, client) => stamp('resources.replace', variables, client),
-        invalidates: (_input, data) => resourceKeys(data.kind as ManifestKind, data.name, data.namespace),
+        // A replace takes its path from the manifest, so it may have written a custom resource, whose
+        // screens read through their definition rather than through the registry's channels.
+        invalidates: (_input, data) => [
+            ...resourceKeys(data.kind as ManifestKind, data.name, data.namespace),
+            ['customResources.list'],
+            ['customResources.get'],
+            ['customResources.getYaml'],
+        ],
     });
 }
 

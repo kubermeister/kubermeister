@@ -212,6 +212,34 @@ describe('manifest editing', () => {
         await waitFor(() => expect(screen.queryByTestId('manifest-conflict')).not.toBeInTheDocument());
     });
 
+    it('rereads a custom resource once its save lands', async () => {
+        const widget = (version: string) =>
+            [
+                'apiVersion: example.com/v1',
+                'kind: Widget',
+                'metadata:',
+                '  name: gizmo',
+                `  resourceVersion: "${version}"`,
+                '',
+            ].join('\n');
+        let saved = false;
+        invoke.mockImplementation(async (channel: string) => {
+            if (channel === 'customResources.getYaml') {
+                return { yaml: widget(saved ? '43' : '42'), kind: 'Widget', namespace: 'team-a' };
+            }
+            if (channel === 'resources.replace') {
+                saved = true;
+                return { kind: 'Widget', name: 'gizmo', namespace: 'team-a' };
+            }
+            return data[channel];
+        });
+        renderInRouter(<ManifestPanel crd="widgets.example.com" name="gizmo" namespace="team-a" />);
+        expect(await screen.findByTestId('manifest-panel')).toHaveTextContent('resourceVersion: "42"');
+        await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+        await waitFor(() => expect(screen.getByTestId('manifest-panel')).toHaveTextContent('resourceVersion: "43"'));
+    });
+
     it('arms the same banner when a save made without a review is rejected', async () => {
         renderInRouter(<ManifestPanel kind="ConfigMap" name="app-config" namespace="team-a" />);
         await screen.findByTestId('manifest-panel');
