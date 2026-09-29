@@ -459,8 +459,9 @@ describe('OverviewTab', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'pods.owners'
                 ? [
-                      { kind: 'ReplicaSet', name: 'web-abc', namespace: 'team-a', path: null },
+                      { apiVersion: 'apps/v1', kind: 'ReplicaSet', name: 'web-abc', namespace: 'team-a', path: null },
                       {
+                          apiVersion: 'apps/v1',
                           kind: 'Deployment',
                           name: 'web',
                           namespace: 'team-a',
@@ -485,8 +486,14 @@ describe('OverviewTab', () => {
         invoke.mockImplementation(async (channel: string) => {
             if (channel === 'pods.owners') {
                 return [
-                    { kind: 'ReplicaSet', name: 'web-abc', namespace: 'team-a', path: null },
-                    { kind: 'Deployment', name: 'web', namespace: 'team-a', path: '/workloads/deployments/team-a/web' },
+                    { apiVersion: 'apps/v1', kind: 'ReplicaSet', name: 'web-abc', namespace: 'team-a', path: null },
+                    {
+                        apiVersion: 'apps/v1',
+                        kind: 'Deployment',
+                        name: 'web',
+                        namespace: 'team-a',
+                        path: '/workloads/deployments/team-a/web',
+                    },
                 ];
             }
             if (channel === 'context.current') return { name: 'alpha', cluster: 'a', user: 'u', current: true };

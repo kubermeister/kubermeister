@@ -212,7 +212,13 @@ describe('registerHandlers', () => {
 
     it('answers the ownership reads for the object the screen names', async () => {
         ownersMod.getPodOwners.mockResolvedValue([
-            { kind: 'Deployment', name: 'web', namespace: 'team-a', path: '/workloads/deployments/team-a/web' },
+            {
+                apiVersion: 'apps/v1',
+                kind: 'Deployment',
+                name: 'web',
+                namespace: 'team-a',
+                path: '/workloads/deployments/team-a/web',
+            },
         ]);
         ownersMod.listOwnedPods.mockResolvedValue([]);
         await expect(invoke('pods.owners', { name: 'web-1', namespace: 'team-a' })).resolves.toHaveLength(1);

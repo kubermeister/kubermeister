@@ -29,6 +29,7 @@ describe('getObjectMeta', () => {
         });
         await expect(getObjectMeta('Pod', 'web-1', 'team-a')).resolves.toEqual({
             owner: {
+                apiVersion: 'apps/v1',
                 kind: 'ReplicaSet',
                 name: 'web-7d9',
                 namespace: 'team-a',
@@ -67,6 +68,26 @@ describe('getObjectMeta', () => {
         });
         const meta = await getObjectMeta('ConfigMap', 'x', 'team-a');
         expect(meta.owner).toMatchObject({ kind: 'Widget', name: 'left', path: null });
+    });
+
+    it('leaves unlinked an owner whose kind is named like a built-in one in another API group', async () => {
+        findRawObject.mockResolvedValue({
+            metadata: {
+                name: 'train-0',
+                namespace: 'team-a',
+                ownerReferences: [
+                    {
+                        apiVersion: 'batch.volcano.sh/v1alpha1',
+                        kind: 'Job',
+                        name: 'train',
+                        uid: 'v1',
+                        controller: true,
+                    },
+                ],
+            },
+        });
+        const meta = await getObjectMeta('Pod', 'train-0', 'team-a');
+        expect(meta.owner).toMatchObject({ apiVersion: 'batch.volcano.sh/v1alpha1', kind: 'Job', path: null });
     });
 
     it('reports a missing object rather than empty metadata', async () => {

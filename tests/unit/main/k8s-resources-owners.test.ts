@@ -34,9 +34,17 @@ vi.mock('../../../src/main/k8s/sampler.js', () => sampler);
 
 const owners = await import('../../../src/main/k8s/resources/owners.js');
 
+const GROUP_VERSION: Record<string, string> = { Job: 'batch/v1', CronJob: 'batch/v1' };
+
 /** A controller reference as the API writes one. */
-const ref = (kind: string, name: string, uid: string, controller = true) => ({
-    apiVersion: 'apps/v1',
+const ref = (
+    kind: string,
+    name: string,
+    uid: string,
+    controller = true,
+    apiVersion = GROUP_VERSION[kind] ?? 'apps/v1',
+) => ({
+    apiVersion,
     kind,
     name,
     uid,
@@ -73,17 +81,57 @@ describe('controllerRef', () => {
 describe('owner chain', () => {
     it('walks a pod up through its replica set to its deployment, with links to both screens', async () => {
         await expect(owners.getPodOwners('web-abc-1', 'team-a')).resolves.toEqual([
-            { kind: 'ReplicaSet', name: 'web-abc', namespace: 'team-a', path: '/workloads/replicasets/team-a/web-abc' },
-            { kind: 'Deployment', name: 'web', namespace: 'team-a', path: '/workloads/deployments/team-a/web' },
+            {
+                apiVersion: 'apps/v1',
+                kind: 'ReplicaSet',
+                name: 'web-abc',
+                namespace: 'team-a',
+                path: '/workloads/replicasets/team-a/web-abc',
+            },
+            {
+                apiVersion: 'apps/v1',
+                kind: 'Deployment',
+                name: 'web',
+                namespace: 'team-a',
+                path: '/workloads/deployments/team-a/web',
+            },
         ]);
     });
 
     it('walks a job pod up to its cron job', async () => {
         core.readNamespacedPod.mockResolvedValue(pod('import-xyz', ref('Job', 'import', 'job-1')));
         await expect(owners.getPodOwners('import-xyz', 'team-a')).resolves.toEqual([
-            { kind: 'Job', name: 'import', namespace: 'team-a', path: '/workloads/jobs/team-a/import' },
-            { kind: 'CronJob', name: 'nightly', namespace: 'team-a', path: '/workloads/cronjobs/team-a/nightly' },
+            {
+                apiVersion: 'batch/v1',
+                kind: 'Job',
+                name: 'import',
+                namespace: 'team-a',
+                path: '/workloads/jobs/team-a/import',
+            },
+            {
+                apiVersion: 'batch/v1',
+                kind: 'CronJob',
+                name: 'nightly',
+                namespace: 'team-a',
+                path: '/workloads/cronjobs/team-a/nightly',
+            },
         ]);
+    });
+
+    it('neither links nor walks through a custom kind named like a built-in one', async () => {
+        const volcano = ref('Job', 'train', 'vj-1', true, 'batch.volcano.sh/v1alpha1');
+        core.readNamespacedPod.mockResolvedValue(pod('train-0', volcano));
+        await expect(owners.getPodOwners('train-0', 'team-a')).resolves.toEqual([
+            { apiVersion: 'batch.volcano.sh/v1alpha1', kind: 'Job', name: 'train', namespace: 'team-a', path: null },
+        ]);
+        // The batch/v1 Job of the same name, if there is one, is somebody else's.
+        expect(batch.readNamespacedJob).not.toHaveBeenCalled();
+
+        const kruise = ref('ReplicaSet', 'db-abc', 'kr-1', true, 'apps.kruise.io/v1alpha1');
+        core.readNamespacedPod.mockResolvedValue(pod('db-abc-0', kruise));
+        const chain = await owners.getPodOwners('db-abc-0', 'team-a');
+        expect(chain).toEqual([expect.objectContaining({ kind: 'ReplicaSet', path: null })]);
+        expect(apps.readNamespacedReplicaSet).not.toHaveBeenCalled();
     });
 
     it('stops at a controller that owns its pods directly', async () => {
@@ -105,7 +153,13 @@ describe('owner chain', () => {
         apps.readNamespacedReplicaSet.mockRejectedValue(new ApiException(404, 'gone', null, {}));
         const chain = await owners.getPodOwners('web-abc-1', 'team-a');
         expect(chain).toEqual([
-            { kind: 'ReplicaSet', name: 'web-abc', namespace: 'team-a', path: '/workloads/replicasets/team-a/web-abc' },
+            {
+                apiVersion: 'apps/v1',
+                kind: 'ReplicaSet',
+                name: 'web-abc',
+                namespace: 'team-a',
+                path: '/workloads/replicasets/team-a/web-abc',
+            },
         ]);
     });
 });

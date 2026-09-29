@@ -106,8 +106,7 @@ export function toReleaseObjects(
 
         const group = groupOf(object);
         const { name } = object.metadata;
-        const registered = registeredKindOf(object.apiVersion, object.kind);
-        const path = registered ? ownerPath(object.kind, name, group.namespace ?? '') : null;
+        const path = ownerPath(object.apiVersion, object.kind, name, group.namespace ?? '');
         const base = { apiVersion: object.apiVersion, kind: object.kind, name, namespace: group.namespace };
         const answer = answers.get(group.key);
 

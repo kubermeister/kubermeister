@@ -180,5 +180,6 @@ which pods a controller _would_ adopt; the references say which it _has_, and tw
 labels but never a reference.
 
 A pod walks up through the one intermediary its kind allows — a ReplicaSet to its Deployment, a Job
-to its CronJob — and stops. A link is only a link when there is a screen for that kind; a broken link
-higher up ends the chain rather than failing the whole card.
+to its CronJob — and stops. A link is only a link when there is a screen for that kind, matched on
+the owner's API group as well as its kind, so a Volcano `Job` is named but not linked to the Jobs
+screen; a broken link higher up ends the chain rather than failing the whole card.

@@ -1,6 +1,7 @@
 import type { V1LabelSelector, V1Pod, V1PodSpec, V1Service } from '@kubernetes/client-node';
 import type { RelatedGroup, RelatedLink } from '../../../shared/k8s/related.js';
 import { ownerPath } from '../../../shared/k8s/owners.js';
+import { KIND_REGISTRY, type Kind } from '../../../shared/k8s/registry.js';
 import { apis, readOrNull, resolveObjectNamespace } from '../client.js';
 import { K8sError, withK8s } from '../errors.js';
 
@@ -10,11 +11,12 @@ import { K8sError, withK8s } from '../errors.js';
  * covers its labels, and the account it actually runs as.
  */
 
-const link = (kind: string, name: string, namespace: string, why: string): RelatedLink => ({
+// A pod spec names these by kind alone, and always means the built-in one.
+const link = (kind: Kind, name: string, namespace: string, why: string): RelatedLink => ({
     kind,
     name,
     namespace,
-    path: ownerPath(kind, name, namespace),
+    path: ownerPath(KIND_REGISTRY[kind].apiVersion, kind, name, namespace),
     why,
 });
 
@@ -60,7 +62,7 @@ export function labelSelectorSelects(
 export function specReferences(spec: V1PodSpec | undefined, namespace: string): RelatedLink[] {
     const links: RelatedLink[] = [];
     const seen = new Set<string>();
-    const add = (kind: string, name: string | undefined, why: string) => {
+    const add = (kind: Kind, name: string | undefined, why: string) => {
         if (!name) return;
         const key = `${kind}/${name}/${why}`;
         if (seen.has(key)) return;

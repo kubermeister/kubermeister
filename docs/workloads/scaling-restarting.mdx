@@ -56,8 +56,9 @@ that owns the pod, because a pod deleted on its own simply comes back unchanged.
 the workload it will roll ("Rolls Deployment “web”, replacing this pod").
 
 This one **asks for no confirmation**: a click starts the rollout of the whole workload at once. A
-pod with no such owner — a bare pod, or one owned by a Job — shows the button disabled with "This
-pod has no workload to roll".
+pod with no such owner — a bare pod, one owned by a Job, or one owned by a custom resource that
+shares a built-in kind's name, such as an OpenKruise StatefulSet — shows the button disabled with
+"This pod has no workload to roll".
 
 ## Autoscalers
 
