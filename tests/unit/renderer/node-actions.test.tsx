@@ -205,4 +205,65 @@ describe('drain dialog', () => {
         await waitFor(() => expect(screen.getByTestId('drain-progress')).toHaveTextContent('No context is active.'));
         expect(stream).not.toHaveBeenCalled();
     });
+
+    /** Close the dialog, open it again, and expect a fresh plan with Drain on offer. */
+    const reopenFresh = async () => {
+        await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+        await userEvent.click(screen.getByRole('button', { name: 'Drain' }));
+        await screen.findByTestId('drain-plan');
+        expect(screen.queryByTestId('drain-progress')).not.toBeInTheDocument();
+        expect(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Drain' })).toBeInTheDocument();
+    };
+
+    it('offers a fresh drain after one finished', async () => {
+        renderInRouter(<DrainDialog name="node-1" context="alpha" />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Drain' }));
+        await screen.findByTestId('drain-plan');
+        await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Drain' }));
+        await waitFor(() => expect(stream).toHaveBeenCalled());
+        emit({ type: 'done', evicted: 3, left: 1 });
+        await waitFor(() => expect(screen.getByTestId('drain-progress')).toHaveTextContent('Drained'));
+
+        await reopenFresh();
+        await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Drain' }));
+        await waitFor(() => expect(stream).toHaveBeenCalledTimes(2));
+    });
+
+    it('offers a fresh drain after one was stopped', async () => {
+        renderInRouter(<DrainDialog name="node-1" context="alpha" />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Drain' }));
+        await screen.findByTestId('drain-plan');
+        await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Drain' }));
+        await waitFor(() => expect(stream).toHaveBeenCalled());
+        emit({ type: 'cordoned' });
+        emit({ type: 'evicting', pod: { name: 'web-1', namespace: 'team-a' } });
+        await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
+        await waitFor(() => expect(screen.getByTestId('drain-progress')).toHaveTextContent('Stopped.'));
+
+        await reopenFresh();
+    });
+
+    it('offers a fresh drain after the cluster refused one', async () => {
+        renderInRouter(<DrainDialog name="node-1" context="alpha" />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Drain' }));
+        await screen.findByTestId('drain-plan');
+        await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Drain' }));
+        await waitFor(() => expect(stream).toHaveBeenCalled());
+        streamHandlers.forEach((handler) => handler({ type: 'error', message: 'nodes is forbidden' }));
+        streamHandlers.forEach((handler) => handler({ type: 'end' }));
+        await waitFor(() => expect(screen.getByTestId('drain-progress')).toHaveTextContent('nodes is forbidden'));
+
+        await reopenFresh();
+    });
+
+    it('offers a fresh drain after one was refused for want of a context', async () => {
+        renderInRouter(<DrainDialog name="node-1" context={null} />);
+        await userEvent.click(await screen.findByRole('button', { name: 'Drain' }));
+        await screen.findByTestId('drain-plan');
+        await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Drain' }));
+        await waitFor(() => expect(screen.getByTestId('drain-progress')).toHaveTextContent('No context is active.'));
+
+        await reopenFresh();
+    });
 });
