@@ -147,7 +147,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   shipped as `node_modules`). Everything renderer-side is a devDependency, bundled by Vite.
 - **Renderer hardening is never relaxed:** `sandbox`, `contextIsolation` on, `nodeIntegration`
   off, `setWindowOpenHandler` and the `will-navigate`/`will-redirect` guard route only `http:`
-  and `https:` URLs to the OS browser and deny everything else. It lives in `src/main/window.ts`
+  and `https:` URLs to the OS browser and deny everything else. The one `file://` URL allowed is the
+  packaged `index.html` itself (`RENDERER_INDEX`), hash aside, since a file dropped before anything
+  handles the drop is a navigation to it. It lives in `src/main/window.ts`
   (`WEB_PREFERENCES`, `createMainWindow`), outside the bootstrap so `tests/unit/main/window.test.ts`
   can assert every one of those, including that no other web preference is set.
 

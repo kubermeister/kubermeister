@@ -24,6 +24,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Installing, upgrading and rolling back a Helm release reads the chart's objects the way Helm does, so
   a file mode written `0644` is octal instead of being refused, and `0400` no longer applies the wrong
   permissions.
+- A file dropped on the window while the app is still starting, or after it failed to load, no longer
+  replaces the app with that file.
 
 ## [0.9.1] - 2026-09-29
 

@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Listener = (...args: unknown[]) => unknown;
@@ -48,7 +49,8 @@ const getSettings = vi.fn(() => settings);
 const updateSettings = vi.fn();
 vi.mock('../../../src/main/settings/store.js', () => ({ getSettings, updateSettings }));
 
-const { createMainWindow, WEB_PREFERENCES, windowIcon } = await import('../../../src/main/window.js');
+const { createMainWindow, RENDERER_INDEX, WEB_PREFERENCES, windowIcon } = await import('../../../src/main/window.js');
+const indexUrl = pathToFileURL(RENDERER_INDEX).href;
 
 /** Neither the platform nor the unpacked resource directory is Electron's under Vitest. */
 function onPlatform(platform: NodeJS.Platform, resourcesPath: string, run: () => void): void {
@@ -124,9 +126,8 @@ describe('the main window', () => {
 
         it('lets the packaged document navigate itself and blocks everything else', () => {
             const window = create();
-            expect(navigate(window, 'will-navigate', 'file:///app/out/renderer/index.html#/pods').prevented).toBe(
-                false,
-            );
+            expect(window.loadFile).toHaveBeenCalledWith(RENDERER_INDEX);
+            expect(navigate(window, 'will-navigate', `${indexUrl}#/pods`).prevented).toBe(false);
             expect(navigate(window, 'will-navigate', 'https://example.com').prevented).toBe(true);
             expect(shell.openExternal).toHaveBeenCalledWith('https://example.com');
             shell.openExternal.mockClear();
@@ -134,6 +135,14 @@ describe('the main window', () => {
             expect(navigate(window, 'will-redirect', 'http://localhost:5173/').prevented).toBe(true);
             expect(shell.openExternal).toHaveBeenCalledTimes(1);
             expect(shell.openExternal).toHaveBeenCalledWith('http://localhost:5173/');
+        });
+
+        it('refuses a file dropped on the window before anything handles the drop', () => {
+            const window = create();
+            expect(navigate(window, 'will-navigate', 'file:///Users/me/Downloads/dropped.html').prevented).toBe(true);
+            expect(navigate(window, 'will-navigate', 'file:///Users/me/deployment.yaml').prevented).toBe(true);
+            expect(navigate(window, 'will-redirect', new URL('other.html', indexUrl).href).prevented).toBe(true);
+            expect(shell.openExternal).not.toHaveBeenCalled();
         });
 
         it('asks before a close that would quit the app', () => {
@@ -147,7 +156,7 @@ describe('the main window', () => {
             expect(window.loadURL).toHaveBeenCalledWith('http://localhost:5173/');
             expect(window.loadFile).not.toHaveBeenCalled();
             expect(navigate(window, 'will-navigate', 'http://localhost:5173/#/nodes').prevented).toBe(false);
-            expect(navigate(window, 'will-navigate', 'file:///app/out/renderer/index.html').prevented).toBe(true);
+            expect(navigate(window, 'will-navigate', indexUrl).prevented).toBe(true);
             expect(shell.openExternal).not.toHaveBeenCalled();
         });
     });

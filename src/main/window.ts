@@ -1,9 +1,13 @@
 import { app, BrowserWindow, screen, shell } from 'electron';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { attachQuitConfirmation } from './quit.js';
 import { isExternalWebUrl, isInternalNavigation } from './security.js';
 import { getSettings, updateSettings } from './settings/store.js';
 import { usableBounds } from './window-bounds.js';
+
+/** The packaged renderer's document, the one `file://` URL the window may ever show. */
+export const RENDERER_INDEX = join(__dirname, '../renderer/index.html');
 
 /**
  * The renderer runs untrusted-by-default: sandboxed, isolated from the preload's world, without
@@ -68,7 +72,7 @@ export function createMainWindow(): BrowserWindow {
     });
 
     const guardNavigation = (event: Electron.Event, url: string): void => {
-        if (isInternalNavigation(url, process.env.ELECTRON_RENDERER_URL)) return;
+        if (isInternalNavigation(url, process.env.ELECTRON_RENDERER_URL, pathToFileURL(RENDERER_INDEX).href)) return;
         event.preventDefault();
         openExternally(url);
     };
@@ -78,7 +82,7 @@ export function createMainWindow(): BrowserWindow {
     if (process.env.ELECTRON_RENDERER_URL) {
         void window.loadURL(process.env.ELECTRON_RENDERER_URL);
     } else {
-        void window.loadFile(join(__dirname, '../renderer/index.html'));
+        void window.loadFile(RENDERER_INDEX);
     }
 
     return window;
