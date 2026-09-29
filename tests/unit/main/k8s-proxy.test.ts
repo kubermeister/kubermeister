@@ -109,6 +109,30 @@ describe('resolveProxy', () => {
         expect(resolveProxy('https://api.corp.example', network(), env('api.corp.example:443'))).toBeNull();
     });
 
+    it('honours a *.domain entry as a domain suffix, the way kubectl reads it', () => {
+        const env = (noProxy: string) => ({ HTTPS_PROXY: 'http://proxy:3128', NO_PROXY: noProxy });
+        expect(resolveProxy('https://api.corp.example', network(), env('*.corp.example'))).toBeNull();
+        expect(resolveProxy('https://a.b.corp.example:6443', network(), env('*.corp.example:6443'))).toBeNull();
+        expect(resolveProxy('https://api.corp.example:6443', network(), env('*.corp.example:443'))).toBe(
+            'http://proxy:3128',
+        );
+        expect(resolveProxy('https://api.notcorp.example', network(), env('*.corp.example'))).toBe('http://proxy:3128');
+    });
+
+    it('honours an IPv6 entry, bare or bracketed with a port, in any spelling of the address', () => {
+        const env = (noProxy: string) => ({ HTTPS_PROXY: 'http://proxy:3128', NO_PROXY: noProxy });
+        expect(resolveProxy('https://[2001:db8::10]:6443', network(), env('2001:db8::10'))).toBeNull();
+        expect(resolveProxy('https://[2001:db8::10]:6443', network(), env('2001:DB8:0:0::10'))).toBeNull();
+        expect(resolveProxy('https://[2001:db8::10]:6443', network(), env('[2001:db8::10]'))).toBeNull();
+        expect(resolveProxy('https://[2001:db8::10]:6443', network(), env('[2001:db8::10]:6443'))).toBeNull();
+        expect(resolveProxy('https://[2001:db8::10]:6443', network(), env('[2001:db8::10]:443'))).toBe(
+            'http://proxy:3128',
+        );
+        expect(resolveProxy('https://[2001:db8::11]:6443', network(), env('2001:db8::10'))).toBe('http://proxy:3128');
+        // A bare address is never read as a host and a port.
+        expect(resolveProxy('https://[2001:db8::]:10', network(), env('2001:db8::10'))).toBe('http://proxy:3128');
+    });
+
     it('honours an IPv4 CIDR entry, which is how a private API server is usually excluded', () => {
         const env = (noProxy: string) => ({ HTTPS_PROXY: 'http://proxy:3128', NO_PROXY: noProxy });
         expect(resolveProxy('https://10.42.0.1:6443', network(), env('10.0.0.0/8'))).toBeNull();

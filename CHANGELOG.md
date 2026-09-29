@@ -118,6 +118,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   reason instead of a dump of the response headers.
 - A live list no longer loses a change made while it was still loading or reloading, so a pod deleted
   in that moment no longer keeps its row and a changed one no longer keeps its old status.
+- A `NO_PROXY` or **Never proxy these hosts** entry written as `*.corp.example` or as a bare IPv6
+  address sends matching clusters direct, as kubectl does, instead of through the proxy.
 
 ## [0.9.1] - 2026-09-29
 

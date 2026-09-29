@@ -52,10 +52,12 @@ It takes a comma-separated list spelled as `NO_PROXY` spells it. When it is set 
 An entry matches:
 
 - `*` — every host;
-- a host name exactly, or as a domain suffix, with or without the leading dot (`corp.example` and
-  `.corp.example` both match `api.corp.example`);
+- a host name exactly, or as a domain suffix, with or without a leading dot or `*.` (`corp.example`,
+  `.corp.example` and `*.corp.example` all match `api.corp.example`);
+- an IPv6 address, bare (`2001:db8::10`) or in brackets (`[2001:db8::10]`), in any spelling of it;
 - an IPv4 range in CIDR form, such as `10.0.0.0/8`;
-- any of those with a `:port`, which must match too.
+- any of those with a `:port`, which must match too; an IPv6 address takes one only in brackets
+  (`[2001:db8::10]:6443`).
 
 IPv6 ranges are not matched.
 

@@ -83,9 +83,36 @@ function matchesCidr(host: string, entry: string): boolean {
 }
 
 /**
+ * An entry's host and the port it names, if any. An IPv6 address carries its port only inside
+ * brackets, so a bare one is never cut at its last colon into a host and a port.
+ */
+function splitEntry(entry: string): { pattern: string; entryPort: number | null } {
+    const bracketed = /^\[([^\]]*)\](?::(\d+))?$/.exec(entry);
+    if (bracketed) return { pattern: bracketed[1] ?? '', entryPort: bracketed[2] ? Number(bracketed[2]) : null };
+    if (entry.indexOf(':') !== entry.lastIndexOf(':')) return { pattern: entry, entryPort: null };
+    const match = /^(.*):(\d+)$/.exec(entry);
+    if (match?.[1] && match[2]) return { pattern: match[1], entryPort: Number(match[2]) };
+    return { pattern: entry, entryPort: null };
+}
+
+/**
+ * An IPv6 address in the compressed form a URL's hostname takes, or null for anything else, so an
+ * entry written `2001:db8:0:0::10` matches the server `https://[2001:db8::10]` as Go's IP comparison
+ * would.
+ */
+function canonicalIpv6(value: string): string | null {
+    if (!value.includes(':')) return null;
+    try {
+        return hostOf(new URL(`http://[${value}]`));
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Whether a host is excluded by a `NO_PROXY`-shaped list: `*` for everything, an exact host, a
- * domain suffix with or without its leading dot, an IPv4 CIDR range, and any of those with a port
- * that must match too.
+ * domain suffix with or without its leading dot or `*.`, an IPv6 address bare or in brackets, an IPv4
+ * CIDR range, and any of those with a port that must match too.
  */
 export function bypassesProxy(host: string, port: number, noProxy: string): boolean {
     for (const raw of noProxy.split(/[\s,]+/)) {
@@ -96,10 +123,15 @@ export function bypassesProxy(host: string, port: number, noProxy: string): bool
             if (matchesCidr(host, entry)) return true;
             continue;
         }
-        const match = /^(.*):(\d+)$/.exec(entry);
-        if (match?.[1] && match[2] && Number(match[2]) !== port) continue;
-        const pattern = (match?.[1] ?? entry).replace(/^\[|\]$/g, '');
-        const suffix = pattern.startsWith('.') ? pattern.slice(1) : pattern;
+        const { pattern, entryPort } = splitEntry(entry);
+        if (entryPort !== null && entryPort !== port) continue;
+        const address = canonicalIpv6(pattern);
+        if (address !== null) {
+            if (host === address) return true;
+            continue;
+        }
+        // Go's httpproxy, which kubectl uses, reads `*.corp.example` as `.corp.example`.
+        const suffix = pattern.replace(/^\*?\./, '');
         if (host === suffix || host.endsWith(`.${suffix}`)) return true;
     }
     return false;
