@@ -243,6 +243,29 @@ describe('fetchChart', () => {
                 detail: 'The archive holds redis 1.0.0, not nginx 1.0.0.',
             });
         });
+
+        it('reads a Chart.yaml version that looks like a number as the string Helm reads', async () => {
+            const numeric = nginxChart([], 'apiVersion: v2\nname: nginx\nversion: 1.10\n');
+            serve({
+                'https://charts.example.com/stable/index.yaml': () =>
+                    reply(200, indexYaml(['nginx-1.10.tgz'], sha256(numeric), '1.10')),
+                'https://charts.example.com/stable/nginx-1.10.tgz': () => reply(200, numeric),
+            });
+            await expect(fetchChart('example', 'nginx', '1.10')).resolves.toMatchObject({ digest: sha256(numeric) });
+        });
+
+        it('still refuses a numeric-looking Chart.yaml version that is not the one asked for', async () => {
+            const numeric = nginxChart([], 'apiVersion: v2\nname: nginx\nversion: 1.10\n');
+            serve({
+                'https://charts.example.com/stable/index.yaml': () =>
+                    reply(200, indexYaml(['nginx-1.1.tgz'], sha256(numeric), '1.1')),
+                'https://charts.example.com/stable/nginx-1.1.tgz': () => reply(200, numeric),
+            });
+            await expect(fetchChart('example', 'nginx', '1.1')).rejects.toMatchObject({
+                kind: 'invalid',
+                detail: 'The archive holds nginx 1.10, not nginx 1.1.',
+            });
+        });
     });
 
     describe('from an OCI registry', () => {
