@@ -124,6 +124,17 @@ describe('command palette', () => {
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('namespace.set', { namespace: 'kube-system' }));
     });
 
+    // Switching context ends every stream and resets every cluster query, so the one in use is left alone.
+    it('closes without switching when the current context is chosen', async () => {
+        const { router } = renderRoutes(routeTree, '/workloads/pods/team-a/web-1');
+        await userEvent.keyboard('{Control>}k{/Control}');
+        const dialog = await screen.findByRole('dialog', { name: 'Quick actions' });
+        await userEvent.click(await within(dialog).findByRole('option', { name: /alpha/ }));
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(invoke).not.toHaveBeenCalledWith('context.set', expect.anything());
+        expect(router.state.location.pathname).toBe('/workloads/pods/team-a/web-1');
+    });
+
     it('closes a detail page back to its list when the context or namespace changes', async () => {
         const { router } = renderRoutes(routeTree, '/workloads/pods/team-a/web-1');
         await userEvent.keyboard('{Control>}k{/Control}');

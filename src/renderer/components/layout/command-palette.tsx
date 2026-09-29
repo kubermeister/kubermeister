@@ -58,7 +58,8 @@ export function CommandPalette({ open, onOpenChange, onShowShortcuts, onInstallC
                             value={`cluster ${ctx.name}`}
                             onSelect={() => {
                                 close();
-                                void switchContext(ctx.name);
+                                // Switching ends every stream and resets every query, so the one in use stays.
+                                if (!ctx.current) void switchContext(ctx.name);
                             }}
                         >
                             <span className="flex-1">{ctx.name}</span>

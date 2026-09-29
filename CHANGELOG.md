@@ -66,6 +66,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   an error toast.
 - A deployment's **Compare revisions** opens on the newest two revisions when the page is reloaded or
   opened from a link, rather than showing empty pickers or "No differences".
+- Choosing the context already in use from the command palette no longer reconnects to it, so port
+  forwards, log follows and shells keep running and the open page stays where it is.
 
 ## [0.9.1] - 2026-09-29
 
