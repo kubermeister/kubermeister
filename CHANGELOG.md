@@ -15,6 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Saving a custom resource's manifest shows the saved text on its Manifest tab and the new values on its
+  screens at once, instead of the text from before the save until the page was reopened.
 - Opening another object of the same kind from a link, Back or the palette starts its screen afresh,
   so a revealed Secret value, an edited manifest, a drain's progress or a log search no longer
   carries over from the object before.
