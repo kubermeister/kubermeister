@@ -64,6 +64,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Add repository** and **New namespace** stay open until the cluster or the source answers, so a
   refused URL or a name already taken leaves what you typed there to correct instead of closing on
   an error toast.
+- A deployment's **Compare revisions** opens on the newest two revisions when the page is reloaded or
+  opened from a link, rather than showing empty pickers or "No differences".
 
 ## [0.9.1] - 2026-09-29
 

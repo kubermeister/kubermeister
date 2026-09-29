@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderRoutes } from './helpers';
+import { renderRoutes, renderWithQuery } from './helpers';
 
 const invoke = vi.fn();
 const subscribe = vi.fn(() => () => {});
@@ -14,6 +14,7 @@ vi.mock('@/lib/ipc', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
+const { RevisionCompare } = await import('@/components/workload/revision-compare');
 
 const deployment = {
     name: 'web',
@@ -102,5 +103,64 @@ describe('comparing two revisions', () => {
         await userEvent.click(await within(page).findByRole('tab', { name: /History/ }));
         expect(await within(page).findByTestId('compare-unavailable')).toBeInTheDocument();
         expect(invoke).not.toHaveBeenCalledWith('deployments.compare', expect.anything());
+    });
+});
+
+describe('revisions that arrive after the compare mounted', () => {
+    const three = [
+        { rev: '3', state: 'Current', image: 'nginx:3.0', by: '—', when: '1m ago', duration: '1m' },
+        ...rollouts.map((r) => ({ ...r, state: 'Superseded' })),
+    ];
+
+    it('compares the newest two once the revisions load after the deployment', async () => {
+        const view = renderWithQuery(<RevisionCompare name="web" namespace="team-a" rollouts={[]} />);
+        view.rerender(<RevisionCompare name="web" namespace="team-a" rollouts={rollouts} />);
+
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('deployments.compare', {
+                name: 'web',
+                namespace: 'team-a',
+                from: '1',
+                to: '2',
+            }),
+        );
+        expect(screen.getByRole('combobox', { name: 'From revision' })).toHaveTextContent('#1');
+        expect(screen.getByRole('combobox', { name: 'To revision' })).toHaveTextContent('#2');
+    });
+
+    it('moves off a lone revision when a second one appears', async () => {
+        const view = renderWithQuery(<RevisionCompare name="web" namespace="team-a" rollouts={[rollouts[1]!]} />);
+        view.rerender(<RevisionCompare name="web" namespace="team-a" rollouts={rollouts} />);
+
+        await waitFor(() =>
+            expect(invoke).toHaveBeenCalledWith('deployments.compare', {
+                name: 'web',
+                namespace: 'team-a',
+                from: '1',
+                to: '2',
+            }),
+        );
+        expect(invoke).not.toHaveBeenCalledWith('deployments.compare', expect.objectContaining({ from: '1', to: '1' }));
+    });
+
+    it('keeps a revision the reader picked while it is still listed', async () => {
+        const view = renderWithQuery(<RevisionCompare name="web" namespace="team-a" rollouts={rollouts} />);
+        await userEvent.click(screen.getByRole('combobox', { name: 'To revision' }));
+        await userEvent.click(await screen.findByRole('option', { name: '#1' }));
+        view.rerender(<RevisionCompare name="web" namespace="team-a" rollouts={three} />);
+
+        expect(screen.getByRole('combobox', { name: 'To revision' })).toHaveTextContent('#1');
+        // The side the reader never touched follows the list, as it did when the list first loaded.
+        expect(screen.getByRole('combobox', { name: 'From revision' })).toHaveTextContent('#2');
+    });
+
+    it('falls back to the default for a picked revision that is no longer listed', async () => {
+        const view = renderWithQuery(<RevisionCompare name="web" namespace="team-a" rollouts={three} />);
+        await userEvent.click(screen.getByRole('combobox', { name: 'From revision' }));
+        await userEvent.click(await screen.findByRole('option', { name: '#1' }));
+        view.rerender(<RevisionCompare name="web" namespace="team-a" rollouts={three.slice(0, 2)} />);
+
+        expect(screen.getByRole('combobox', { name: 'From revision' })).toHaveTextContent('#2');
+        expect(screen.getByRole('combobox', { name: 'To revision' })).toHaveTextContent('#3');
     });
 });
