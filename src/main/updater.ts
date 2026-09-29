@@ -126,6 +126,13 @@ function scheduleNext(delayMs: number, run: () => void): void {
 let runScheduled: () => void = () => {};
 
 /**
+ * Whether the check under way is one nobody asked for. electron-updater emits `error` before it
+ * rejects the same check, so the library's own error event has to know this too, or a scheduled
+ * failure would reach the top bar for a moment before the rejection marks it background.
+ */
+let scheduledCheck = false;
+
+/**
  * Apply the `updates.checkIntervalHours` setting. A changed interval reschedules the next check from
  * now, so lowering it does not wait out the old one; an unchanged value leaves the schedule alone,
  * because every settings write passes through here (window bounds, a remembered forward) and none
@@ -158,10 +165,15 @@ export function startUpdater(): void {
 
     runScheduled = (): void => {
         if (mode() === 'off') return;
-        void runCheck().catch((error: unknown) => {
-            // Nobody asked for this check; the failure is recorded, not announced.
-            setState({ status: 'error', message: errorMessage(error), background: true });
-        });
+        scheduledCheck = true;
+        void runCheck()
+            .catch((error: unknown) => {
+                // Nobody asked for this check; the failure is recorded, not announced.
+                setState({ status: 'error', message: errorMessage(error), background: true });
+            })
+            .finally(() => {
+                scheduledCheck = false;
+            });
     };
     checkIntervalMs = getSettings().updates.checkIntervalHours * HOUR_MS;
     scheduling = true;
@@ -195,7 +207,9 @@ function wireAutoUpdater(): void {
         }),
     );
     autoUpdater.on('update-downloaded', (info) => setState({ status: 'downloaded', ...describe(info) }));
-    autoUpdater.on('error', (error) => setState({ status: 'error', message: errorMessage(error) }));
+    autoUpdater.on('error', (error) =>
+        setState({ status: 'error', message: errorMessage(error), ...(scheduledCheck && { background: true }) }),
+    );
 }
 
 function busy(): boolean {
