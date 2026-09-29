@@ -59,7 +59,15 @@ export function DrainDialog({ name, context }: { name: string; context: string |
 
     return (
         <>
-            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                    // Each opening is a new drain: the last one's progress belongs to the last one.
+                    drain.reset();
+                    setOpen(true);
+                }}
+            >
                 <DropletsIcon />
                 Drain
             </Button>

@@ -94,6 +94,8 @@ export interface DrainHandle extends DrainState {
     start: (input: Omit<NodeDrainInput, 'context'>) => void;
     /** Ends the evictions; the node stays cordoned, which the dialog says. */
     stop: () => void;
+    /** Stops any drain and forgets the last one, so the dialog opens on a fresh plan. */
+    reset: () => void;
 }
 
 /**
@@ -109,6 +111,12 @@ export function useNodeDrain(context: string | null): DrainHandle {
         handle.current?.stop();
         handle.current = null;
         setState((s) => (s.running ? { ...s, running: false } : s));
+    }, []);
+
+    const reset = useCallback(() => {
+        handle.current?.stop();
+        handle.current = null;
+        setState(IDLE);
     }, []);
 
     useEffect(() => () => handle.current?.stop(), []);
@@ -130,5 +138,5 @@ export function useNodeDrain(context: string | null): DrainHandle {
         [context],
     );
 
-    return { ...state, start, stop };
+    return { ...state, start, stop, reset };
 }

@@ -79,6 +79,9 @@ Stopping ends the evictions at once and **leaves the node cordoned** ("Stopped. 
 cordoned until you uncordon it."). An eviction already sent cannot be recalled. Undoing the cordon is
 your decision, not the app's — a drain you interrupted is rarely one you wanted fully reversed.
 
+Once a drain has finished, been stopped or been refused, **Close** dismisses the dialog, and pressing
+**Drain** again opens it on a fresh plan rather than on the last drain's progress.
+
 ## PodDisruptionBudgets
 
 Budgets are listed as their own kind under **Workloads**, with their policy, healthy and desired
