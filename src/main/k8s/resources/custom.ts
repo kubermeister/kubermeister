@@ -18,10 +18,13 @@ import { age, toPairs } from '../format.js';
  * instances live in namespaces, and the printer columns `kubectl get` would print.
  */
 
-/** The version a client should read: the one marked for storage, else the first served one. */
+/**
+ * The version a client should read: the storage one when it is served, else the first served one.
+ * Mid-migration the storage version can be unserved, and every read of it answers 404.
+ */
 export function readableVersion(crd: V1CustomResourceDefinition): string | undefined {
-    const versions = crd.spec?.versions ?? [];
-    return (versions.find((version) => version.storage) ?? versions.find((version) => version.served))?.name;
+    const served = (crd.spec?.versions ?? []).filter((version) => version.served);
+    return (served.find((version) => version.storage) ?? served[0])?.name;
 }
 
 /** The printer columns of that version, which is what the definition says a list should show. */

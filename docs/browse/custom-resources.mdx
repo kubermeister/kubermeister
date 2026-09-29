@@ -30,7 +30,7 @@ For each definition, the app reads:
   caption="The columns between Name and Age come from the definition’s own additionalPrinterColumns."
 />
 
-- its **storage version**, or the first served version if none is marked for storage;
+- its **storage version** when that version is served, or else the first served version;
 - its **scope**, namespaced or cluster-wide;
 - its **`additionalPrinterColumns`** — the same columns `kubectl get` would print for that kind.
 
