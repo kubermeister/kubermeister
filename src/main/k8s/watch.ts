@@ -1,5 +1,4 @@
 import {
-    makeInformer,
     type KubernetesObject,
     type V1ClusterRoleBinding,
     type V1CronJob,
@@ -21,6 +20,7 @@ import type { RowOf } from '../../shared/k8s/resources.js';
 import { streamSchemas, type StreamController, type StreamSend, type WatchEvent } from '../../shared/streams.js';
 import { apis, kubeConfig, resolveNamespace } from './client.js';
 import { K8sError } from './errors.js';
+import { makeInformer } from './informer.js';
 import { toConfigMap, toSecret } from './resources/config.js';
 import { toCustomResource } from './resources/crds.js';
 import { toEndpoints, toIngress, toNetworkPolicy, toService } from './resources/network.js';
@@ -359,6 +359,8 @@ interface Shared {
     cached: () => readonly KubernetesObject[];
     toRow: WatchSource<Kind>['toRow'];
     kind: Kind;
+    /** Start or restart the informer; it never rejects, a failure is reported to the subscribers. */
+    start: () => Promise<void>;
     retry?: NodeJS.Timeout;
     failed?: string;
 }
@@ -384,6 +386,8 @@ function acquire(kind: Kind, namespace: string | undefined, source: WatchSource<
         cached: () => informer.list(),
         toRow: source.toRow,
         kind,
+        // A start that rejects is a failure like any other: reported, and retried while anyone watches.
+        start: () => informer.start().catch(fail),
     };
 
     const fan = (type: WatchEvent['type']) => (object: KubernetesObject) => {
@@ -393,13 +397,16 @@ function acquire(kind: Kind, namespace: string | undefined, source: WatchSource<
     informer.on('add', fan('added'));
     informer.on('update', fan('modified'));
     informer.on('delete', fan('deleted'));
-    informer.on('error', (error: unknown) => {
+    const fail = (error: unknown) => {
         entry.failed = error instanceof Error ? error.message : String(error);
         for (const send of entry.subscribers) send({ kind, type: 'error' } as never);
+        // One pending retry at most, whichever way the failure arrived.
+        if (entry.retry) clearTimeout(entry.retry);
         entry.retry = setTimeout(() => {
-            if (shared.get(key) === entry) void informer.start();
+            if (shared.get(key) === entry) void entry.start();
         }, WATCH_RETRY_MS);
-    });
+    };
+    informer.on('error', fail);
 
     shared.set(key, entry);
     return entry;
@@ -450,7 +457,7 @@ export async function startResourceWatch(rawInput: unknown, send: StreamSend): P
 
     const first = entry.subscribers.size === 1;
     if (first) {
-        await entry.informer.start();
+        await entry.start();
     } else {
         // A screen arriving second must not wait for a fresh list: replay what is already cached,
         // which is exactly the sequence a new informer would have sent it.

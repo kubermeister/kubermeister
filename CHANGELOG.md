@@ -29,6 +29,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Switching context or namespace with an unsaved manifest edit and choosing **Keep editing** cancels
   the switch instead of running it on the next navigation, and moving to another tab of the same
   object keeps the edit without asking to discard it.
+- A live list whose credentials can no longer be renewed, such as after an SSO session ends, says the
+  watch failed and keeps retrying, instead of showing its last rows as live without a word.
 
 ## [0.9.1] - 2026-09-29
 
