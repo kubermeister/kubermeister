@@ -1,10 +1,13 @@
 import { app } from 'electron';
 import {
+    chmodSync,
     existsSync,
+    lstatSync,
     mkdirSync,
     readFileSync,
-    realpathSync,
+    readlinkSync,
     renameSync,
+    statSync,
     unwatchFile,
     watchFile,
     writeFileSync,
@@ -123,16 +126,52 @@ function readFile(path: string): LoadedFile {
     }
 }
 
+/** As many links as Linux follows before it answers ELOOP. */
+const MAX_LINK_HOPS = 40;
+
+/**
+ * The file a path ends at, following every symlink on the way whether or not the last one's target
+ * exists yet: a link into a dotfiles checkout that has moved, or has not been cloned, still names
+ * where the settings belong. `realpathSync` refuses a dangling link, which is why this walks by hand.
+ */
+function linkTarget(path: string): string {
+    let target = path;
+    for (let hop = 0; hop < MAX_LINK_HOPS; hop += 1) {
+        try {
+            if (!lstatSync(target).isSymbolicLink()) return target;
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') return target;
+            throw error;
+        }
+        target = resolve(dirname(target), readlinkSync(target));
+    }
+    throw new Error(`Too many symbolic links at ${path}`);
+}
+
+/** The permission bits a file has now, or null when there is no file to keep them from. */
+function fileMode(path: string): number | null {
+    try {
+        return statSync(path).mode & 0o7777;
+    } catch {
+        return null;
+    }
+}
+
 /**
  * Write through a symlink rather than over it: a file linked in by stow, chezmoi or home-manager
  * stays linked, and the temporary file sits next to the real one so the rename stays on one volume.
+ * The rename puts a new file in place, so the old one's mode is copied onto it first: a file kept
+ * at 0600 because its proxy URL carries a password stays that way.
  */
 function writeFile(path: string, text: string): string | null {
     try {
-        const target = existsSync(path) ? realpathSync(path) : path;
+        const target = linkTarget(path);
         mkdirSync(dirname(target), { recursive: true });
+        const mode = fileMode(target);
         const tmp = `${target}.tmp`;
-        writeFileSync(tmp, text, 'utf8');
+        writeFileSync(tmp, text, { encoding: 'utf8', mode: mode ?? 0o666 });
+        // The mode given to the write is narrowed by the umask; the kept one is set as it was.
+        if (mode !== null) chmodSync(tmp, mode);
         renameSync(tmp, target);
         return null;
     } catch (error) {
@@ -142,23 +181,36 @@ function writeFile(path: string, text: string): string | null {
 }
 
 /**
+ * Recorded once the old file has been looked at, so it is carried over on one launch only: without
+ * it, deleting the settings file to reset it, or pointing `KUBERMEISTER_CONFIG` somewhere new, would
+ * bring the old preferences back on the next launch.
+ */
+function legacyMarkerPath(): string {
+    return join(app.getPath('userData'), 'settings-migrated');
+}
+
+/**
  * The first launch after the settings file moved: the old whole-object file becomes a settings file
  * holding what somebody changed and a state file holding the rest. Each is carried over only while
  * it does not exist yet, and apart: a settings file written by hand before the first launch wins
  * over the old preferences, but the last context, the remembered forwards and the window's place
  * still come across. The old file is left where it was, so going back to an earlier version finds
- * it.
+ * it, and the marker says it has been dealt with, including on an install an earlier version moved
+ * over without recording it.
  */
 function migrateLegacy(configPath: string): void {
     const legacyPath = legacyFilePath();
+    const markerPath = legacyMarkerPath();
+    if (existsSync(markerPath) || !existsSync(legacyPath)) return;
     const needsConfig = resolve(legacyPath) !== resolve(configPath) && !existsSync(configPath);
     const needsState = !existsSync(stateFilePath());
-    if ((!needsConfig && !needsState) || !existsSync(legacyPath)) return;
-    const legacy = readFile(legacyPath);
-    if (!legacy.doc) return;
-    const settings = parseSettings(legacy.doc);
-    if (needsConfig) writeFile(configPath, serializeDocument(configFromLegacy(settings), legacy.indent));
-    if (needsState) writeFile(stateFilePath(), serializeDocument(stateFromLegacy(settings), legacy.indent));
+    const legacy = needsConfig || needsState ? readFile(legacyPath) : NO_FILE;
+    if (legacy.doc) {
+        const settings = parseSettings(legacy.doc);
+        if (needsConfig) writeFile(configPath, serializeDocument(configFromLegacy(settings), legacy.indent));
+        if (needsState) writeFile(stateFilePath(), serializeDocument(stateFromLegacy(settings), legacy.indent));
+    }
+    writeFile(markerPath, `${new Date().toISOString()}\n`);
 }
 
 /** Take in the settings file as read, over the state already held. */

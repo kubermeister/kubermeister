@@ -124,6 +124,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   address sends matching clusters direct, as kubectl does, instead of through the proxy.
 - An OCI registry whose token server is on plaintext `http` is asked for a token without the
   registry's password, instead of being sent it in the clear.
+- Saving settings keeps a symlinked settings file linked even when its target does not exist yet, keeps
+  the file's permissions, and deleting the settings file no longer brings back preferences from before
+  it moved.
 
 ## [0.9.1] - 2026-09-29
 

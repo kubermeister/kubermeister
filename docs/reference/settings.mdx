@@ -217,8 +217,9 @@ runs on what it could read, changes made in Settings last until you quit, and th
 saved at all, a read-only file for instance.
 When a setting is changed in the app, only that key is written. Keys you never wrote stay absent,
 keys the app does not know are kept, the file keeps its indentation, and a symlinked file is written
-through the link. Each write goes to a temporary file that is then renamed over the original, so a
-crash mid-write cannot leave half a file.
+through the link, even one whose target does not exist yet. Each write goes to a temporary file that
+is then renamed over the original, so a crash mid-write cannot leave half a file, and the file keeps
+its permissions: one you keep readable only by you stays that way.
 
 What the app records about itself rather than what you configure is kept apart, in `state.json` in
 the app's user-data directory (`~/Library/Application Support/Kubermeister` on macOS,
@@ -232,7 +233,8 @@ An install from before the file moved keeps its settings: on the first launch th
 `settings.json` in the user-data directory is carried over, with the values that were only ever
 defaults left out, and the old file is left where it was. A settings file you wrote before that
 launch is kept exactly as it is; only the last context, the remembered forwards and the window's
-place come across from the old file.
+place come across from the old file. That happens once: deleting the settings file later, or
+pointing `KUBERMEISTER_CONFIG` somewhere new, starts from the defaults rather than the old file.
 
 ## Quitting
 
