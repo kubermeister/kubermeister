@@ -1,4 +1,4 @@
-import { load as loadYaml } from 'js-yaml';
+import { FAILSAFE_SCHEMA, load as loadYaml } from 'js-yaml';
 import { CHART_NAME, CHART_VERSION, type ChartArchiveLocation, type ChartRepository } from '../../shared/charts.js';
 import { K8sError, toK8sError } from '../k8s/errors.js';
 import { MAX_ARCHIVE_BYTES, readChartArchive, sha256Of, type ChartFiles } from './archive.js';
@@ -145,12 +145,13 @@ async function fetchOci(repository: ChartRepository, chart: string, version: str
 /**
  * The archive must be the chart that was asked for. An OCI tag can be pushed over with anything,
  * and a mis-generated index can point a version at another chart's archive; either would otherwise
- * be installed under the name the user picked.
+ * be installed under the name the user picked. `Chart.yaml` is read with every scalar a string, as
+ * Helm reads its version, so `version: 1.10` is `1.10` rather than the number 1.1.
  */
 function assertIsChart(files: ChartFiles, chart: string, version: string): void {
     let metadata: unknown;
     try {
-        metadata = loadYaml(files.chartYaml);
+        metadata = loadYaml(files.chartYaml, { schema: FAILSAFE_SCHEMA });
     } catch {
         throw new K8sError('invalid', 'The chart’s Chart.yaml is not YAML.', OP);
     }

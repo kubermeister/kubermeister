@@ -21,6 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A Helm install or upgrade whose hook the cluster refuses to create leaves a release the Helm CLI can
   still list, read and uninstall, and a rollback after a failed upgrade no longer leaves two revisions
   marked deployed.
+- A chart whose `Chart.yaml` writes its version like a number, such as `1.10`, can be installed and
+  upgraded instead of being refused as holding another version.
 - Saving a custom resource's manifest shows the saved text on its Manifest tab and the new values on its
   screens at once, instead of the text from before the save until the page was reopened.
 - A pod owned by a custom resource that shares a built-in kind's name, such as an OpenKruise
