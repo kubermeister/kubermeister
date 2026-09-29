@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from '@tanstack/react-router';
 import { FileUpIcon } from 'lucide-react';
+import { InstallChartDialog } from '@/components/chart/install-chart-dialog';
 import { CommandPalette } from './command-palette';
 import { DeepLinkHandler } from './deep-link-handler';
 import { useNavigateTo } from './nav-link';
@@ -15,6 +16,7 @@ const MAIN_ID = 'main-content';
 export function AppShell() {
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const [installChartOpen, setInstallChartOpen] = useState(false);
     useShortcuts({
         paletteOpen,
         togglePalette: () => setPaletteOpen((open) => !open),
@@ -50,7 +52,9 @@ export function AppShell() {
                 open={paletteOpen}
                 onOpenChange={setPaletteOpen}
                 onShowShortcuts={() => setShortcutsOpen(true)}
+                onInstallChart={() => setInstallChartOpen(true)}
             />
+            <InstallChartDialog open={installChartOpen} onOpenChange={setInstallChartOpen} />
             <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
             <DeepLinkHandler />
             {dragging && (

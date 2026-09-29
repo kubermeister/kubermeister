@@ -12,14 +12,6 @@ export const releaseStatusSchema = z.enum([
     'Unknown',
 ]);
 
-export const helmChartSchema = z.object({
-    name: z.string(),
-    repository: z.string(),
-    latestVersion: z.string(),
-    appVersion: z.string(),
-    description: z.string(),
-});
-
 export const releaseSchema = z.object({
     name: z.string(),
     namespace: z.string(),
@@ -138,7 +130,6 @@ export const releaseObjectSchema = z.object({
 });
 
 export type ReleaseStatus = z.infer<typeof releaseStatusSchema>;
-export type HelmChart = z.infer<typeof helmChartSchema>;
 export type Release = z.infer<typeof releaseSchema>;
 export type ReleaseRevision = z.infer<typeof releaseRevisionSchema>;
 export type ReleaseTarget = z.infer<typeof releaseTargetSchema>;

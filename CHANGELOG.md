@@ -19,13 +19,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   values are edited against the chart's own schema, a review lists every rendered object with a
   server-side dry run and flags a chart that calls `lookup`, and the install follows Helm's order of
   CRDs, hooks and objects, recording a release the Helm CLI reads, or a failed one that can be
-  uninstalled. Rendering needs Helm 3 or later on the machine.
+  uninstalled. Rendering needs Helm 3 or later on the machine. An install starts from **Install** on
+  a chart under **Helm › Charts**, from a repository's row under **Settings › Charts**, or from
+  **Install a chart…** in the command palette, and each says Helm is required, linking its install
+  page, when none is found.
 
 ### Changed
 
 - Helm has its own section at the bottom of the sidebar, with **Releases** and then **Charts**,
   reached with `⌘7` or `Ctrl+7`; **Add-ons** keeps the CRDs, admission and API server screens, and
   links to a release or the charts under the old Add-ons paths no longer open.
+- **Helm › Charts** lists the charts the configured classic repositories publish, each with
+  **Install**, instead of the charts the installed releases came from; with no repository
+  configured it says so and points at **Settings › Charts**.
 
 ### Fixed
 

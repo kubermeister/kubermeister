@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { homedir, tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { clusterKubectl, NAMESPACE } from '../harness/cluster';
 import { launchApp, type LaunchedApp, type Theme } from '../harness/launch';
 
@@ -20,6 +23,49 @@ let launched: LaunchedApp;
 let theme: Theme;
 let outDir: string;
 
+let chartServer: Server | null = null;
+let chartDir: string | null = null;
+
+/** The repository the install shot reads from, and the chart and version it opens on. */
+const CHART_REPOSITORY = 'platform';
+const INSTALL_CHART = { name: 'platform-agent', version: '1.4.2' };
+
+/**
+ * A classic repository serving the demo's own chart from this process, packaged and indexed by the
+ * real Helm, so the install screen is photographed on a chart it actually fetched. Without Helm there
+ * is no repository and the install shot is skipped, as the Helm screens are without a release.
+ */
+async function serveChartRepository(): Promise<string | null> {
+    try {
+        execFileSync('helm', ['version', '--short'], { encoding: 'utf8' });
+    } catch {
+        return null;
+    }
+    const dir = mkdtempSync(join(tmpdir(), 'km-demo-charts-'));
+    chartDir = dir;
+    const server = createServer((request, response) => {
+        const file = join(dir, (request.url ?? '/').split('?')[0]!.replace(/^\/+/, ''));
+        if (!file.startsWith(dir) || !existsSync(file)) {
+            response.writeHead(404).end();
+            return;
+        }
+        response.writeHead(200);
+        createReadStream(file).pipe(response);
+    });
+    chartServer = server;
+    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const env = {
+        PATH: process.env.PATH,
+        HOME: dir,
+        HELM_CACHE_HOME: join(dir, '.helm'),
+        HELM_CONFIG_HOME: join(dir, '.helm'),
+    };
+    execFileSync('helm', ['package', resolve('tests/demo/fixtures/chart'), '--destination', dir], { env });
+    execFileSync('helm', ['repo', 'index', dir, '--url', url], { env });
+    return url;
+}
+
 /** How long the app runs before the dashboard is photographed; the sampler reads every 12 s. */
 const SOAK_MS = Number(process.env.KM_DEMO_SOAK_SEC ?? 150) * 1_000;
 
@@ -33,7 +79,8 @@ test.beforeAll(async () => {
     theme = test.info().project.name as Theme;
     outDir = resolve('.screenshots', theme);
     mkdirSync(outDir, { recursive: true });
-    launched = await launchApp(theme);
+    const chartUrl = await serveChartRepository();
+    launched = await launchApp(theme, chartUrl ? { chartRepository: { name: CHART_REPOSITORY, url: chartUrl } } : {});
 
     // The sampler starts when a reader asks for it, so the dashboard is opened first and then left
     // alone: a chart of one point is a chart of nothing, and its buffers do not survive a relaunch.
@@ -50,6 +97,8 @@ test.afterEach(async () => {
 
 test.afterAll(async () => {
     await launched?.app.close();
+    if (chartServer) await new Promise((done) => chartServer?.close(done));
+    if (chartDir) rmSync(chartDir, { recursive: true, force: true });
 });
 
 async function goto(path: string): Promise<void> {
@@ -278,6 +327,15 @@ test('helm-release', async () => {
     await openTab(window, /Revisions/);
     await expect(window.getByTestId('release-revisions')).toBeVisible({ timeout: 30_000 });
     await shoot('helm-release');
+});
+
+test('install-chart', async () => {
+    test.skip(!chartServer, 'helm is not on PATH, so there is no chart repository to install from');
+    const { window } = launched;
+    await goto(`/helm/charts/install/${CHART_REPOSITORY}/${INSTALL_CHART.name}/${INSTALL_CHART.version}`);
+    const page = window.getByTestId('install-chart-page');
+    await expect(page.locator('.cm-content')).toContainText('replicaCount', { timeout: 60_000 });
+    await shoot('install-chart');
 });
 
 test('events', async () => {

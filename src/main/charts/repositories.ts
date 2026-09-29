@@ -1,6 +1,7 @@
 import { load as loadYaml } from 'js-yaml';
 import {
     MAX_CHART_REPOSITORIES,
+    type AvailableChart,
     type ChartArchiveLocations,
     type ChartIndex,
     type ChartRepository,
@@ -178,5 +179,36 @@ export function listChartVersions(source: string, chart: string): Promise<string
             cached ?? (await readSource(op, repository, credential)).charts.find((one) => one.name === chart);
         if (!summary) throw new K8sError('notFound', `${repository.name} has no chart named "${chart}".`, op);
         return summary.versions;
+    });
+}
+
+/**
+ * Every chart the configured classic repositories publish, from their cached indexes: a repository
+ * is read again when it is refreshed, not each time the list is. One with no cache yet — written into
+ * the settings file by hand, or cached by an older version — is read once here, so it lists its charts
+ * without a trip to Settings; one that does not answer is left out rather than failing the others, and
+ * its row under Settings says it was never read. An OCI registry publishes no index, so its charts are
+ * reached by name and never listed.
+ */
+export function listCharts(): Promise<AvailableChart[]> {
+    const op = 'charts.list';
+    return classified(op, async () => {
+        const classic = configured().filter((repository) => repository.kind === 'classic');
+        const indexes = await Promise.all(
+            classic.map(
+                async (repository) =>
+                    readIndex(repository.name, repository.url) ??
+                    (await readSource(op, repository, getCredential(repository.name)).catch(() => null)),
+            ),
+        );
+        return classic.flatMap((repository, at) =>
+            (indexes[at]?.charts ?? []).map(({ name, latestVersion, appVersion, description }) => ({
+                repository: repository.name,
+                name,
+                latestVersion,
+                appVersion,
+                description,
+            })),
+        );
     });
 }

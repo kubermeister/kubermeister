@@ -54,7 +54,7 @@ interface ResourceListPageProps<T> {
      */
     nounPlural?: string;
     searchPlaceholder?: string;
-    emptyMessage?: string;
+    emptyMessage?: React.ReactNode;
     footerNote?: string;
     toolbar?: React.ReactNode;
     /** Extra attributes per row (`data-*` hooks for tests and styling). */

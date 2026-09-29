@@ -20,7 +20,12 @@ export interface LaunchedApp {
  */
 export const WINDOW = { x: 40, y: 40, width: 1440, height: 900 };
 
-export async function launchApp(theme: Theme): Promise<LaunchedApp> {
+export interface LaunchOptions {
+    /** A classic chart repository to configure, so the chart screens have something to list. */
+    chartRepository?: { name: string; url: string };
+}
+
+export async function launchApp(theme: Theme, options: LaunchOptions = {}): Promise<LaunchedApp> {
     const userData = mkdtempSync(join(tmpdir(), 'km-demo-'));
     writeFileSync(
         join(userData, 'settings.json'),
@@ -33,6 +38,9 @@ export async function launchApp(theme: Theme): Promise<LaunchedApp> {
             updates: { mode: 'off', checkIntervalHours: 4 },
             data: { refreshIntervalSec: 5, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 13 },
             window: { bounds: WINDOW },
+            ...(options.chartRepository && {
+                charts: { repositories: [{ ...options.chartRepository, kind: 'classic' }] },
+            }),
         }),
     );
 

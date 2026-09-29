@@ -1,5 +1,5 @@
 import { load as loadYaml } from 'js-yaml';
-import type { ChartArchiveLocation, ChartRepository } from '../../shared/charts.js';
+import { CHART_NAME, CHART_VERSION, type ChartArchiveLocation, type ChartRepository } from '../../shared/charts.js';
 import { K8sError, toK8sError } from '../k8s/errors.js';
 import { MAX_ARCHIVE_BYTES, readChartArchive, sha256Of, type ChartFiles } from './archive.js';
 import { archivePath, readArchive, readIndex, writeArchive } from './cache.js';
@@ -24,12 +24,6 @@ const ARCHIVE_TIMEOUT_MS = 60_000;
 
 /** A manifest is a few hundred bytes of JSON; past this it is not a manifest. */
 const MAX_MANIFEST_BYTES = 1024 * 1024;
-
-/** A chart name as it may appear in a URL path and a Chart.yaml. */
-const CHART_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$/;
-
-/** A chart version: SemVer's alphabet, which is also what makes it safe in a URL and a tag. */
-const CHART_VERSION = /^[A-Za-z0-9][A-Za-z0-9.+_-]{0,127}$/;
 
 export interface FetchedChart extends ChartFiles {
     /** The cached archive, which the render step hands to `helm template`. */

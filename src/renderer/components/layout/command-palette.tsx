@@ -1,4 +1,4 @@
-import { KeyboardIcon, Loader2Icon, PlusIcon, RefreshCwIcon } from 'lucide-react';
+import { DownloadIcon, KeyboardIcon, Loader2Icon, PlusIcon, RefreshCwIcon } from 'lucide-react';
 import {
     CommandDialog,
     CommandEmpty,
@@ -19,13 +19,14 @@ interface CommandPaletteProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onShowShortcuts: () => void;
+    onInstallChart: () => void;
 }
 
 /**
  * ⌘K / Ctrl+K quick actions: switch context or namespace, jump to any screen. The key itself is the
  * shell's shortcut dispatcher's, like every other.
  */
-export function CommandPalette({ open, onOpenChange, onShowShortcuts }: CommandPaletteProps) {
+export function CommandPalette({ open, onOpenChange, onShowShortcuts, onInstallChart }: CommandPaletteProps) {
     const navigateTo = useNavigateTo();
     const switchContext = useSwitchContext();
     const selectNamespace = useSelectNamespace();
@@ -97,6 +98,16 @@ export function CommandPalette({ open, onOpenChange, onShowShortcuts }: CommandP
                     <CommandItem value="create resource" onSelect={() => go('/create')}>
                         <PlusIcon className="size-3.5 text-text-muted" />
                         <span className="flex-1">Create resource</span>
+                    </CommandItem>
+                    <CommandItem
+                        value="install a chart helm"
+                        onSelect={() => {
+                            close();
+                            onInstallChart();
+                        }}
+                    >
+                        <DownloadIcon className="size-3.5 text-text-muted" />
+                        <span className="flex-1">Install a chart…</span>
                     </CommandItem>
                     <CommandItem
                         value="check for updates"

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { AllowedChannel, PreloadChannel } from './ipc-channels.js';
 import {
-    helmChartSchema,
     releaseObjectSchema,
     releaseRevisionSchema,
     releaseRollbackInputSchema,
@@ -19,7 +18,12 @@ import {
     releaseInstallResultSchema,
 } from './chart-install.js';
 import { chartValuesSchema, chartVersionInputSchema } from './chart-values.js';
-import { chartRepositoryInputSchema, chartRepositoryNameInputSchema, chartRepositoryStatusSchema } from './charts.js';
+import {
+    availableChartSchema,
+    chartRepositoryInputSchema,
+    chartRepositoryNameInputSchema,
+    chartRepositoryStatusSchema,
+} from './charts.js';
 import { deepLinkSchema } from './deep-link.js';
 import { helmStatusSchema } from './helm-tool.js';
 import { kubeContextSchema } from './k8s/contexts.js';
@@ -255,12 +259,12 @@ export const ipcSchemas = {
     'releases.rollback': { input: releaseRollbackInputSchema, output: releaseWriteResultSchema },
     'releases.uninstall': { input: releaseUninstallInputSchema, output: releaseWriteResultSchema },
     'releases.install': { input: releaseInstallInputSchema, output: releaseInstallResultSchema },
-    'helmCharts.list': { input: noInput, output: z.array(helmChartSchema) },
     'chartRepositories.list': { input: noInput, output: z.array(chartRepositoryStatusSchema) },
     'chartRepositories.add': { input: chartRepositoryInputSchema, output: chartRepositoryStatusSchema },
     'chartRepositories.refresh': { input: chartRepositoryNameInputSchema, output: chartRepositoryStatusSchema },
     'chartRepositories.remove': { input: chartRepositoryNameInputSchema, output: chartRepositoryNameInputSchema },
     'helm.status': { input: noInput, output: helmStatusSchema },
+    'charts.list': { input: noInput, output: z.array(availableChartSchema) },
     'charts.values': { input: chartVersionInputSchema, output: chartValuesSchema },
     'charts.versions': { input: chartVersionsInputSchema, output: chartVersionsSchema },
     'charts.render': { input: chartRenderInputSchema, output: chartRenderOutcomeSchema },

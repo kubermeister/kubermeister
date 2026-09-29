@@ -105,9 +105,12 @@ async function replaceValues(text: string): Promise<void> {
 
 test('installs a chart through a reviewed render, and the Helm CLI reads the release back', async () => {
     const { window } = launched;
-    await window.evaluate((path) => {
-        window.location.hash = path;
-    }, INSTALL_PATH);
+    // The way in is the chart's row under Helm › Charts, which reads the repository's index itself.
+    await window.getByTestId('sidebar').getByRole('link', { name: 'Charts', exact: true }).click();
+    const row = window.getByTestId('charts-table').locator(`[data-chart="fixture/${RELEASE}"]`);
+    await expect(row).toContainText('0.1.0');
+    await row.getByRole('button', { name: `Install ${RELEASE}` }).click();
+    await expect(window).toHaveURL(new RegExp(`${INSTALL_PATH}$`));
     const page = window.getByTestId('install-chart-page');
     await expect(page.locator('.cm-content')).toContainText('greeting: hello');
     await expect(page.getByRole('textbox', { name: 'Release name' })).toHaveValue(RELEASE);

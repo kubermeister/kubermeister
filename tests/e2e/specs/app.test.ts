@@ -449,8 +449,9 @@ test('lists the cluster definitions and the seeded helm release', async () => {
     await window.getByRole('tab', { name: /Manifest/ }).click();
     await expect(page.getByTestId('release-manifest')).toContainText('demo-config');
 
+    // Charts lists what the configured repositories publish, and this run configures none.
     await sidebar.getByRole('link', { name: 'Charts', exact: true }).click();
-    await expect(window.getByTestId('charts-table').locator('[data-chart="demo"]')).toContainText('3.0.0');
+    await expect(window.getByTestId('charts-empty')).toContainText('No chart repository is configured');
 });
 
 test('shows the live manifest of a pod and of a cluster-scoped object', async () => {

@@ -146,14 +146,33 @@ Installing takes one version of a chart from a repository or registry added unde
 [**Settings › Charts**](/docs/reference/settings/#chart-repositories) and installs it as a new
 release in the namespace selected in the top bar.
 
+### Where to start
+
+There are three ways in:
+
+- **Install** on a chart's row under [**Helm › Charts**](#helm-charts), which opens the chart's
+  latest version.
+- The **Install a chart** button (a download arrow) on a repository's row under **Settings ›
+  Charts**.
+- **Install a chart…** in the command palette (`⌘K` or `Ctrl+K`).
+
+The last two open the **Install a chart** dialog. From the palette it first asks for the
+**Repository**; from a repository's row it already knows it. For a classic repository you pick the
+chart from the list its index holds, searching by name, and the install screen opens on its latest
+version. An OCI registry publishes no list of its charts, so you type the **Chart name** and the
+**Chart version**, as `helm pull oci://…` takes them. **Continue** opens the install screen. With no
+repository configured, the dialog says so and links to **Settings › Charts**.
+
 ### Helm is required
 
 The chart is rendered by the `helm` installed on your machine, Helm 3 or later, found on your login
 shell's PATH. Kubermeister runs it for `helm template` and nothing else, with an empty kubeconfig and
 a Helm home of its own, so it never reaches your cluster, your repositories or your plugins. Every
 object is then written by Kubermeister itself, under the context you are on, as any other write is.
-Without Helm the screen says **Helm is required to install a chart** and offers nothing else;
-[install Helm](https://helm.sh/docs/intro/install/) and open it again.
+Without Helm, every way in says **Helm is required to install a chart**, with a link to
+[Helm's install page](https://helm.sh/docs/intro/install/), instead of opening a screen that could
+not render the chart. The dialog's **Check again** looks for Helm again, so a Helm installed while
+Kubermeister runs is found without a restart. Nothing else in the app needs Helm.
 
 ### The values
 
@@ -170,11 +189,18 @@ The screen, **Install** _chart_, asks for three things:
 The namespace is the one selected in the top bar. Under **All namespaces** the screen says a chart
 installs into one namespace and **Review** stays off until you choose it.
 
-:::caution[`yes` is a string]
+<Figure
+  name="install-chart"
+  alt="The install screen for a chart, with the release name, the version and the chart's values in an editor."
+  caption="The values start from the chart's own values.yaml."
+/>
+
+:::caution[Known issue]
 The values are read as YAML 1.2, the way the editor checks them, so `yes`, `no`, `on` and `off` are
 strings; write `true` and `false` for booleans. Helm is handed them as JSON, so it reads them exactly
 as the editor shows them. `helm install -f` reads the same file as YAML 1.1, where `yes` is true, so
-the two can differ, including for a `yes` the chart's own `values.yaml` starts the editor with.
+the two can differ, including for a `yes` the chart's own `values.yaml` starts the editor with
+([#425](https://github.com/kubermeister/kubermeister/issues/425)).
 :::
 
 ### The review
@@ -234,23 +260,25 @@ A release installed here is one the Helm CLI reads and acts on: `helm list`, `he
 
 ## Helm charts
 
-**Helm › Charts** lists the charts your installed releases use, derived from the same release Secrets,
-because a cluster holds no chart index of its own. Each chart appears once, with Name, Repository,
-Latest version, App version and Description. It follows the namespace selection like **Releases**
-does.
+**Helm › Charts** lists the charts you can install: every chart in the index of each classic
+repository configured under **Settings › Charts**, one row per repository and chart, with Name,
+Repository, Latest version, App version and Description, all as the repository's index gives them.
+**Install** on a row opens the [install screen](#installing-a-chart) on that chart's latest version.
 
-Read the columns for what they are:
+The list is read from the copy of each index Kubermeister keeps, which is fetched when a repository
+is added or refreshed, so it does not follow the namespace or the context and makes no request while
+you browse it. A repository whose index has never been read, such as one written into the settings
+file by hand, is read the first time the list is opened; if it does not answer, its charts are left
+out, and its row under **Settings › Charts** says it was never read.
 
-- **Latest version** and **App version** come from the release that uses the chart, not from any
-  repository, so they are the installed version rather than the newest one published.
-- **Repository** always reads `—`: a release does not record where its chart came from.
-- **Description** is that release's own note, not the chart's description.
-
-There is no chart detail page and nothing on this screen installs a chart.
+An OCI registry publishes no index, so its charts are not listed here; install one from its row
+under **Settings › Charts** or from the command palette. When there is nothing to list, the screen
+says why: no repository is configured, only OCI registries are, or the repositories' indexes hold no
+charts. Each case points at **Settings › Charts**.
 
 ## Chart repositories
 
 Chart repositories can be added, refreshed and removed under **Settings › Charts**, and they live in
-app settings rather than in the cluster, so they survive a context switch. A chart version from one
-can be [installed](#installing-a-chart); the **Charts** page does not use them. See
-[settings](/docs/reference/settings/).
+app settings rather than in the cluster, so they survive a context switch. The charts of a classic
+repository are listed under [**Helm › Charts**](#helm-charts), and a chart from any of them can be
+[installed](#installing-a-chart). See [settings](/docs/reference/settings/).

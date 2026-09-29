@@ -59,8 +59,9 @@ The palette is titled **Quick actions**. Type to filter, move with `↑` and `�
 
 - **Contexts** — switch to any context in your kubeconfig;
 - **Namespaces** — switch to any namespace of the current context;
-- **Actions** — **Create resource**; **Check for updates**, which runs a check and opens Settings;
-  and **Keyboard shortcuts**, which opens the cheat sheet;
+- **Actions** — **Create resource**; **Install a chart…**, which opens the
+  [chart install dialog](/docs/operations/helm/#where-to-start); **Check for updates**, which runs a
+  check and opens Settings; and **Keyboard shortcuts**, which opens the cheat sheet;
 - every screen in the sidebar, grouped by domain, then **Settings**.
 
 ## Menus
