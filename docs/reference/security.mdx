@@ -96,6 +96,8 @@ Only one kind: the username and password of a chart repository, if you give one.
 the OS secret store — Keychain on macOS, libsecret on Linux, DPAPI on Windows — and written as
 ciphertext to `chart-credentials.json` in the app's user-data directory, readable by your user only.
 A system with no secret store is refused the password rather than having it written in the clear.
+The password is never sent over plaintext `http`: not to a repository, and not to the token server an
+OCI registry points at.
 Kubernetes credentials stay in your kubeconfig and your credential plugins.
 
 ## Build hardening
