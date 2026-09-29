@@ -75,8 +75,7 @@ export function DeepLinkHandler() {
     const accept = async (plan: Confirm, to: string) => {
         setConfirm(null);
         try {
-            await switchContext(to);
-            navigateTo(plan.path);
+            if (await switchContext(to)) navigateTo(plan.path);
         } catch (error) {
             failed(error);
         }

@@ -26,6 +26,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   permissions.
 - A file dropped on the window while the app is still starting, or after it failed to load, no longer
   replaces the app with that file.
+- Switching context or namespace with an unsaved manifest edit and choosing **Keep editing** cancels
+  the switch instead of running it on the next navigation, and moving to another tab of the same
+  object keeps the edit without asking to discard it.
 
 ## [0.9.1] - 2026-09-29
 

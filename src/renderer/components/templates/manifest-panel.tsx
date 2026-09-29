@@ -4,6 +4,7 @@ import { CheckIcon, CodeIcon, DiffIcon, DownloadIcon, EyeIcon, PencilIcon, XIcon
 import { toast } from 'sonner';
 import type { ManifestKind } from '../../../shared/k8s/manifest';
 import { YamlEditor } from '@/components/data-display/yaml-editor';
+import { isTabSwitch } from '@/lib/detail-tab';
 import { useManifestChecks } from '@/lib/manifest-diagnostics';
 import {
     AlertDialog,
@@ -127,7 +128,8 @@ export function ManifestPanel({ kind, crd, name, namespace }: ManifestPanelProps
     useRegisterManifestEdit(() => void enterEdit());
 
     const blocker = useBlocker({
-        shouldBlockFn: () => dirty,
+        // The panel is kept mounted across the object's tabs, so only leaving the object loses the edit.
+        shouldBlockFn: ({ current, next }) => dirty && !isTabSwitch(current, next),
         enableBeforeUnload: false,
         withResolver: true,
     });
