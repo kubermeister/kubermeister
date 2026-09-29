@@ -6,6 +6,7 @@ import {
     mkdtempSync,
     readFileSync,
     rmSync,
+    statSync,
     symlinkSync,
     writeFileSync,
 } from 'node:fs';
@@ -220,6 +221,38 @@ describe('settings store', () => {
         expect(again.getSettings().data.readTimeoutSec).toBe(300);
     });
 
+    it('never moves the old file over a second time, even once the settings file is gone', async () => {
+        const legacy = mergeSettings(DEFAULT_SETTINGS, {
+            session: { lastContext: 'prod' },
+            data: { readTimeoutSec: 300 },
+        });
+        writeFileSync(join(userData, 'settings.json'), JSON.stringify(legacy));
+        expect((await loadStore()).getSettings().data.readTimeoutSec).toBe(300);
+
+        // Deleting the settings file is how somebody resets it, and the old preferences stay gone.
+        rmSync(configFile);
+        rmSync(join(userData, 'state.json'));
+        const again = await loadStore();
+        expect(again.getSettings().data.readTimeoutSec).toBe(60);
+        expect(again.getSettings().session.lastContext).toBeNull();
+        expect(existsSync(configFile)).toBe(false);
+        expect(existsSync(join(userData, 'settings.json'))).toBe(true);
+    });
+
+    it('records an install already moved over, so a later reset does not bring the old file back', async () => {
+        // Moved by a version that kept no record: both files exist beside the old one.
+        const legacy = mergeSettings(DEFAULT_SETTINGS, { data: { readTimeoutSec: 300 } });
+        writeFileSync(join(userData, 'settings.json'), JSON.stringify(legacy));
+        mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        writeFileSync(configFile, JSON.stringify({ data: { refreshIntervalSec: 5 } }));
+        writeFileSync(join(userData, 'state.json'), '{}');
+        (await loadStore()).getSettings();
+
+        rmSync(configFile);
+        expect((await loadStore()).getSettings().data.readTimeoutSec).toBe(60);
+        expect(existsSync(configFile)).toBe(false);
+    });
+
     it('carries the old state over even when a settings file was written by hand before the first launch', async () => {
         const legacy = mergeSettings(DEFAULT_SETTINGS, {
             session: { lastContext: 'prod' },
@@ -249,6 +282,37 @@ describe('settings store', () => {
             data: { refreshIntervalSec: 5 },
             general: { confirmQuit: false },
         });
+    });
+
+    it('writes through a symlink whose target does not exist yet rather than replacing the link', async () => {
+        const real = join(root, 'dotfiles', 'kubermeister', 'settings.json');
+        mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        symlinkSync(real, configFile);
+        const { updateSettings } = await loadStore();
+        updateSettings({ general: { confirmQuit: false } });
+        expect(lstatSync(configFile).isSymbolicLink()).toBe(true);
+        expect(readJson(real)).toMatchObject({ general: { confirmQuit: false } });
+    });
+
+    it('follows a relative symlink through a chain of links', async () => {
+        mkdirSync(join(root, 'dotfiles'));
+        mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        symlinkSync(join('..', '..', 'dotfiles', 'link.json'), configFile);
+        symlinkSync('settings.json', join(root, 'dotfiles', 'link.json'));
+        const { updateSettings } = await loadStore();
+        updateSettings({ general: { confirmQuit: false } });
+        expect(lstatSync(configFile).isSymbolicLink()).toBe(true);
+        expect(lstatSync(join(root, 'dotfiles', 'link.json')).isSymbolicLink()).toBe(true);
+        expect(readJson(join(root, 'dotfiles', 'settings.json'))).toMatchObject({ general: { confirmQuit: false } });
+    });
+
+    it.skipIf(process.platform === 'win32')('keeps the file’s mode across a save', async () => {
+        mkdirSync(join(root, 'config', 'kubermeister'), { recursive: true });
+        writeFileSync(configFile, JSON.stringify({ network: { proxyUrl: 'http://user:pass@proxy:3128' } }));
+        chmodSync(configFile, 0o600);
+        const { updateSettings } = await loadStore();
+        updateSettings({ general: { confirmQuit: false } });
+        expect(statSync(configFile).mode & 0o777).toBe(0o600);
     });
 
     describe('a file it cannot fully read', () => {
