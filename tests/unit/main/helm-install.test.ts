@@ -480,6 +480,34 @@ describe('installRelease', () => {
         expect(hooks[0]!.last_run!.phase).toBe('Failed');
     });
 
+    it('records a hook whose create was refused as finished and failed, which the Helm CLI can read', async () => {
+        const render = chartRender();
+        render.hooks = [hook('migrate', ['pre-install'], 0, ['hook-failed'])];
+        renderMod.renderChart.mockResolvedValue({ ok: true, render });
+        const reviewId = await reviewed();
+        objects.create.mockImplementation((object: Named) => {
+            if (object.metadata.name === 'migrate') return Promise.reject(apiError(403, 'denied by a webhook'));
+            cluster.add(object.metadata.name);
+            return Promise.resolve({});
+        });
+        const result = await install.installRelease({ context: 'alpha', reviewId });
+        expect(result.status).toBe('failed');
+        expect(createdKinds()).not.toContain('ConfigMap/web');
+        // Nothing was created, so the hook-failed policy has nothing to delete.
+        expect(objects.delete).not.toHaveBeenCalledWith(
+            expect.objectContaining({ metadata: expect.objectContaining({ name: 'migrate' }) }),
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            'Background',
+        );
+        const hooks = helmReads(secret!).hooks as { last_run?: { completed_at: string; phase: string } }[];
+        // Go cannot parse an empty time, and a release recorded with one is skipped by `helm list`.
+        expect(hooks[0]!.last_run!.phase).toBe('Failed');
+        expect(Number.isNaN(Date.parse(hooks[0]!.last_run!.completed_at))).toBe(false);
+    });
+
     it('says where a release was left when the context changed mid-install, writing nothing more', async () => {
         const reviewId = await reviewed();
         objects.create.mockImplementation((object: Named) => {

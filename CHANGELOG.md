@@ -18,6 +18,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Usage charts and pod and node usage keep updating when a metrics read hangs on a cluster that never
   answers or a credential plugin waiting for a sign-in, and after a context switch they no longer
   start with a point from the cluster just left.
+- A Helm install or upgrade whose hook the cluster refuses to create leaves a release the Helm CLI can
+  still list, read and uninstall, and a rollback after a failed upgrade no longer leaves two revisions
+  marked deployed.
 - Saving a custom resource's manifest shows the saved text on its Manifest tab and the new values on its
   screens at once, instead of the text from before the save until the page was reopened.
 - A pod owned by a custom resource that shares a built-in kind's name, such as an OpenKruise
