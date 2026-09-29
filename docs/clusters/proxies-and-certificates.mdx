@@ -88,3 +88,6 @@ Changing the proxy mode, the proxy URL, the bypass list or the CA bundle ends ev
 reloads the kubeconfig, because all of them are read once, when it loads. Port forwards leave the
 top bar's list, and an open shell prints "The proxy settings changed" and `[session ended]` — the
 reason given for a CA bundle change too.
+
+The app stays on the context and namespace it was on, "All namespaces" included, as long as the
+reloaded kubeconfig still has that context.

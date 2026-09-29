@@ -444,6 +444,8 @@ describe('registerHandlers', () => {
             const after = changed({ network: { proxyMode: 'off' } });
             expect(applySettingsChange(DEFAULT_SETTINGS, after)).toEqual({ reconnected: true });
             expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
+            // The route changed, not the cluster, so the context and namespace in use stay.
+            expect(client.reloadKubeConfig).toHaveBeenCalledWith({ keepSelection: true });
         });
 
         it('takes in an edit to the file and tells every window', () => {
@@ -468,6 +470,7 @@ describe('registerHandlers', () => {
 
         await invoke('settings.set', { network: { proxyMode: 'manual', proxyUrl: 'http://proxy:3128' } });
         expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(client.reloadKubeConfig).toHaveBeenCalledWith({ keepSelection: true });
         // Every stream was made on the old route to the cluster.
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
         expect(samplerMod.resetHistory).toHaveBeenCalledOnce();
@@ -477,7 +480,7 @@ describe('registerHandlers', () => {
         dialog.showOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/etc/corp/ca.pem'] });
         await expect(invoke('caBundle.pick', {})).resolves.toEqual({ path: '/etc/corp/ca.pem' });
         expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: '/etc/corp/ca.pem' } });
-        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(client.reloadKubeConfig).toHaveBeenCalledWith({ keepSelection: true });
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
     });
 
@@ -491,7 +494,7 @@ describe('registerHandlers', () => {
     it('clears the CA bundle and reloads', async () => {
         await expect(invoke('caBundle.clear', {})).resolves.toMatchObject({ network: { caBundlePath: null } });
         expect(store.updateSettings).toHaveBeenCalledWith({ network: { caBundlePath: null } });
-        expect(client.reloadKubeConfig).toHaveBeenCalledOnce();
+        expect(client.reloadKubeConfig).toHaveBeenCalledWith({ keepSelection: true });
         expect(streamsMod.endAllStreams).toHaveBeenCalledWith('The proxy settings changed');
     });
 

@@ -114,6 +114,66 @@ describe('kubeConfig', () => {
         expect(kubeConfig()).not.toBe(first);
         expect(getActiveNamespace()).toBe('team-a');
     });
+
+    it('keeps the context and namespace in use across a reload that keeps the selection', async () => {
+        withSettings({ restoreOnLaunch: false });
+        const { kubeConfig, reloadKubeConfig, setActiveNamespace, getActiveNamespace } = await loadClient();
+        const first = kubeConfig();
+        first.setCurrentContext('beta');
+        setActiveNamespace('manual');
+        reloadKubeConfig({ keepSelection: true });
+        expect(kubeConfig()).not.toBe(first);
+        expect(kubeConfig().getCurrentContext()).toBe('beta');
+        expect(getActiveNamespace()).toBe('manual');
+    });
+
+    it('keeps "All namespaces" across such a reload rather than taking the context default', async () => {
+        withSettings({ lastContext: 'alpha', lastNamespace: null });
+        const { kubeConfig, reloadKubeConfig, setActiveNamespace, getActiveNamespace } = await loadClient();
+        kubeConfig();
+        setActiveNamespace(null);
+        reloadKubeConfig({ keepSelection: true });
+        expect(kubeConfig().getCurrentContext()).toBe('alpha');
+        expect(getActiveNamespace()).toBeNull();
+    });
+
+    it('keeps the selection across two such reloads with no load between them', async () => {
+        withSettings({ restoreOnLaunch: false });
+        const { kubeConfig, reloadKubeConfig, setActiveNamespace, getActiveNamespace } = await loadClient();
+        kubeConfig().setCurrentContext('beta');
+        setActiveNamespace('manual');
+        reloadKubeConfig({ keepSelection: true });
+        reloadKubeConfig({ keepSelection: true });
+        expect(kubeConfig().getCurrentContext()).toBe('beta');
+        expect(getActiveNamespace()).toBe('manual');
+    });
+
+    it('drops a kept selection when a later reload does not keep it', async () => {
+        withSettings({ restoreOnLaunch: false });
+        const { kubeConfig, reloadKubeConfig, getActiveNamespace } = await loadClient();
+        kubeConfig().setCurrentContext('beta');
+        reloadKubeConfig({ keepSelection: true });
+        reloadKubeConfig();
+        expect(kubeConfig().getCurrentContext()).toBe('alpha');
+        expect(getActiveNamespace()).toBe('team-a');
+    });
+
+    it('falls back to the launch selection when the kept context has gone or nothing was loaded', async () => {
+        withSettings({ restoreOnLaunch: false });
+        const { kubeConfig, reloadKubeConfig, getActiveNamespace } = await loadClient();
+        // A context the file no longer holds once it is read again.
+        const loaded = kubeConfig();
+        loaded.contexts.push({ name: 'gone', cluster: 'alpha-cluster', user: 'alpha-user' });
+        loaded.setCurrentContext('gone');
+        reloadKubeConfig({ keepSelection: true });
+        expect(kubeConfig().getCurrentContext()).toBe('alpha');
+        expect(getActiveNamespace()).toBe('team-a');
+
+        const fresh = await loadClient();
+        fresh.reloadKubeConfig({ keepSelection: true });
+        expect(fresh.kubeConfig().getCurrentContext()).toBe('alpha');
+        expect(fresh.getActiveNamespace()).toBe('team-a');
+    });
 });
 
 describe('the loaded config', () => {

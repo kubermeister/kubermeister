@@ -40,6 +40,13 @@ import { getSettings } from '../settings/store.js';
 let kc: KubeConfig | null = null;
 let apiCache: ApiBundle | null = null;
 let activeNamespace: string | null = null;
+/** The selection a reload was asked to keep, applied by the next load in place of the launch-time one. */
+let keptSelection: KeptSelection | null = null;
+
+interface KeptSelection {
+    context: string;
+    namespace: string | null;
+}
 
 export interface ApiBundle {
     core: CoreV1Api;
@@ -80,6 +87,18 @@ function applyStartupSelection(next: KubeConfig): string | null {
         }
     }
     return namespaceOrNull(next.getContextObject(next.getCurrentContext())?.namespace);
+}
+
+/**
+ * Point a reloaded kubeconfig back at the selection the app was on, when a reload asked to keep one
+ * and its context is still in the file. Answers whether it did; the launch-time choice applies
+ * otherwise.
+ */
+function applyKeptSelection(next: KubeConfig, kept: KeptSelection | null): boolean {
+    if (!kept || !next.getContextObject(kept.context)) return false;
+    next.setCurrentContext(kept.context);
+    activeNamespace = kept.namespace;
+    return true;
 }
 
 /**
@@ -125,7 +144,10 @@ function loadKubeConfig(): KubeConfig {
 export function kubeConfig(): KubeConfig {
     if (!kc) {
         const next = loadKubeConfig();
-        activeNamespace = applyStartupSelection(next);
+        // Taken only once a load succeeds, so a kubeconfig that failed to load and is retried still
+        // comes back where the app was.
+        if (!applyKeptSelection(next, keptSelection)) activeNamespace = applyStartupSelection(next);
+        keptSelection = null;
         kc = next;
     }
     return kc;
@@ -234,8 +256,17 @@ export function invalidateApis(): void {
     apiCache = null;
 }
 
-/** Forget the loaded kubeconfig so the next access re-reads it from disk. */
-export function reloadKubeConfig(): void {
+/**
+ * Forget the loaded kubeconfig so the next access re-reads it from disk. A reload that changes only
+ * the route to the cluster (the proxy, the CA bundle) passes `keepSelection`, so the app stays on
+ * the context and namespace it is on rather than going back to the launch-time choice; a different
+ * file is a different set of contexts, which starts over.
+ */
+export function reloadKubeConfig({ keepSelection = false }: { keepSelection?: boolean } = {}): void {
+    const current = kc?.getCurrentContext();
+    if (!keepSelection) keptSelection = null;
+    // With nothing loaded since the last reload, the selection that one kept is still the one in use.
+    else if (kc) keptSelection = current ? { context: current, namespace: activeNamespace } : null;
     kc = null;
     apiCache = null;
     activeNamespace = null;
