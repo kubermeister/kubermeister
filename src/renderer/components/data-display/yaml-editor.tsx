@@ -4,13 +4,19 @@ import { indentWithTab } from '@codemirror/commands';
 import { yaml } from '@codemirror/lang-yaml';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
-import { Compartment, EditorState } from '@codemirror/state';
+import { Annotation, Compartment, EditorState } from '@codemirror/state';
 import { EditorView, hoverTooltip, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import { basicSetup } from 'codemirror';
 import { completionsAt, describeAt, type SchemaLens } from '@/lib/manifest-completion';
 import type { EditorDiagnostics } from '@/lib/manifest-diagnostics';
 import { cn } from '@/lib/utils';
+
+/**
+ * Marks the transaction that loads a new `value` from the parent. It is the parent's own text, so
+ * reporting it back would turn a refetch into an edit nobody typed.
+ */
+const fromValue = Annotation.define<true>();
 
 /**
  * The editor chrome expressed in the app's own CSS tokens, so it follows the theme toggle without
@@ -202,7 +208,9 @@ export function YamlEditor({
                 readOnlyCompartment.current.of(readOnlyExtensions(initial.readOnly)),
                 EditorView.contentAttributes.of({ 'aria-label': initial.ariaLabel ?? 'Code editor' }),
                 EditorView.updateListener.of((update) => {
-                    if (update.docChanged) onChangeRef.current(update.state.doc.toString());
+                    if (!update.docChanged) return;
+                    if (update.transactions.some((transaction) => transaction.annotation(fromValue))) return;
+                    onChangeRef.current(update.state.doc.toString());
                 }),
             ],
         });
@@ -221,7 +229,8 @@ export function YamlEditor({
         const view = viewRef.current;
         if (!view) return;
         const current = view.state.doc.toString();
-        if (current !== value) view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
+        if (current === value) return;
+        view.dispatch({ changes: { from: 0, to: current.length, insert: value }, annotations: fromValue.of(true) });
     }, [value]);
 
     useEffect(() => {

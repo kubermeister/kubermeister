@@ -59,6 +59,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   and a shell that fails to start, such as on an image with no `/bin/sh`, prints the cluster's reason.
 - A node's Describe tab shows the events the kubelet records about it, such as NodeReady, NodeNotReady,
   Rebooted and the pressure conditions.
+- The Manifest tab follows the object after every refresh or scale instead of stopping at the first,
+  and a change made elsewhere while editing no longer counts as an unsaved edit of yours.
 
 ## [0.9.1] - 2026-09-29
 
