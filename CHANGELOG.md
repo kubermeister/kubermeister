@@ -21,6 +21,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A port forward closes a connection on your machine when the pod side closes it, so a request after
   a server's idle timeout no longer hangs, and a connection to a pod port nothing listens on is
   reset with the cluster's reason shown on the forward instead of hanging.
+- Installing, upgrading and rolling back a Helm release reads the chart's objects the way Helm does, so
+  a file mode written `0644` is octal instead of being refused, and `0400` no longer applies the wrong
+  permissions.
 
 ## [0.9.1] - 2026-09-29
 

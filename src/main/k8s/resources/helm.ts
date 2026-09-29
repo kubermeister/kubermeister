@@ -1,6 +1,6 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { ApiException, type KubernetesObject, type V1Secret } from '@kubernetes/client-node';
-import { dump as dumpYaml, loadAll as loadAllYaml } from 'js-yaml';
+import { dump as dumpYaml } from 'js-yaml';
 import type {
     Release,
     ReleaseRevision,
@@ -12,6 +12,7 @@ import { isClusterScopedKindName } from '../../../shared/k8s/registry.js';
 import { apis, listItems } from '../client.js';
 import { K8sError, withK8s } from '../errors.js';
 import { ago } from '../format.js';
+import { loadAllRenderedYaml } from '../yaml.js';
 import { assertContext } from './write.js';
 
 /*
@@ -238,7 +239,7 @@ export function manifestObjects(manifest: string | undefined, namespace: string)
     if (!manifest?.trim()) return [];
     let documents: unknown[];
     try {
-        documents = loadAllYaml(manifest) as unknown[];
+        documents = loadAllRenderedYaml(manifest);
     } catch {
         // A manifest we cannot read is one we must not act on: better to do nothing than to guess.
         return [];

@@ -752,6 +752,10 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   hooks (events, weight and delete policy as written; Helm applies `before-hook-creation` itself when
   there is none) and CRDs from a chart's or subchart's `crds/`, plus the objects' `manifest` as a
   release Secret stores it, or an error carrying Helm's own sentence (`helmErrorMessage`).
+- **Rendered and stored manifests are read as the Helm CLI reads them** (`loadRenderedYaml`,
+  `loadAllRenderedYaml` in `src/main/k8s/yaml.ts`): go-yaml v2's YAML 1.1 resolution, so `0644` is
+  octal and `yes` is true, but `1:20` and `2024-01-01` stay strings, as they do in go-yaml. A manifest
+  typed in the editor is still YAML 1.2.
 - **Capabilities come from the live cluster** through the app's own client
   (`clusterCapabilities`, `src/main/k8s/capabilities.ts`): `--kube-version` is `/version`'s
   `gitVersion` and `--api-versions` is the set Helm's discovery builds, every group-version plus
