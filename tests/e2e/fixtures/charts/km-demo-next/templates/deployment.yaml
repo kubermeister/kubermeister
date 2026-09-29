@@ -1,0 +1,28 @@
+{{- /*
+  No replicas: 0.2.0 leaves them to whoever scales the Deployment, as a chart does for an autoscaler,
+  so an upgrade must keep the count somebody else set rather than put it back to one.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-web
+    spec:
+      containers:
+        - name: web
+          image: busybox:1.36
+          command: ['sh', '-c', 'while true; do sleep 5; done']
+          env:
+            - name: KM_VERSION
+              value: '0.2.0'
+          resources:
+            limits:
+              cpu: 50m
+              memory: 16Mi

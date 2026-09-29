@@ -10,7 +10,8 @@ import { closeApp, launchApp, type LaunchedApp } from '../harness/launch';
 
 /*
  * Upgrading a release end to end. The Helm CLI installs 0.1.0 of the fixture chart, so the release
- * the app upgrades is one Helm wrote, then the app upgrades it to 0.2.0 from a fixture repository
+ * the app upgrades is one Helm wrote, another manager scales and annotates its Deployment, then the app
+ * upgrades it to 0.2.0 from a fixture repository
  * serving both: its own `helm template`, its own write path, into the k3s cluster. The Helm CLI then
  * reads the new revision back and uninstalls the release, which is the proof that the history and the
  * objects are ones Helm recognises as its own.
@@ -94,6 +95,19 @@ test.beforeAll(async () => {
         '--timeout',
         '90s',
     ]);
+    // Somebody other than Helm touches the live Deployment: `kubectl scale` takes the replicas, as an
+    // autoscaler would, and a tool adds an annotation under a field manager of its own. An upgrade
+    // that replaced the object would put the replicas back to one and drop the annotation.
+    clusterKubectl(['-n', NAMESPACE, 'scale', 'deployment', `${RELEASE}-web`, '--replicas=2']);
+    clusterKubectl([
+        '-n',
+        NAMESPACE,
+        'annotate',
+        'deployment',
+        `${RELEASE}-web`,
+        '--field-manager=km-e2e-tool',
+        'example.test/owner=someone-else',
+    ]);
 });
 
 test.afterAll(async () => {
@@ -142,8 +156,18 @@ test('upgrades a release Helm installed through a reviewed diff, and the Helm CL
     await expect(settings.locator('[data-diff="added"]')).toContainText(['greeting: upgraded', "upgraded: 'true'"]);
     await expect(review.locator(`[data-object="ConfigMap/${RELEASE}-extra"]`)).toHaveAttribute('data-change', 'create');
     await expect(
-        review.getByTestId('upgrade-review-removed').locator(`[data-object="Deployment/${RELEASE}-web"]`),
+        review.getByTestId('upgrade-review-removed').locator(`[data-object="ConfigMap/${RELEASE}-legacy"]`),
     ).toContainText('Deleted');
+    // The Deployment's diff is the dry run of the same apply: the new variable, and nothing about the
+    // replicas or the annotation another manager owns.
+    const web = review.locator(`[data-object="Deployment/${RELEASE}-web"]`);
+    await expect(web).toHaveAttribute('data-change', 'update');
+    await expect(web).toHaveAttribute('data-check', 'passed');
+    await web.getByRole('button').click();
+    await expect(web.locator('[data-diff="added"]').first()).toBeVisible();
+    await expect(web.locator('[data-diff="added"]', { hasText: 'KM_VERSION' })).toHaveCount(1);
+    await expect(web.locator('[data-diff="removed"]', { hasText: 'replicas' })).toHaveCount(0);
+    await expect(web.locator('[data-diff="removed"]', { hasText: 'example.test/owner' })).toHaveCount(0);
     await expect(review.locator(`[data-object="Job/${RELEASE}-migrate"]`)).toContainText('pre-upgrade');
 
     await page.getByRole('button', { name: 'Upgrade to revision 2' }).click();
@@ -157,12 +181,27 @@ test('upgrades a release Helm installed through a reviewed diff, and the Helm CL
     // `enabled` was never given, so it is the chart's own default, which Helm reads from its values.yaml
     // as YAML 1.1: `yes` is true, exactly as `helm upgrade` renders it.
     expect(data.data).toMatchObject({ greeting: 'upgraded', enabled: 'true', upgraded: 'true' });
+    // 0.1.0 rendered `seenBefore` and 0.2.0 does not; only Helm owned it, so the apply removed it.
+    expect(data.data).not.toHaveProperty('seenBefore');
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-extra`, '-o', 'name'])).toContain(
         `${RELEASE}-extra`,
     );
     await expect
-        .poll(() => clusterKubectl(['-n', NAMESPACE, 'get', 'deployment', `${RELEASE}-web`, '--ignore-not-found']))
+        .poll(() => clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-legacy`, '--ignore-not-found']))
         .toBe('');
+    // What another manager set survives the upgrade, beside what the new render changed.
+    const deployment = JSON.parse(
+        clusterKubectl(['-n', NAMESPACE, 'get', 'deployment', `${RELEASE}-web`, '-o', 'json', '--show-managed-fields']),
+    ) as {
+        metadata: { annotations: Record<string, string>; managedFields: { manager: string; operation: string }[] };
+        spec: { replicas: number; template: { spec: { containers: { env?: { name: string; value: string }[] }[] } } };
+    };
+    expect(deployment.spec.replicas).toBe(2);
+    expect(deployment.metadata.annotations['example.test/owner']).toBe('someone-else');
+    expect(deployment.spec.template.spec.containers[0]!.env).toEqual([{ name: 'KM_VERSION', value: '0.2.0' }]);
+    expect(deployment.metadata.managedFields).toContainEqual(
+        expect.objectContaining({ manager: 'helm', operation: 'Apply' }),
+    );
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'job', `${RELEASE}-migrate`, '--ignore-not-found'])).toBe('');
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-upgraded`, '-o', 'name'])).toContain(
         `${RELEASE}-upgraded`,
@@ -190,5 +229,6 @@ test('upgrades a release Helm installed through a reviewed diff, and the Helm CL
     const uninstalled = helm(['uninstall', RELEASE, '--namespace', NAMESPACE, '--wait', '--timeout', '60s']);
     expect(uninstalled).not.toContain('not owned by this release');
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-extra`, '--ignore-not-found'])).toBe('');
+    expect(clusterKubectl(['-n', NAMESPACE, 'get', 'deployment', `${RELEASE}-web`, '--ignore-not-found'])).toBe('');
     expect(clusterKubectl(['-n', NAMESPACE, 'get', 'configmap', `${RELEASE}-settings`, '--ignore-not-found'])).toBe('');
 });

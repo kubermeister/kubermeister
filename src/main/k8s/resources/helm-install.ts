@@ -23,13 +23,13 @@ import { K8sError, toK8sError, withK8s } from '../errors.js';
 import {
     hasRelease,
     inReleaseNamespace,
-    withHelmOwnership,
     releaseSecretBody,
     releaseSecretName,
     type HelmHookRecord,
     type HelmReleaseData,
     type RenderedObject,
 } from './helm.js';
+import { applyForRelease } from './helm-apply.js';
 import { assertContext } from './write.js';
 
 /*
@@ -360,6 +360,7 @@ export function firstRevision(
         config: entry.values,
         manifest: entry.render.manifest,
         hooks,
+        apply_method: 'ssa',
     };
 }
 
@@ -567,9 +568,8 @@ export async function installRelease(input: ReleaseInstallInput): Promise<Releas
     try {
         await runHooks(INSTALL_OP, context, hooksFor(entry.render.hooks, 'pre-install'), runs);
         for (const { object } of entry.render.objects) {
-            await step(INSTALL_OP, context, () =>
-                apis().objects.create(withHelmOwnership(structuredClone(object), name, namespace)),
-            );
+            // Applied server-side as Helm, as Helm 4 installs, so a later upgrade's apply owns what this wrote.
+            await step(INSTALL_OP, context, () => applyForRelease(object, name, namespace));
         }
         await runHooks(INSTALL_OP, context, hooksFor(entry.render.hooks, 'post-install'), runs);
         await write({

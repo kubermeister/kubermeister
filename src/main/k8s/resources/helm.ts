@@ -39,6 +39,8 @@ export interface HelmReleaseData {
     /** The rendered manifests of this revision, as one multi-document YAML string. */
     manifest?: string;
     hooks?: HelmHookRecord[];
+    /** How the objects were written, as Helm 4 records it; absent means client-side, as Helm reads it. */
+    apply_method?: 'ssa' | 'csa';
 }
 
 /** One hook as a release records it, in Helm's own field names. */

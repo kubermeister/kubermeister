@@ -6,7 +6,7 @@ import { ApiException, type V1Secret } from '@kubernetes/client-node';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { gzipOf } from './chart-archive-fixture';
 
-const objects = { create: vi.fn(), read: vi.fn(), delete: vi.fn(), replace: vi.fn() };
+const objects = { create: vi.fn(), read: vi.fn(), delete: vi.fn(), replace: vi.fn(), patch: vi.fn() };
 const core = {
     listNamespacedSecret: vi.fn(),
     createNamespacedSecret: vi.fn(),
@@ -168,7 +168,85 @@ const OWNED = {
 
 let secrets: Map<string, V1Secret>;
 let cluster: Map<string, Obj>;
+/** Who owns each field of each object, as `manager/operation`, which is what server-side apply reads. */
+let owners: Map<string, Map<string, string>>;
 let log: string[];
+
+const SEP = '\u0000';
+/** The fields an apply can own: everything but identity, bookkeeping and status. */
+function leaves(object: Obj): Map<string, unknown> {
+    const out = new Map<string, unknown>();
+    const walk = (value: unknown, path: string[]) => {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            for (const [key, child] of Object.entries(value)) walk(child, [...path, key]);
+        } else out.set(path.join(SEP), value);
+    };
+    const { metadata, apiVersion: _a, kind: _k, status: _s, ...rest } = structuredClone(object);
+    walk({ labels: metadata.labels, annotations: metadata.annotations }, ['metadata']);
+    walk(rest, []);
+    for (const key of [...out.keys()]) if (out.get(key) === undefined) out.delete(key);
+    return out;
+}
+
+function setPath(object: Record<string, unknown>, path: string, value: unknown): void {
+    const keys = path.split(SEP);
+    let at = object;
+    for (const key of keys.slice(0, -1)) at = (at[key] ??= {}) as Record<string, unknown>;
+    at[keys[keys.length - 1]!] = value;
+}
+
+function unsetPath(object: Record<string, unknown>, path: string): void {
+    const keys = path.split(SEP);
+    let at: Record<string, unknown> | undefined = object;
+    for (const key of keys.slice(0, -1)) at = at?.[key] as Record<string, unknown> | undefined;
+    if (at) delete at[keys[keys.length - 1]!];
+}
+
+/** The managed fields a read shows, one entry per manager and operation. */
+function managedFields(name: string) {
+    const byManager = new Map<string, Record<string, unknown>>();
+    for (const [path, owner] of owners.get(name) ?? []) {
+        const fields = byManager.get(owner) ?? {};
+        setPath(
+            fields,
+            path
+                .split(SEP)
+                .map((key) => `f:${key}`)
+                .join(SEP),
+            {},
+        );
+        byManager.set(owner, fields);
+    }
+    return [...byManager].map(([owner, fieldsV1]) => {
+        const [manager, operation] = owner.split('/');
+        return { manager, operation, apiVersion: 'v1', fieldsType: 'FieldsV1', fieldsV1 };
+    });
+}
+
+const conflictWith = (conflicts: { field: string; manager: string }[]) =>
+    new ApiException(
+        409,
+        'Conflict',
+        {
+            kind: 'Status',
+            reason: 'Conflict',
+            message: `Apply failed with ${conflicts.length} conflict(s)`,
+            details: {
+                causes: conflicts.map(({ field, manager }) => ({
+                    type: 'FieldManagerConflict',
+                    message: `conflict with "${manager}" using v1`,
+                    field,
+                })),
+            },
+        },
+        {},
+    );
+
+/** Give one field of a live object to another manager, with the value that manager wrote. */
+function ownedBy(name: string, path: string[], value: unknown, owner: string): void {
+    setPath(cluster.get(name)! as unknown as Record<string, unknown>, path.join(SEP), value);
+    owners.get(name)!.set(path.join(SEP), owner);
+}
 
 /** What the cluster holds under a name, as a read of it answers: owned, versioned, with a uid. */
 function live(object: Obj): Obj {
@@ -201,10 +279,14 @@ beforeEach(() => {
     capabilitiesMod.clusterCapabilities.mockReset().mockResolvedValue({ kubeVersion: 'v1.31.0', apiVersions: ['v1'] });
     secrets = new Map();
     cluster = new Map();
+    owners = new Map();
     log = [];
     seed([revision(1, 'superseded'), revision(2, 'deployed')]);
+    // Installed by Helm 4, which applies server-side, so Helm's apply owns every field it wrote.
     for (const object of helm.manifestObjects(PREVIOUS_MANIFEST, 'team-a')) {
-        cluster.set(object.metadata.name, live(object as Obj));
+        const held = live(object as Obj);
+        cluster.set(object.metadata.name, held);
+        owners.set(object.metadata.name, new Map([...leaves(held).keys()].map((path) => [path, 'helm/Apply'])));
     }
 
     core.listNamespacedSecret.mockImplementation(() => Promise.resolve({ items: [...secrets.values()] }));
@@ -229,8 +311,66 @@ beforeEach(() => {
         if (!found) return Promise.reject(apiError(404));
         if (object.kind === 'Job')
             return Promise.resolve({ ...found, status: { conditions: [{ type: 'Complete', status: 'True' }] } });
-        return Promise.resolve(structuredClone(found));
+        const read = structuredClone(found);
+        return Promise.resolve({
+            ...read,
+            metadata: { ...read.metadata, managedFields: managedFields(object.metadata.name) },
+        });
     });
+    // Server-side apply, as the API server does it for the fields modelled here: a field another manager
+    // owns with another value is a conflict unless forced, and a field only this manager owned that the
+    // applied object leaves out is removed. A merge patch is the ownership move, which rewrites owners.
+    objects.patch.mockImplementation(
+        (object: Obj, _pretty?: string, dryRun?: string, manager?: string, force?: boolean, strategy?: string) => {
+            const name = object.metadata.name;
+            const found = cluster.get(name);
+            if (strategy === 'application/merge-patch+json') {
+                if (!found) return Promise.reject(apiError(404));
+                if (object.metadata.resourceVersion !== found.metadata.resourceVersion) {
+                    return Promise.reject(apiError(409));
+                }
+                log.push(`own ${object.kind} ${name}`);
+                const own = owners.get(name)!;
+                for (const [path, owner] of own) if (owner === 'helm/Update') own.set(path, 'helm/Apply');
+                return Promise.resolve(found);
+            }
+            const me = `${manager}/Apply`;
+            const own = new Map(owners.get(name) ?? []);
+            const next = (found
+                ? structuredClone(found)
+                : {
+                      apiVersion: object.apiVersion,
+                      kind: object.kind,
+                      metadata: { name, uid: 'new' },
+                  }) as unknown as Record<string, unknown>;
+            const wanted = leaves(object);
+            const held = found ? leaves(found) : new Map<string, unknown>();
+            const conflicts = [...wanted]
+                .filter(([path, value]) => {
+                    const owner = own.get(path);
+                    return owner && owner !== me && held.get(path) !== value;
+                })
+                .map(([path]) => ({ field: `.${path.split(SEP).join('.')}`, manager: own.get(path)!.split('/')[0]! }));
+            if (conflicts.length > 0 && !force) return Promise.reject(conflictWith(conflicts));
+            for (const [path, owner] of [...own]) {
+                if (owner === me && !wanted.has(path)) {
+                    unsetPath(next, path);
+                    own.delete(path);
+                }
+            }
+            for (const [path, value] of wanted) {
+                setPath(next, path, value);
+                own.set(path, me);
+            }
+            if (!dryRun) {
+                log.push(`apply ${object.kind} ${name}`);
+                const stored = next as unknown as Obj;
+                cluster.set(name, { ...stored, metadata: { ...stored.metadata, resourceVersion: '11' } });
+                owners.set(name, own);
+            }
+            return Promise.resolve(next);
+        },
+    );
     objects.create.mockImplementation((object: Obj, _pretty?: string, dryRun?: string) => {
         if (cluster.has(object.metadata.name)) return Promise.reject(apiError(409));
         const made = { ...structuredClone(object), metadata: { ...object.metadata, uid: 'new', resourceVersion: '1' } };
@@ -252,6 +392,7 @@ beforeEach(() => {
         return Promise.resolve(next);
     });
     objects.delete.mockImplementation((object: Obj) => {
+        owners.delete(object.metadata.name);
         if (!cluster.delete(object.metadata.name)) return Promise.reject(apiError(404));
         log.push(`delete ${object.kind} ${object.metadata.name}`);
         return Promise.resolve({});
@@ -339,23 +480,61 @@ describe('reviewUpgrade', () => {
         }
     });
 
-    it('dry-runs an update as the write will send it: the version it read, and Helm’s ownership', async () => {
+    it('dry-runs the apply the upgrade sends: Helm’s manager, Helm’s ownership, no force', async () => {
         await upgrade.reviewUpgrade(INPUT);
-        const [sent, , dryRun] = objects.replace.mock.calls.find(
-            ([one]) => (one as Obj).metadata.name === 'web-settings',
-        )!;
-        expect(dryRun).toBe('All');
-        expect(sent).toMatchObject({
-            metadata: { name: 'web-settings', namespace: 'team-a', resourceVersion: '10', ...OWNED },
-            data: { greeting: 'hi' },
-        });
-        const [created, , createDryRun] = objects.create.mock.calls.find(
-            ([one]) => (one as Obj).metadata.name === 'web-extra',
-        )!;
-        expect(createDryRun).toBe('All');
-        expect(created).toMatchObject({ metadata: OWNED });
+        const applied = objects.patch.mock.calls.filter(
+            ([, , , , , strategy]) => strategy === 'application/apply-patch+yaml',
+        );
+        expect(applied.map(([one]) => (one as Obj).metadata.name)).toEqual(['web-settings', 'web-same', 'web-extra']);
+        for (const [sent, pretty, dryRun, manager, force] of applied) {
+            expect([pretty, dryRun, manager, force]).toEqual([undefined, 'All', 'helm', false]);
+            // The whole object as rendered, stamped, and with no version: an apply is not a replace.
+            expect(sent).toMatchObject({ metadata: { namespace: 'team-a', ...OWNED } });
+            expect((sent as Obj).metadata.resourceVersion).toBeUndefined();
+        }
+        expect(objects.replace).not.toHaveBeenCalled();
         // An upgrade installs no CRDs, so none is checked.
         expect(objects.create.mock.calls.some(([one]) => (one as Obj).kind === 'CustomResourceDefinition')).toBe(false);
+        expect(log).toEqual([]);
+    });
+
+    it('keeps in the diff what another manager owns, and shows a field Helm alone set going', async () => {
+        // An autoscaler's replicas, in miniature: a field the chart does not render, owned elsewhere.
+        ownedBy('web-settings', ['data', 'scaledBy'], 'hpa', 'kube-controller-manager/Update');
+        // A field the previous revision rendered and this one does not, which only Helm owns.
+        ownedBy('web-same', ['data', 'dropped'], 'soon', 'helm/Apply');
+        const outcome = await upgrade.reviewUpgrade(INPUT);
+        if (!outcome.rendered) throw new Error('expected a review');
+        const byName = Object.fromEntries(outcome.review.objects.map((one) => [one.name, one]));
+        expect(byName['web-settings']!.next).toContain('scaledBy: hpa');
+        expect(byName['web-same']).toMatchObject({ change: 'update' });
+        expect(byName['web-same']!.live).toContain('dropped: soon');
+        expect(byName['web-same']!.next).not.toContain('dropped');
+    });
+
+    it('refuses a field another manager set to another value, naming the field and the manager', async () => {
+        ownedBy('web-settings', ['data', 'greeting'], 'edited by hand', 'kubectl-edit/Update');
+        const outcome = await upgrade.reviewUpgrade(INPUT);
+        if (!outcome.rendered) throw new Error('expected a review');
+        const settings = outcome.review.objects.find((one) => one.name === 'web-settings')!;
+        expect(settings.check).toEqual({
+            state: 'failed',
+            message: expect.stringMatching(
+                /^ConfigMap "web-settings" in team-a: \.data\.greeting is managed by "kubectl-edit"\./,
+            ),
+        });
+        expect(settings.live).toContain('edited by hand');
+    });
+
+    it('reviews a release Helm wrote client-side as its own, past conflicts with nobody but Helm', async () => {
+        // Helm 3, or Helm 4 with --server-side=false: every field is Helm's, through an update.
+        for (const own of owners.values()) for (const path of own.keys()) own.set(path, 'helm/Update');
+        const outcome = await upgrade.reviewUpgrade(INPUT);
+        if (!outcome.rendered) throw new Error('expected a review');
+        expect(outcome.review.objects.find((one) => one.name === 'web-settings')).toMatchObject({
+            change: 'update',
+            check: { state: 'passed' },
+        });
         expect(log).toEqual([]);
     });
 
@@ -396,7 +575,7 @@ describe('reviewUpgrade', () => {
     });
 
     it('carries a refusal of the dry run onto its object, with the rendered object in place of an answer', async () => {
-        objects.replace.mockImplementation((object: Obj) =>
+        objects.patch.mockImplementation((object: Obj) =>
             object.metadata.name === 'web-settings'
                 ? Promise.reject(apiError(422, 'ConfigMap "web-settings" is invalid: data: Invalid value'))
                 : Promise.resolve(object),
@@ -404,7 +583,7 @@ describe('reviewUpgrade', () => {
         const outcome = await upgrade.reviewUpgrade(INPUT);
         if (!outcome.rendered) throw new Error('expected a review');
         const settings = outcome.review.objects.find((one) => one.name === 'web-settings')!;
-        expect(settings.check.state).toBe('failed');
+        expect(settings.check).toMatchObject({ state: 'failed', message: expect.stringContaining('Invalid value') });
         expect(settings.next).toContain('greeting: hi');
     });
 
@@ -450,21 +629,25 @@ async function reviewed() {
 describe('upgradeRelease', () => {
     it('writes in Helm’s order and records the new revision deployed over a superseded one', async () => {
         const review = await reviewed();
+        objects.patch.mockClear();
         const result = await upgrade.upgradeRelease({ context: 'alpha', reviewId: review.reviewId });
         expect(result).toEqual({ name: 'web', namespace: 'team-a', revision: 3, status: 'deployed', message: null });
         expect(log).toEqual([
             'secret sh.helm.release.v1.web.v3 pending-upgrade',
             'create Job migrate',
             'delete Job migrate',
-            'replace ConfigMap web-settings',
-            // Unchanged by the render, so not written: a field somebody set on it since stays.
-            'create ConfigMap web-extra',
+            // Every rendered object is applied, the unchanged one too, as Helm applies them all.
+            'apply ConfigMap web-settings',
+            'apply ConfigMap web-same',
+            'apply ConfigMap web-extra',
             'delete ConfigMap web-old',
             'create Job notify',
             'delete Job notify',
             'secret sh.helm.release.v1.web.v2 superseded',
             'secret sh.helm.release.v1.web.v3 deployed',
         ]);
+        for (const call of objects.patch.mock.calls)
+            expect(call.slice(2)).toEqual([undefined, 'helm', false, 'application/apply-patch+yaml']);
         // Kept by the chart's own annotation, and left where it is.
         expect(cluster.has('web-kept')).toBe(true);
         // Every object carries the ownership Helm checks before it will touch one.
@@ -472,12 +655,47 @@ describe('upgradeRelease', () => {
         expect(cluster.get('web-settings')).toMatchObject({ metadata: OWNED, data: { greeting: 'hi' } });
     });
 
-    it('recreates an object the review found unchanged if it has gone since', async () => {
+    it('keeps what another manager set and removes what Helm alone set and the render dropped', async () => {
+        ownedBy('web-settings', ['data', 'scaledBy'], 'hpa', 'kube-controller-manager/Update');
+        ownedBy('web-settings', ['metadata', 'annotations', 'tool.example/seen'], 'yes', 'kubectl-annotate/Update');
+        ownedBy('web-same', ['data', 'dropped'], 'soon', 'helm/Apply');
         const review = await reviewed();
-        cluster.delete('web-same');
         await upgrade.upgradeRelease({ context: 'alpha', reviewId: review.reviewId });
-        expect(log).toContain('create ConfigMap web-same');
-        expect(cluster.get('web-same')).toMatchObject({ metadata: OWNED });
+        expect(cluster.get('web-settings')!.data).toEqual({ greeting: 'hi', scaledBy: 'hpa' });
+        expect(cluster.get('web-settings')!.metadata.annotations).toMatchObject({ 'tool.example/seen': 'yes' });
+        expect(cluster.get('web-same')!.data).toEqual({ a: '1' });
+    });
+
+    it('moves Helm’s client-side ownership onto its apply before applying, so Helm’s dropped fields go', async () => {
+        for (const own of owners.values()) for (const path of own.keys()) own.set(path, 'helm/Update');
+        ownedBy('web-same', ['data', 'dropped'], 'soon', 'helm/Update');
+        const review = await reviewed();
+        const result = await upgrade.upgradeRelease({ context: 'alpha', reviewId: review.reviewId });
+        expect(result.status).toBe('deployed');
+        expect(log.indexOf('own ConfigMap web-settings')).toBe(log.indexOf('apply ConfigMap web-settings') - 1);
+        const [moved, , , , , strategy] = objects.patch.mock.calls.find(
+            ([one, , , , , how]) =>
+                (one as Obj).metadata.name === 'web-settings' && how === 'application/merge-patch+json',
+        )!;
+        expect(strategy).toBe('application/merge-patch+json');
+        // Conditional on the version it read, with Helm's update entry folded into its apply entry.
+        expect(moved).toMatchObject({ metadata: { name: 'web-settings', resourceVersion: '10' } });
+        const entries = (moved as { metadata: { managedFields: { manager: string; operation: string }[] } }).metadata
+            .managedFields;
+        expect(entries.map((one) => `${one.manager}/${one.operation}`)).toEqual(['helm/Apply']);
+        expect(cluster.get('web-same')!.data).toEqual({ a: '1' });
+    });
+
+    it('fails the upgrade on a conflict that arose after the review, naming the field and its manager', async () => {
+        const review = await reviewed();
+        ownedBy('web-settings', ['data', 'greeting'], 'edited by hand', 'kubectl-edit/Update');
+        const result = await upgrade.upgradeRelease({ context: 'alpha', reviewId: review.reviewId });
+        expect(result).toMatchObject({
+            status: 'failed',
+            message: expect.stringContaining('.data.greeting is managed by "kubectl-edit"'),
+        });
+        expect(cluster.get('web-settings')!.data!.greeting).toBe('edited by hand');
+        expect(helmReads(secrets.get('sh.helm.release.v1.web.v2')!).info!.status).toBe('deployed');
     });
 
     it('records what the Helm CLI reads: the chart, the values, the render and the hooks it ran', async () => {
@@ -496,6 +714,7 @@ describe('upgradeRelease', () => {
             chart: { metadata: { name: 'demo', version: '0.2.0' } },
             config: INPUT.values,
             manifest: chartRender().manifest,
+            apply_method: 'ssa',
         });
         expect(next.info!.last_deployed).not.toBe('2026-01-02T00:00:00Z');
         expect(next.hooks!.map((one) => [one.name, one.last_run?.phase])).toEqual([
@@ -545,7 +764,7 @@ describe('upgradeRelease', () => {
 
     it('marks the new revision failed when an object is refused part-way', async () => {
         const review = await reviewed();
-        objects.replace.mockRejectedValue(apiError(422, 'ConfigMap "web-settings" is invalid'));
+        objects.patch.mockRejectedValue(apiError(422, 'ConfigMap "web-settings" is invalid'));
         const result = await upgrade.upgradeRelease({ context: 'alpha', reviewId: review.reviewId });
         expect(result.status).toBe('failed');
         expect(helmReads(secrets.get('sh.helm.release.v1.web.v3')!).info!.status).toBe('failed');
@@ -602,7 +821,7 @@ describe('upgradeRelease', () => {
 
     it('says where the release was left when the context changes mid-upgrade', async () => {
         const review = await reviewed();
-        objects.replace.mockImplementation(() => {
+        objects.patch.mockImplementation(() => {
             client.activeContextName.mockReturnValue('beta');
             return Promise.reject(apiError(500));
         });

@@ -25,7 +25,6 @@ import { K8sError, toK8sError, withK8s } from '../errors.js';
 import { yamlToText } from '../yaml.js';
 import { cleanForExport } from './export.js';
 import {
-    applyObject,
     chartLabel,
     manifestObjects,
     objectKey,
@@ -60,6 +59,14 @@ import {
     step,
     type HookRun,
 } from './helm-install.js';
+import {
+    applyConflicts,
+    applyForRelease,
+    clientSideOwnership,
+    conflictError,
+    HELM_FIELD_MANAGER,
+    moveClientSideOwnership,
+} from './helm-apply.js';
 import { assertContext } from './write.js';
 
 /*
@@ -88,8 +95,6 @@ interface PendingUpgrade {
     last: number;
     /** What the new revision drops, as the current one rendered it. */
     removed: RenderedObject[];
-    /** The objects the dry run found already as the render has them. */
-    unchanged: Set<string>;
     expires: number;
 }
 
@@ -162,11 +167,11 @@ const namespaceOf = (object: RenderedObject): string | null =>
     isClusterScopedKindName(object.kind) ? null : (object.metadata.namespace ?? null);
 
 /**
- * What the upgrade will do to one rendered object, checked by a dry run of the very write it sends:
- * a create for one the cluster lacks, a replace carrying the version it read for one it holds. The
- * two diff sides are the live object and the dry run's answer, both as the server stores them, so a
- * field the server fills in is not a change and one the render drops is. An object the current
- * revision did not render is adopted only when it already carries this release's ownership.
+ * What the upgrade will do to one rendered object, checked by a server-side dry run of the very apply
+ * it sends. The two diff sides are the live object and the dry run's answer, both as the server stores
+ * them, so a field the server fills in or another manager owns is not a change, and a field only Helm
+ * set that the render drops is. A conflict with another manager is refused, as Helm 4 refuses it. An
+ * object the current revision did not render is adopted only when it carries this release's ownership.
  */
 async function checkObject(
     rendered: RenderedManifest,
@@ -184,44 +189,75 @@ async function checkObject(
         manifest: rendered.manifest,
     };
     const current = await readLive(object);
-    if (!current) {
-        try {
-            const answer = await apis().objects.create(structuredClone(object), undefined, 'All');
-            return { ...base, change: 'create', check: { state: 'passed' }, live: '', next: diffText(answer) };
-        } catch (error) {
-            const check = { state: 'failed' as const, message: failureMessage(error, object, REVIEW_OP) };
-            return { ...base, change: 'create', check, live: '', next: diffText(object) };
-        }
-    }
-    const live = diffText(current);
-    if (!previous.has(objectKey(rendered.object)) && !ownedByRelease(current, release, namespace)) {
-        return {
-            ...base,
-            change: 'update',
-            check: {
-                state: 'failed',
-                message: `${describeObject(object)} exists and is not owned by release "${release}", and Helm takes over nothing another release or tool put there.`,
-            },
-            live,
-            next: diffText(object),
-        };
+    const live = current ? diffText(current) : '';
+    const change = current ? ('update' as const) : ('create' as const);
+    const refused = (message: string): UpgradedObject => ({
+        ...base,
+        change,
+        check: { state: 'failed', message },
+        live,
+        next: diffText(object),
+    });
+    if (current && !previous.has(objectKey(rendered.object)) && !ownedByRelease(current, release, namespace)) {
+        return refused(
+            `${describeObject(object)} exists and is not owned by release "${release}", and Helm takes over nothing another release or tool put there.`,
+        );
     }
     try {
-        const answer = await apis().objects.replace(
-            { ...object, metadata: { ...object.metadata, resourceVersion: current.metadata?.resourceVersion } },
-            undefined,
-            'All',
-        );
+        const answer = await dryRunApply(rendered.object, release, namespace, current);
         const next = diffText(answer);
-        return { ...base, change: next === live ? 'unchanged' : 'update', check: { state: 'passed' }, live, next };
-    } catch (error) {
         return {
             ...base,
-            change: 'update',
-            check: { state: 'failed', message: failureMessage(error, object, REVIEW_OP) },
+            change: current && next === live ? 'unchanged' : change,
+            check: { state: 'passed' },
             live,
-            next: diffText(object),
+            next,
         };
+    } catch (error) {
+        const conflicts = applyConflicts(error);
+        if (conflicts) return refused(conflictError(REVIEW_OP, describeObject(object), conflicts).detail);
+        return refused(failureMessage(error, object, REVIEW_OP));
+    }
+}
+
+/**
+ * A dry run of the apply. Ownership Helm holds client-side moves to its apply entry before the real
+ * apply, which a dry run cannot carry into the next request, so conflicts with that entry alone are
+ * Helm's own and the dry run is forced past them, as the real apply will not need to be.
+ */
+async function dryRunApply(
+    object: RenderedObject,
+    release: string,
+    namespace: string,
+    current: KubernetesObject | null,
+): Promise<KubernetesObject> {
+    try {
+        return await applyForRelease(object, release, namespace, { dryRun: true });
+    } catch (error) {
+        const conflicts = applyConflicts(error);
+        const ownOnly =
+            !!current &&
+            clientSideOwnership(current) !== null &&
+            !!conflicts &&
+            conflicts.every((one) => one.manager === HELM_FIELD_MANAGER);
+        if (!ownOnly) throw error;
+        return applyForRelease(object, release, namespace, { dryRun: true, force: true });
+    }
+}
+
+/**
+ * Apply one object for the upgrade: Helm's client-side ownership moved onto its apply entry first, then
+ * the apply, never forced. A conflict fails the upgrade with the field and its manager named.
+ */
+async function applyUpgraded(object: RenderedObject, release: string, namespace: string): Promise<void> {
+    const current = await readLive(object);
+    if (current) await moveClientSideOwnership(current);
+    try {
+        await applyForRelease(object, release, namespace);
+    } catch (error) {
+        const conflicts = applyConflicts(error);
+        if (conflicts) throw conflictError(UPGRADE_OP, describeObject(object), conflicts);
+        throw error;
     }
 }
 
@@ -314,11 +350,6 @@ export async function reviewUpgrade(input: ChartUpgradeInput): Promise<ChartUpgr
         current,
         last,
         removed,
-        unchanged: new Set(
-            render.objects
-                .filter((_, i) => checks.objects[i]!.change === 'unchanged')
-                .map((one) => objectKey(one.object)),
-        ),
         expires: Date.now() + REVIEW_TTL_MS,
     });
     return { rendered: true, review };
@@ -345,19 +376,8 @@ export function upgradedRevision(
         config: entry.values,
         manifest: entry.render.manifest,
         hooks,
+        apply_method: 'ssa',
     };
-}
-
-/**
- * Create an object the dry run found unchanged only if it has gone since, and otherwise leave it:
- * Helm patches nothing where the render did not change, so a field somebody set since stays.
- */
-async function ensurePresent(object: RenderedObject, release: string, namespace: string): Promise<void> {
-    try {
-        await apis().objects.create(withHelmOwnership(structuredClone(object), release, namespace));
-    } catch (error) {
-        if (statusCode(error) !== 409) throw error;
-    }
 }
 
 /**
@@ -423,11 +443,7 @@ export async function upgradeRelease(input: ReleaseInstallInput): Promise<Releas
     try {
         await runHooks(UPGRADE_OP, context, hooksFor(entry.render.hooks, 'pre-upgrade'), runs);
         for (const { object } of entry.render.objects) {
-            await step(UPGRADE_OP, context, () =>
-                entry.unchanged.has(objectKey(object))
-                    ? ensurePresent(object, name, namespace)
-                    : applyObject(structuredClone(object), name, namespace),
-            );
+            await step(UPGRADE_OP, context, () => applyUpgraded(object, name, namespace));
         }
         for (const object of entry.removed.filter((one) => !isKept(one))) {
             await step(UPGRADE_OP, context, () => removeObject(object));

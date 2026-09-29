@@ -237,7 +237,7 @@ review says so when a chart calls it.
 2. The release, recorded as `pending-install` in the Secret `sh.helm.release.v1.<name>.v1`.
 3. The `pre-install` hooks, by weight, each waited on: a Job until it completes, a Pod until it
    succeeds, anything else once it exists.
-4. The objects.
+4. The objects, applied server-side as the field manager `helm`, as Helm 4 installs them.
 5. The `post-install` hooks, the same way.
 6. The release marked `deployed`.
 
@@ -296,10 +296,12 @@ the values, as for an install, and a release another operation holds pending (`p
 - **Values**: the current revision's values against the new ones, line by line.
 - **Objects**: every object the new revision renders, marked **Created**, **Changed** or
   **Unchanged**. Opening one shows the object the cluster holds against what it will hold, both as
-  the API server stores them: each is a server-side dry run of the very write the upgrade sends, so a
-  field the server fills in is not a change and a field the render drops is. An object that is
-  already in the cluster but was neither rendered by the current revision nor marked as belonging to
-  this release is **Refused**, as Helm refuses to take it over.
+  the API server stores them: each is a server-side dry run of the very apply the upgrade sends, so
+  a field the server fills in, or another manager owns, is not a change, and a field only Helm set
+  that the render drops is. An object that is already in the cluster but was neither rendered by the
+  current revision nor marked as belonging to this release is **Refused**, as Helm refuses to take it
+  over, and so is one where the render would change a field another manager owns: the row names the
+  field and the manager, such as `.spec.replicas is managed by "kubectl"`.
 - **Removed**: what the current revision rendered and the new one does not. Each is **Deleted**,
   **Already gone**, or **Kept** when the chart annotated it `helm.sh/resource-policy: keep`.
 - **Hooks**: every hook the new revision renders, with its dry run; the `pre-upgrade` and
@@ -316,29 +318,46 @@ install.
 1. The new revision, numbered one above the newest, recorded as `pending-upgrade`.
 2. The `pre-upgrade` hooks, by weight, each waited on and deleted as its policy says, as an
    install's hooks are.
-3. The objects: created when missing and replaced when changed, each carrying the label and
-   annotations Helm marks its own objects with. An object the review found unchanged is not written,
-   so a field somebody set on it since stays.
+3. The objects, each applied server-side as the field manager `helm`, the one the Helm CLI applies
+   as, carrying the label and annotations Helm marks its own objects with. See
+   [what an upgrade keeps](#what-an-upgrade-keeps).
 4. The removed objects deleted, except those the chart marked to be kept.
 5. The `post-upgrade` hooks, the same way.
 6. The previous revision marked `superseded` and the new one `deployed`, described "Upgrade
    complete".
 
 The release then opens on **Resources**; the upgrade does not wait for workloads to become ready.
-The diff is the cluster as it was when you reviewed: an upgrade replaces an object with the rendered
-one, so a change made to it after the review, other than to an object found unchanged, is
-overwritten.
+The diff is the cluster as it was when you reviewed; a field another manager takes after the review
+is a conflict when the upgrade applies, and fails it as below.
 
 A review is good for one upgrade and for 30 minutes, and one made before another revision was
 recorded is refused, so you review again. If a step fails once the new revision is recorded, it is
 marked `failed` with Helm's description, and the revision before it stays deployed. The screen says
 why and offers **Open release**, from whose **Revisions** tab the release can be rolled back.
 
-:::note[Replaced rather than patched]
-Helm 3 applies an upgrade as a three-way merge and Helm 4 as a server-side apply, both of which
-leave alone a field only somebody else set. Kubermeister replaces each changed object with the
-rendered one, as its rollback does, so such a field — an annotation a tool added, replicas an
-autoscaler set — is dropped. The review's diff shows every one of those before you upgrade.
+### What an upgrade keeps
+
+An upgrade writes each object by server-side apply, as Helm 4 does, so the API server decides field
+by field:
+
+- A field **another manager** owns and the render leaves out stays as it is: replicas an autoscaler
+  or `kubectl scale` set when the chart sets none, an annotation a tool added.
+- A field **only Helm** set, which the previous revision rendered and the new one does not, is
+  removed.
+- A field the render would **change** while another manager owns it is a conflict, and Helm's
+  default is to refuse it rather than take it over. The review marks the object **Refused**, naming
+  the field and its manager; give the field back, for example by setting it to the value the chart
+  renders, or leave it out of the values.
+
+A release written client-side before, by Helm 3 or by Helm 4 with `--server-side=false`, has Helm's
+ownership moved to server-side apply on each object first, as `helm upgrade --server-side` does, so
+Helm's own earlier writes are never a conflict. The new revision records that it was applied
+server-side, so a later `helm upgrade` applies it the same way. A release installed here is applied
+server-side from the start.
+
+:::note[Rolling back still replaces]
+A [rollback](#rolling-back) writes each object whole rather than applying it, so it does drop a
+field another manager set.
 :::
 
 The Helm CLI reads the upgraded release like any other: `helm history` shows the new revision and
