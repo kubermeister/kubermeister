@@ -72,6 +72,18 @@ describe('withK8s', () => {
         expect((await failWith(aborted)).kind).toBe('unreachable');
     });
 
+    it.each([
+        'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+        'UNABLE_TO_GET_ISSUER_CERT',
+        'CERT_NOT_YET_VALID',
+        'ERR_SSL_WRONG_VERSION_NUMBER',
+    ])('reads the trust failure %s nested under "fetch failed" as unreachable', async (code) => {
+        const fetchFailed = new TypeError('fetch failed', { cause: Object.assign(new Error('tls'), { code }) });
+        const error = await failWith(fetchFailed);
+        expect(error.kind).toBe('unreachable');
+        expect(error.detail).toBe('The cluster API server is unreachable.');
+    });
+
     it('reads undici codes nested under a bare "fetch failed", as the client library throws them', async () => {
         const connectTimeout = Object.assign(new Error('Connect Timeout Error (attempted address: 10.0.0.1:6443)'), {
             name: 'ConnectTimeoutError',
