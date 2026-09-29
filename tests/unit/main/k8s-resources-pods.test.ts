@@ -99,6 +99,34 @@ describe('derivePodStatus', () => {
         }
     });
 
+    it('reads a waiting init container, which holds the pod in Pending', () => {
+        const initWaiting = (reason: string) =>
+            pod({
+                status: {
+                    phase: 'Pending',
+                    initContainerStatuses: [status({ name: 'migrate', state: { waiting: { reason } } })],
+                    containerStatuses: [status({ ready: false, state: { waiting: { reason: 'PodInitializing' } } })],
+                },
+            });
+        expect(pods.derivePodStatus(initWaiting('CrashLoopBackOff'))).toBe('CrashLoop');
+        expect(pods.derivePodStatus(initWaiting('ImagePullBackOff'))).toBe('Error');
+        expect(pods.derivePodStatus(initWaiting('ErrImagePull'))).toBe('Error');
+        expect(pods.derivePodStatus(initWaiting('PodInitializing'))).toBe('Pending');
+    });
+
+    it('finds a back-off behind another container that is merely waiting', () => {
+        const pending = pod({
+            status: {
+                phase: 'Pending',
+                containerStatuses: [
+                    status({ name: 'a', state: { waiting: { reason: 'ContainerCreating' } } }),
+                    status({ name: 'b', state: { waiting: { reason: 'ImagePullBackOff' } } }),
+                ],
+            },
+        });
+        expect(pods.derivePodStatus(pending)).toBe('Error');
+    });
+
     it('maps the remaining phases and falls back to Unknown', () => {
         for (const [phase, expected] of [
             ['Pending', 'Pending'],
@@ -166,6 +194,72 @@ describe('toPod', () => {
             age: '—',
             status: 'Unknown',
         });
+    });
+});
+
+describe('toPod with init containers', () => {
+    const sidecarSpec = (restartPolicy?: string) =>
+        container({ name: 'proxy', resources: {}, ...(restartPolicy ? { restartPolicy } : {}) });
+
+    it('counts native sidecars in the ready ratio, as kubectl does', () => {
+        const withSidecar = pod({
+            spec: { containers: [container()], initContainers: [sidecarSpec('Always')] },
+            status: {
+                phase: 'Running',
+                initContainerStatuses: [status({ name: 'proxy', ready: true })],
+                containerStatuses: [status()],
+            },
+        });
+        expect(pods.toPod(withSidecar, NOW).ready).toBe('2/2');
+    });
+
+    it('shows a sidecar that is not ready', () => {
+        const unready = pod({
+            spec: { containers: [container()], initContainers: [sidecarSpec('Always')] },
+            status: {
+                phase: 'Running',
+                initContainerStatuses: [status({ name: 'proxy', ready: false })],
+                containerStatuses: [status()],
+            },
+        });
+        expect(pods.toPod(unready, NOW).ready).toBe('1/2');
+    });
+
+    it('leaves ordinary init containers out of the ratio', () => {
+        const initOnly = pod({
+            spec: { containers: [container()], initContainers: [sidecarSpec()] },
+            status: {
+                phase: 'Running',
+                initContainerStatuses: [
+                    status({
+                        name: 'proxy',
+                        ready: false,
+                        state: { terminated: { exitCode: 0, reason: 'Completed' } },
+                    }),
+                ],
+                containerStatuses: [status()],
+            },
+        });
+        expect(pods.toPod(initOnly, NOW).ready).toBe('1/1');
+    });
+
+    it('counts init container restarts, so a crash-looping init container shows them', () => {
+        const crashing = pod({
+            spec: { containers: [container()], initContainers: [sidecarSpec()] },
+            status: {
+                phase: 'Pending',
+                initContainerStatuses: [
+                    status({
+                        name: 'proxy',
+                        ready: false,
+                        restartCount: 4,
+                        state: { waiting: { reason: 'CrashLoopBackOff' } },
+                    }),
+                ],
+                containerStatuses: [status({ ready: false, state: { waiting: { reason: 'PodInitializing' } } })],
+            },
+        });
+        expect(pods.toPod(crashing, NOW)).toMatchObject({ status: 'CrashLoop', ready: '0/1', restarts: 4 });
     });
 });
 

@@ -123,10 +123,16 @@ export interface VolumeSnapshotObject {
     // the client's own metadata shape, so a snapshot can be read wherever a typed object can.
     metadata?: V1ObjectMeta;
     spec?: { source?: { persistentVolumeClaimName?: string } };
-    status?: { readyToUse?: boolean; restoreSize?: string };
+    status?: { readyToUse?: boolean; restoreSize?: string; error?: { message?: string } };
 }
 
 export const SNAPSHOT_GROUP = { group: 'snapshot.storage.k8s.io', version: 'v1', plural: 'volumesnapshots' } as const;
+
+/** A snapshot the controller reported an error for and never readied has failed; it will not become ready alone. */
+function snapshotReady(status: VolumeSnapshotObject['status']): Snapshot['ready'] {
+    if (status?.readyToUse) return 'Ready';
+    return status?.error ? 'Failed' : 'Pending';
+}
 
 export function toSnapshot(object: VolumeSnapshotObject, now = Date.now()): Snapshot {
     const claim = object.spec?.source?.persistentVolumeClaimName;
@@ -135,7 +141,7 @@ export function toSnapshot(object: VolumeSnapshotObject, now = Date.now()): Snap
         namespace: object.metadata?.namespace ?? '',
         sourcePvc: claim ? `pvc/${claim}` : '—',
         restoreSize: dash(object.status?.restoreSize),
-        ready: object.status?.readyToUse ? 'Ready' : 'Pending',
+        ready: snapshotReady(object.status),
         age: age(object.metadata?.creationTimestamp, now),
     };
 }

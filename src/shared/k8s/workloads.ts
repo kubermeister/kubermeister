@@ -136,8 +136,8 @@ export const replicaSetDetailSchema = replicaSetRowSchema.extend({ labels: pairs
 export const replicationControllerSchema = replicaSetRowSchema;
 export const replicationControllerDetailSchema = replicaSetDetailSchema;
 
-/** A Job is Running until a terminal condition appears; Complete outranks nothing, Failed outranks Complete. */
-export const jobStatusSchema = z.enum(['Complete', 'Running', 'Failed']);
+/** A Job is Running until a terminal condition appears, Suspended while held; Failed outranks Complete. */
+export const jobStatusSchema = z.enum(['Complete', 'Running', 'Suspended', 'Failed']);
 
 export const jobSchema = z.object({
     name: z.string(),

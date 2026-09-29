@@ -562,11 +562,16 @@ export function getDaemonSet(name: string, namespace?: string): Promise<DaemonSe
     });
 }
 
-/** Terminal conditions decide the status; a failure outranks a completion. Anything else is Running. */
+/**
+ * Terminal conditions decide the status; a failure outranks a completion. A job that has not
+ * finished is Suspended when its spec or its condition says so, since it runs no pods then, and
+ * Running otherwise.
+ */
 export function jobStatus(job: V1Job): JobStatus {
     const conditions = job.status?.conditions ?? [];
     if (conditions.some((c) => c.type === 'Failed' && c.status === 'True')) return 'Failed';
     if (conditions.some((c) => c.type === 'Complete' && c.status === 'True')) return 'Complete';
+    if (job.spec?.suspend || conditions.some((c) => c.type === 'Suspended' && c.status === 'True')) return 'Suspended';
     return 'Running';
 }
 
