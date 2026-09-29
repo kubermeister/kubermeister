@@ -289,6 +289,25 @@ describe('reading a description', () => {
         });
         expect(core.readNode).not.toHaveBeenCalledWith({ name: 'a,b=c' });
     });
+
+    it("shows the kubelet's node events, which name the node rather than carry its uid", async () => {
+        core.readNode.mockResolvedValue({ metadata: { name: 'node-1', uid: 'n1' }, status: {} });
+        core.listPodForAllNamespaces.mockResolvedValue({ items: [] });
+        core.listEventForAllNamespaces.mockResolvedValue({
+            items: [
+                { ...event('NodeNotReady', 60), involvedObject: { kind: 'Node', name: 'node-1', uid: 'node-1' } },
+                { ...event('Rebooted', 30), involvedObject: { kind: 'Node', name: 'node-1' } },
+                { ...event('Other', 20), involvedObject: { kind: 'Node', name: 'node-2', uid: 'node-2' } },
+                { ...event('Pulled', 10), involvedObject: { kind: 'Pod', name: 'node-1', uid: 'n1' } },
+            ],
+        });
+        const document = await describeMod.describeObject({ kind: 'Node', name: 'node-1' });
+        const events = document.sections.find((s) => s.title === 'Events')!;
+        expect(events.rows.map((r) => r.label)).toEqual(['Warning Rebooted', 'Warning NodeNotReady']);
+        expect(core.listEventForAllNamespaces).toHaveBeenCalledWith({
+            fieldSelector: 'involvedObject.kind=Node,involvedObject.name=node-1',
+        });
+    });
 });
 
 describe('describeToText', () => {
