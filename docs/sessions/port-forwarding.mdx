@@ -91,6 +91,11 @@ A forward runs until one of these:
 Losing the network does not end a forward either: the listener stays up, and the connections made
 while the cluster is unreachable fail, with the error on the forward's row.
 
+Each connection through a forward ends when either side ends it: a server in the pod that closes an
+idle connection closes it on your machine too, so the next request opens a fresh one instead of
+hanging. A connection to a pod port nothing listens on is reset, as the port itself would refuse it,
+and the reason the cluster gives, such as `connection refused`, is shown on the forward's row.
+
 ## When the app quits
 
 Quitting ends every port forward, shell session, log follow and node drain, and none of them are
