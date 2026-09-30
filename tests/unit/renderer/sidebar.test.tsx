@@ -87,7 +87,6 @@ describe('Sidebar', () => {
             'Flow Schemas',
             'Releases',
             'Charts',
-            'SettingsCtrl+,',
         ]);
     });
 
@@ -132,15 +131,29 @@ describe('Sidebar', () => {
         expect(screen.getByTestId('sidebar')).not.toContainElement(document.activeElement as HTMLElement);
     });
 
-    it('shows Quick actions and the Settings entry in the footer, with their keys for the platform', async () => {
+    it('puts Quick actions after the app name, as an icon named for what it does', async () => {
         renderRoutes(routeTree, '/overview/summary');
         const sidebar = await screen.findByTestId('sidebar');
-        // jsdom reports no Mac platform, so the hints are the Ctrl ones.
-        expect(within(sidebar).getByTestId('quick-actions')).toHaveTextContent('Quick actionsCtrl+K');
-        const settings = within(sidebar).getByRole('link', { name: /Settings/ });
-        expect(settings).toHaveAttribute('href', '/settings');
-        expect(settings).not.toHaveAttribute('aria-current');
-        expect(settings).toHaveTextContent('Ctrl+,');
+        const quick = within(sidebar).getByTestId('quick-actions');
+        expect(quick).toHaveAccessibleName('Quick actions');
+        // Settings lives at the end of the top bar instead.
+        expect(within(sidebar).queryByTestId('settings-button')).not.toBeInTheDocument();
         expect(within(sidebar).queryByTestId('theme-toggle')).not.toBeInTheDocument();
+    });
+
+    it('names the palette keys in the tooltip, one keycap per key', async () => {
+        renderRoutes(routeTree, '/overview/summary');
+        const sidebar = await screen.findByTestId('sidebar');
+        within(sidebar).getByTestId('quick-actions').focus();
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Quick actions');
+        // jsdom reports no Mac platform, so the keys are the Ctrl ones.
+        expect([...tooltip.querySelectorAll('kbd')].map((key) => key.textContent)).toEqual(['Ctrl', 'K']);
+    });
+
+    it('opens the command palette from the lightning bolt', async () => {
+        renderRoutes(routeTree, '/overview/summary');
+        await userEvent.click(await screen.findByTestId('quick-actions'));
+        expect(await screen.findByRole('dialog', { name: 'Quick actions' })).toBeInTheDocument();
     });
 });

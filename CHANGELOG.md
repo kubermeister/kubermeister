@@ -18,6 +18,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Settings is split into sections down a rail on its left, General, Appearance, Cluster data,
   Connection, Charts, Updates and About, and a screen that points at a setting opens the section it
   is in.
+- Quick actions is a lightning bolt beside the app's name and Settings a gear at the end of the top
+  bar, each showing its keys in a tooltip, rather than rows at the foot of the sidebar.
 
 ## [0.9.2] - 2026-09-30
 

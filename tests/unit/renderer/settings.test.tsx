@@ -63,10 +63,10 @@ describe('settings screen', () => {
         });
     });
 
-    it('is reachable from the sidebar footer and opens on General', async () => {
+    it('is reachable from the top bar gear and opens on General', async () => {
         renderRoutes(routeTree, '/overview/summary');
-        const sidebar = await screen.findByTestId('sidebar');
-        await userEvent.click(within(sidebar).getByRole('link', { name: /Settings/ }));
+        const bar = await screen.findByTestId('top-bar');
+        await userEvent.click(within(bar).getByTestId('settings-button'));
         const page = await screen.findByTestId('settings-page');
         expect(page).toHaveTextContent('Preferences for this Kubermeister install.');
         const rail = within(page).getByRole('tablist', { name: 'Settings sections' });
@@ -79,7 +79,7 @@ describe('settings screen', () => {
         expect(within(page).getByTestId('settings-section-general')).toBeInTheDocument();
         // The cards themselves are tested on their own; that the screen carries them is asserted here.
         expect(within(page).getByTestId('settings-file')).toBeInTheDocument();
-        expect(within(sidebar).getByRole('link', { name: /Settings/ })).toHaveAttribute('aria-current', 'page');
+        expect(within(bar).getByTestId('settings-button')).toHaveAttribute('aria-current', 'page');
         expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Settings');
     });
 
@@ -91,9 +91,9 @@ describe('settings screen', () => {
         expect(within(page).queryByTestId('settings-file')).not.toBeInTheDocument();
         expect(within(page).getByRole('tab', { name: 'Charts' })).toHaveAttribute('aria-selected', 'true');
         await waitFor(() => expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/Settings.*Charts/));
-        // The sidebar's Settings entry stays current on every section.
-        const sidebar = screen.getByTestId('sidebar');
-        expect(within(sidebar).getByRole('link', { name: /Settings/ })).toHaveAttribute('aria-current', 'page');
+        // The gear stays current on every section.
+        const bar = screen.getByTestId('top-bar');
+        expect(within(bar).getByTestId('settings-button')).toHaveAttribute('aria-current', 'page');
     });
 
     it('opens General for a section id it does not know', async () => {

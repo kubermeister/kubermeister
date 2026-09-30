@@ -234,14 +234,20 @@ function keyLabel(code: string): { key: string; accelerator: string } {
     return { key: letter ?? code, accelerator: letter ?? code };
 }
 
+/** The keys a chord is pressed with, modifiers first in the order the platform writes them. */
+export function chordKeys(chord: Chord, platform: ShortcutPlatform): string[] {
+    if ('char' in chord) return [chord.char];
+    const { key } = keyLabel(chord.code);
+    const modifiers =
+        platform === 'mac'
+            ? [chord.ctrl && '⌃', chord.alt && '⌥', chord.shift && '⇧', chord.mod && '⌘']
+            : [chord.mod && 'Ctrl', chord.shift && 'Shift', chord.alt && 'Alt'];
+    return [...modifiers.filter((m): m is string => !!m), key];
+}
+
 /** A chord as the platform writes it: `⇧⌘R` on macOS, `Ctrl+Shift+R` elsewhere. */
 export function formatChord(chord: Chord, platform: ShortcutPlatform): string {
-    if ('char' in chord) return chord.char;
-    const { key } = keyLabel(chord.code);
-    if (platform === 'mac') {
-        return `${chord.ctrl ? '⌃' : ''}${chord.alt ? '⌥' : ''}${chord.shift ? '⇧' : ''}${chord.mod ? '⌘' : ''}${key}`;
-    }
-    return [chord.mod && 'Ctrl', chord.shift && 'Shift', chord.alt && 'Alt', key].filter(Boolean).join('+');
+    return chordKeys(chord, platform).join(platform === 'mac' ? '' : '+');
 }
 
 /** A chord as an Electron menu accelerator string. */

@@ -305,7 +305,7 @@ const SETTINGS_DOMAIN: Domain = {
     groups: [{ label: null, items: [SETTINGS_NAV] }],
 };
 
-/** Every domain including Settings, which the sidebar renders in its footer rather than as a section. */
+/** Every domain including Settings, which the top bar renders as a gear rather than the sidebar as a section. */
 export const ALL_DOMAINS: Domain[] = [...DOMAINS, SETTINGS_DOMAIN];
 
 export const CLUSTER_LANDING = '/overview/summary' satisfies RoutePath;

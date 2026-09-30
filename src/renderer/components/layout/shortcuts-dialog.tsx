@@ -1,3 +1,4 @@
+import { Kbd } from '@/components/kbd';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SHORTCUT_GROUPS, SHORTCUTS, formatChord } from '../../../shared/shortcuts';
 import { shortcutPlatform } from '@/lib/platform';
@@ -5,15 +6,6 @@ import { shortcutPlatform } from '@/lib/platform';
 interface ShortcutsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-}
-
-/** A key as the cheat sheet and the sidebar hints show it. */
-function Kbd({ children }: { children: string }) {
-    return (
-        <kbd className="rounded-sm border border-border bg-elev-2 px-1.5 py-px font-mono text-caption text-text-2">
-            {children}
-        </kbd>
-    );
 }
 
 /**

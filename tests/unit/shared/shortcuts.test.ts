@@ -9,6 +9,7 @@ import { DOMAINS } from '../../../src/renderer/lib/nav.js';
 import {
     chordAccelerator,
     DOMAIN_SHORTCUT_IDS,
+    chordKeys,
     formatChord,
     matchShortcut,
     platformOf,
@@ -152,6 +153,8 @@ describe('the shortcut table', () => {
         const forceReload = shortcutById('forceReload').keys.mac[0]!;
         expect(formatChord(forceReload, 'mac')).toBe('⇧⌘R');
         expect(formatChord(forceReload, 'other')).toBe('Ctrl+Shift+R');
+        expect(chordKeys(forceReload, 'mac')).toEqual(['⇧', '⌘', 'R']);
+        expect(chordKeys(forceReload, 'other')).toEqual(['Ctrl', 'Shift', 'R']);
         expect(chordAccelerator(forceReload, 'mac')).toBe('Cmd+Shift+R');
         expect(chordAccelerator(forceReload, 'other')).toBe('Ctrl+Shift+R');
         expect(formatChord(shortcutById('back').keys.other[0]!, 'other')).toBe('Alt+←');
