@@ -225,8 +225,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   `DeploymentStatus`, `NetworkStatus`, ...), never one shared enum.
 - Navigation (sidebar, breadcrumbs) derives from `DOMAINS` in `src/renderer/lib/nav.ts`, typed
   against the generated route tree, so a new route is added there once. `ALL_DOMAINS` adds
-  Settings, which the sidebar renders in its footer next to the `⌘K` command palette
-  (`components/layout/command-palette.tsx`).
+  Settings, which the top bar ends with as a gear after Create resource; the sidebar header holds a
+  lightning bolt opening the `⌘K` command palette (`components/layout/command-palette.tsx`), and
+  the sidebar has no footer. Both icons name their keys in a tooltip (`HeaderAction`).
 - Live queries take their poll cadence from `useRefreshIntervalMs` (the `data.refreshIntervalSec`
   setting), never a literal.
 - Theme tokens live in `src/renderer/styles/globals.css`; `ThemeProvider` toggles the

@@ -30,13 +30,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDetailTabLabel } from '@/lib/detail-tab';
-import { breadcrumbsForPath } from '@/lib/nav';
+import { SETTINGS_NAV, breadcrumbsForPath, isActivePath } from '@/lib/nav';
+import { shortcutPlatform } from '@/lib/platform';
 import { useIpcQuery } from '@/lib/query';
 import { useSelectNamespace, useSwitchContext } from '@/lib/scope';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { CLUSTER_TONE, type StatusTone } from '@/lib/status';
 import { cn } from '@/lib/utils';
+import { chordKeys, shortcutById } from '../../../shared/shortcuts';
 import { ConnectionNotice } from './connection-notice';
+import { HeaderAction } from './header-action';
 import { NavLink } from './nav-link';
 import { ForwardManager } from './forward-manager';
 import { UpdatePill } from './update-pill';
@@ -93,7 +96,30 @@ export function TopBar() {
             <Button size="sm" asChild>
                 <NavLink to="/create">Create resource</NavLink>
             </Button>
+            <SettingsButton />
         </header>
+    );
+}
+
+/** Settings as a gear at the end of the bar, lit while any section of it is open. */
+function SettingsButton() {
+    const pathname = useRouterState({ select: (s) => s.location.pathname });
+    const active = isActivePath(pathname, SETTINGS_NAV.path);
+    const keys = chordKeys(shortcutById('settings').keys[shortcutPlatform][0]!, shortcutPlatform);
+    return (
+        <HeaderAction label={SETTINGS_NAV.label} keys={keys}>
+            <NavLink
+                to={SETTINGS_NAV.path}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                    'flex size-8 shrink-0 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    active ? 'bg-accent-bg text-primary' : 'text-text-muted hover:bg-elev-2 hover:text-foreground',
+                )}
+                data-testid="settings-button"
+            >
+                <SETTINGS_NAV.icon className="size-4" aria-hidden />
+            </NavLink>
+        </HeaderAction>
     );
 }
 

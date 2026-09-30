@@ -576,10 +576,7 @@ test('opens the shell with a connection notice when the kubeconfig path names no
         await expect(bad.window.getByRole('button', { name: 'Use default kubeconfig' })).toBeVisible();
         await bad.window.keyboard.press('Escape');
         // Settings, where the path is fixed, is reachable; so is everything else that needs no cluster.
-        await bad.window
-            .getByTestId('sidebar')
-            .getByRole('link', { name: /Settings/ })
-            .click();
+        await bad.window.getByTestId('settings-button').click();
         await bad.window.getByTestId('settings-page').getByRole('tab', { name: 'Connection' }).click();
         await expect(bad.window.getByTestId('settings-page').getByTestId('kubeconfig-path')).toContainText(
             'km-e2e-missing',

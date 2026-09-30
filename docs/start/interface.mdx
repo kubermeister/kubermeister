@@ -26,7 +26,8 @@ inside a collapsed domain opens it again so the current item is never hidden.
 | **Add-ons**   | CRDs. ADMISSION: Mutating Webhooks, Validating Webhooks, Admission Policies. API SERVER: API Services, Flow Schemas                                                                  |
 | **Helm**      | Releases, Charts                                                                                                                                                                     |
 
-The footer holds **Quick actions**, which opens the command palette, and **Settings**.
+The lightning bolt beside the app's name opens **Quick actions**, the
+[command palette](#the-command-palette); its tooltip names the keys, `⌘K` or `Ctrl+K`.
 [Supported resource kinds](/docs/reference/kinds/) maps every kind to its place here.
 
 ## The top bar
@@ -51,6 +52,8 @@ From left to right:
   available", "Downloading N%", "Restart to update" or "Update failed". See
   [updates](/docs/reference/updates/).
 - **Create resource** opens the [Create screen](/docs/browse/manifests/#creating).
+- The **Settings** gear opens [Settings](/docs/reference/settings/), and is lit while you are in it.
+  Its tooltip names the keys, `⌘,` or `Ctrl+,`.
 
 Switching context or namespace resets every cluster query, so screens go back to loading rather
 than showing the previous scope's rows. If you are on a detail page, the app takes you back to its

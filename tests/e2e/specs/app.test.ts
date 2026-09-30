@@ -250,10 +250,7 @@ test('moves between screens by key, refreshes without reloading, and opens the c
 
 test('opens Settings from the sidebar and switches the theme', async () => {
     const { window } = launched;
-    await window
-        .getByTestId('sidebar')
-        .getByRole('link', { name: /Settings/ })
-        .click();
+    await window.getByTestId('settings-button').click();
     const page = window.getByTestId('settings-page');
     await expect(page).toContainText('Preferences for this Kubermeister install.');
     await page.getByRole('tab', { name: 'Connection' }).click();
