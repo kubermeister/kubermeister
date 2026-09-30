@@ -230,18 +230,24 @@ describe('settings screen', () => {
         expect(url.searchParams.get('os')).toBe('macOS (Apple silicon)');
     });
 
-    it('shows this install and the last check, and runs a check on demand', async () => {
+    it('shows this install and what it runs on', async () => {
+        renderRoutes(routeTree, '/settings/about');
+        const about = await screen.findByTestId('about-card');
+        await waitFor(() => expect(about).toHaveTextContent('0.2.1'));
+        expect(about).toHaveTextContent('Kubermeister');
+        expect(about).toHaveTextContent('Electron 44.3.0 · Chrome 152.0.0.0 · Node 24.21.0');
+        // The update check is the Updates section's, not a second copy here.
+        expect(screen.queryByRole('button', { name: 'Check for updates' })).not.toBeInTheDocument();
+    });
+
+    it('shows the last check under Updates, and runs a check on demand', async () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.check'
                 ? { status: 'available', version: '0.2.2', releaseDate: '2026-09-16T06:48:44.854Z' }
                 : data[channel],
         );
-        renderRoutes(routeTree, '/settings/about');
-        const about = await screen.findByTestId('about-card');
-        await waitFor(() => expect(about).toHaveTextContent('Kubermeister'));
-        expect(about).toHaveTextContent('0.2.1');
-        expect(about).toHaveTextContent('Electron 44.3.0 · Chrome 152.0.0.0 · Node 24.21.0');
-        const status = screen.getByTestId('update-status');
+        renderRoutes(routeTree, '/settings/updates');
+        const status = await screen.findByTestId('update-status');
         await waitFor(() => expect(status).toHaveTextContent("You're on the latest version."));
         expect(status).toHaveTextContent('Checked 5 min ago.');
 
@@ -262,7 +268,7 @@ describe('settings screen', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.state' ? { status: 'unsupported', message: 'Development build' } : data[channel],
         );
-        renderRoutes(routeTree, '/settings/about');
+        renderRoutes(routeTree, '/settings/updates');
         const status = await screen.findByTestId('update-status');
         await waitFor(() => expect(status).toHaveTextContent('In-app updates are unavailable here.'));
         expect(status).toHaveTextContent('Development build');
@@ -273,7 +279,7 @@ describe('settings screen', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.state' ? { status: 'downloaded', version: '0.3.0' } : data[channel],
         );
-        renderRoutes(routeTree, '/settings/about');
+        renderRoutes(routeTree, '/settings/updates');
         await userEvent.click(await screen.findByRole('button', { name: 'Restart now' }));
         expect(invoke).toHaveBeenCalledWith('update.install', {});
     });

@@ -5,6 +5,7 @@ import {
     UPDATE_MODES,
     type UpdateMode,
 } from '../../../shared/settings';
+import { UpdateStatusCard } from '@/components/settings/update-status-card';
 import { Field, FormCard, FormSelect } from '@/components/templates/settings-form';
 import { updateSettings, useSettings } from '@/lib/settings';
 
@@ -25,7 +26,7 @@ const checkIntervalLabel = (hours: number) =>
             ? `Every ${hours / 24} days`
             : `Every ${hours} hours`;
 
-/** What the app does about new versions of itself. */
+/** Whether a new version is out, and what the app does about new versions of itself. */
 export function UpdatesSection() {
     const client = useQueryClient();
     const { data: settings } = useSettings();
@@ -37,24 +38,29 @@ export function UpdatesSection() {
     const checkIntervalByLabel = new Map(checkIntervals.map((hours) => [checkIntervalLabel(hours), hours]));
 
     return (
-        <FormCard title="Automatic updates" desc="What happens when a new version of Kubermeister is found.">
-            <Field label="When a new version is found">
-                <FormSelect
-                    value={UPDATE_MODE_LABELS[updateMode]}
-                    options={UPDATE_MODES.map((mode) => UPDATE_MODE_LABELS[mode])}
-                    onValueChange={(label) => void updateSettings(client, { updates: { mode: modeForLabel(label) } })}
-                />
-            </Field>
-            <Field label="Check for new versions">
-                <FormSelect
-                    value={checkIntervalLabel(checkIntervalHours)}
-                    options={checkIntervals.map(checkIntervalLabel)}
-                    onValueChange={(label) => {
-                        const hours = checkIntervalByLabel.get(label);
-                        if (hours) void updateSettings(client, { updates: { checkIntervalHours: hours } });
-                    }}
-                />
-            </Field>
-        </FormCard>
+        <>
+            <UpdateStatusCard />
+            <FormCard title="Automatic updates" desc="What happens when a new version of Kubermeister is found.">
+                <Field label="When a new version is found">
+                    <FormSelect
+                        value={UPDATE_MODE_LABELS[updateMode]}
+                        options={UPDATE_MODES.map((mode) => UPDATE_MODE_LABELS[mode])}
+                        onValueChange={(label) =>
+                            void updateSettings(client, { updates: { mode: modeForLabel(label) } })
+                        }
+                    />
+                </Field>
+                <Field label="Check for new versions">
+                    <FormSelect
+                        value={checkIntervalLabel(checkIntervalHours)}
+                        options={checkIntervals.map(checkIntervalLabel)}
+                        onValueChange={(label) => {
+                            const hours = checkIntervalByLabel.get(label);
+                            if (hours) void updateSettings(client, { updates: { checkIntervalHours: hours } });
+                        }}
+                    />
+                </Field>
+            </FormCard>
+        </>
     );
 }

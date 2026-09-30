@@ -1071,7 +1071,7 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   the list in `routes/settings.{-$section}.tsx`), the section being the route's optional last segment
   the way a detail tab is: the rail replaces, General is the bare path, an unknown id opens General,
   and the breadcrumb names the section through `lib/detail-tab.ts`. A section id is a URL other
-  screens link to (`/settings/charts`, `/settings/data`), so rename one only with that fallback in
+  screens link to (`/settings/charts`, `/settings/data`, `/settings/updates`), so rename one only with that fallback in
   mind. The route sets `remountDeps` to nothing, since a section switch is the rail moving and a
   remount would take its focus. `RoutePath` includes each optional-tail route's bare path, which is
   what lets the sidebar's `/settings` stay typed.
@@ -1107,7 +1107,7 @@ through the next release.
 - The `package` job installs with no npm cache (`package-manager-cache: false`): its output is what
   users install, and a cache entry written by any other run would feed straight into it.
 - **The app shows no release notes.** Generated notes are a list of pull-request titles, dozens of
-  lines with an author and a URL on each, so the popover, the toast and the Settings About card give
+  lines with an author and a URL on each, so the popover, the toast and the Settings Update status card give
   the version and its date and link to the release page, and the native dialog offers it as a
   `Release Notes` button. Nothing flattens the feed's HTML and `UpdateState` carries no notes.
 
@@ -1179,7 +1179,8 @@ through the next release.
   select shows the resolved mode rather than an empty control.
 - Main pushes every transition as `update.state`, which `useUpdater` in
   `src/renderer/lib/updates.ts` mirrors for the top-bar `UpdatePill` (popover plus one-shot toasts)
-  and the Settings About card; the palette reaches `update.check` too.
+  and the Update status card under Settings › Updates; the palette reaches `update.check` and opens that
+  section.
 - **The menu's "Check for Updates…" needs no renderer:** it runs `src/main/update-dialog.ts`,
   native message boxes for the outcome, the download and the restart, because the pill and Settings
   only exist once the renderer has mounted, and an update found while a white screen or a crashed
