@@ -56,8 +56,8 @@ On Windows the shell is not asked: the plugin has to be on the PATH the app was 
 
 ## Everything times out
 
-Cluster reads have a ceiling, 60 seconds by default, in **Settings › General › Cluster reads ›
-Read timeout**. A timed-out list reads **Cluster timed out** and links to Settings, because how long
+Cluster reads have a ceiling, 60 seconds by default, in **Settings › Cluster data › Cluster
+reads › Read timeout**. A timed-out list reads **Cluster timed out** and links to that section, because how long
 your cluster may take is your call.
 
 A server that cannot be reached at all — the VPN is down, the address does not resolve, the
@@ -109,7 +109,7 @@ the forwards you have used on this context are offered.
 
 ## Still stuck
 
-**Help › Report a Bug…**, or **Report a bug** in **Settings › Updates › About**, opens the bug report
+**Help › Report a Bug…**, or **Report a bug** in **Settings › About**, opens the bug report
 form on GitHub with the version already filled in, and the operating system on macOS and Windows.
 Issues are at
 [github.com/kubermeister/kubermeister/issues](https://github.com/kubermeister/kubermeister/issues),

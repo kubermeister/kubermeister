@@ -151,7 +151,7 @@ describe('cluster dashboard', () => {
         expect(error).toHaveTextContent('Cluster timed out');
         expect(error).toHaveTextContent('did not answer within 15 s');
         const hint = within(error).getByTestId('read-timeout-hint');
-        expect(within(hint).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+        expect(within(hint).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings/data');
         // The summary's reads are cluster-wide by design, so no namespace would narrow them.
         expect(within(error).queryByTestId('all-namespaces-hint')).not.toBeInTheDocument();
     });

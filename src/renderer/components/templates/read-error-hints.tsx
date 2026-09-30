@@ -31,7 +31,11 @@ export function ReadErrorHints({ kind, noun, narrowable = false }: ReadErrorHint
             )}
             <span className="max-w-xl text-meta text-text-2" data-testid="read-timeout-hint">
                 Large clusters need longer: you can raise the read timeout in{' '}
-                <Link to="/settings" className="underline underline-offset-2 hover:text-foreground">
+                <Link
+                    to="/settings/{-$section}"
+                    params={{ section: 'data' }}
+                    className="underline underline-offset-2 hover:text-foreground"
+                >
                     Settings
                 </Link>
                 .

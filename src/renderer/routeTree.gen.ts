@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
 import { Route as CreateRouteImport } from './routes/create';
-import { Route as SettingsRouteImport } from './routes/settings';
 import { Route as HelmChartsRouteImport } from './routes/helm/charts';
 import { Route as OverviewEventsRouteImport } from './routes/overview/events';
 import { Route as OverviewLimitsRouteImport } from './routes/overview/limits';
@@ -19,6 +18,7 @@ import { Route as OverviewNamespacesRouteImport } from './routes/overview/namesp
 import { Route as OverviewNodesRouteImport } from './routes/overview/nodes';
 import { Route as OverviewQuotasRouteImport } from './routes/overview/quotas';
 import { Route as OverviewSummaryRouteImport } from './routes/overview/summary';
+import { Route as SettingsChar123SectionChar125RouteImport } from './routes/settings.{-$section}';
 import { Route as AccessClusterrolebindingsIndexRouteImport } from './routes/access/clusterrolebindings/index';
 import { Route as AccessClusterrolesIndexRouteImport } from './routes/access/clusterroles/index';
 import { Route as AccessRolebindingsIndexRouteImport } from './routes/access/rolebindings/index';
@@ -114,11 +114,6 @@ const CreateRoute = CreateRouteImport.update({
   path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any);
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any);
 const HelmChartsRoute = HelmChartsRouteImport.update({
   id: '/helm/charts',
   path: '/helm/charts',
@@ -154,6 +149,12 @@ const OverviewSummaryRoute = OverviewSummaryRouteImport.update({
   path: '/overview/summary',
   getParentRoute: () => rootRouteImport,
 } as any);
+const SettingsChar123SectionChar125Route =
+  SettingsChar123SectionChar125RouteImport.update({
+    id: '/settings/{-$section}',
+    path: '/settings/{-$section}',
+    getParentRoute: () => rootRouteImport,
+  } as any);
 const AccessClusterrolebindingsIndexRoute =
   AccessClusterrolebindingsIndexRouteImport.update({
     id: '/access/clusterrolebindings/',
@@ -642,7 +643,6 @@ const HelmChartsInstallSourceChartVersionRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/create': typeof CreateRoute;
-  '/settings': typeof SettingsRoute;
   '/helm/charts': typeof HelmChartsRoute;
   '/overview/events': typeof OverviewEventsRoute;
   '/overview/limits': typeof OverviewLimitsRoute;
@@ -650,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/overview/nodes': typeof OverviewNodesRoute;
   '/overview/quotas': typeof OverviewQuotasRoute;
   '/overview/summary': typeof OverviewSummaryRoute;
+  '/settings/{-$section}': typeof SettingsChar123SectionChar125Route;
   '/access/clusterrolebindings/': typeof AccessClusterrolebindingsIndexRoute;
   '/access/clusterroles/': typeof AccessClusterrolesIndexRoute;
   '/access/rolebindings/': typeof AccessRolebindingsIndexRoute;
@@ -738,7 +739,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/create': typeof CreateRoute;
-  '/settings': typeof SettingsRoute;
   '/helm/charts': typeof HelmChartsRoute;
   '/overview/events': typeof OverviewEventsRoute;
   '/overview/limits': typeof OverviewLimitsRoute;
@@ -746,6 +746,7 @@ export interface FileRoutesByTo {
   '/overview/nodes': typeof OverviewNodesRoute;
   '/overview/quotas': typeof OverviewQuotasRoute;
   '/overview/summary': typeof OverviewSummaryRoute;
+  '/settings/{-$section}': typeof SettingsChar123SectionChar125Route;
   '/access/clusterrolebindings': typeof AccessClusterrolebindingsIndexRoute;
   '/access/clusterroles': typeof AccessClusterrolesIndexRoute;
   '/access/rolebindings': typeof AccessRolebindingsIndexRoute;
@@ -835,7 +836,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
   '/create': typeof CreateRoute;
-  '/settings': typeof SettingsRoute;
   '/helm/charts': typeof HelmChartsRoute;
   '/overview/events': typeof OverviewEventsRoute;
   '/overview/limits': typeof OverviewLimitsRoute;
@@ -843,6 +843,7 @@ export interface FileRoutesById {
   '/overview/nodes': typeof OverviewNodesRoute;
   '/overview/quotas': typeof OverviewQuotasRoute;
   '/overview/summary': typeof OverviewSummaryRoute;
+  '/settings/{-$section}': typeof SettingsChar123SectionChar125Route;
   '/access/clusterrolebindings/': typeof AccessClusterrolebindingsIndexRoute;
   '/access/clusterroles/': typeof AccessClusterrolesIndexRoute;
   '/access/rolebindings/': typeof AccessRolebindingsIndexRoute;
@@ -933,7 +934,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/create'
-    | '/settings'
     | '/helm/charts'
     | '/overview/events'
     | '/overview/limits'
@@ -941,6 +941,7 @@ export interface FileRouteTypes {
     | '/overview/nodes'
     | '/overview/quotas'
     | '/overview/summary'
+    | '/settings/{-$section}'
     | '/access/clusterrolebindings/'
     | '/access/clusterroles/'
     | '/access/rolebindings/'
@@ -1029,7 +1030,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/create'
-    | '/settings'
     | '/helm/charts'
     | '/overview/events'
     | '/overview/limits'
@@ -1037,6 +1037,7 @@ export interface FileRouteTypes {
     | '/overview/nodes'
     | '/overview/quotas'
     | '/overview/summary'
+    | '/settings/{-$section}'
     | '/access/clusterrolebindings'
     | '/access/clusterroles'
     | '/access/rolebindings'
@@ -1125,7 +1126,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/create'
-    | '/settings'
     | '/helm/charts'
     | '/overview/events'
     | '/overview/limits'
@@ -1133,6 +1133,7 @@ export interface FileRouteTypes {
     | '/overview/nodes'
     | '/overview/quotas'
     | '/overview/summary'
+    | '/settings/{-$section}'
     | '/access/clusterrolebindings/'
     | '/access/clusterroles/'
     | '/access/rolebindings/'
@@ -1222,7 +1223,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   CreateRoute: typeof CreateRoute;
-  SettingsRoute: typeof SettingsRoute;
   HelmChartsRoute: typeof HelmChartsRoute;
   OverviewEventsRoute: typeof OverviewEventsRoute;
   OverviewLimitsRoute: typeof OverviewLimitsRoute;
@@ -1230,6 +1230,7 @@ export interface RootRouteChildren {
   OverviewNodesRoute: typeof OverviewNodesRoute;
   OverviewQuotasRoute: typeof OverviewQuotasRoute;
   OverviewSummaryRoute: typeof OverviewSummaryRoute;
+  SettingsChar123SectionChar125Route: typeof SettingsChar123SectionChar125Route;
   AccessClusterrolebindingsIndexRoute: typeof AccessClusterrolebindingsIndexRoute;
   AccessClusterrolesIndexRoute: typeof AccessClusterrolesIndexRoute;
   AccessRolebindingsIndexRoute: typeof AccessRolebindingsIndexRoute;
@@ -1332,13 +1333,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/settings': {
-      id: '/settings';
-      path: '/settings';
-      fullPath: '/settings';
-      preLoaderRoute: typeof SettingsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/helm/charts': {
       id: '/helm/charts';
       path: '/helm/charts';
@@ -1386,6 +1380,13 @@ declare module '@tanstack/react-router' {
       path: '/overview/summary';
       fullPath: '/overview/summary';
       preLoaderRoute: typeof OverviewSummaryRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/settings/{-$section}': {
+      id: '/settings/{-$section}';
+      path: '/settings/{-$section}';
+      fullPath: '/settings/{-$section}';
+      preLoaderRoute: typeof SettingsChar123SectionChar125RouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/access/clusterrolebindings/': {
@@ -1982,7 +1983,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreateRoute: CreateRoute,
-  SettingsRoute: SettingsRoute,
   HelmChartsRoute: HelmChartsRoute,
   OverviewEventsRoute: OverviewEventsRoute,
   OverviewLimitsRoute: OverviewLimitsRoute,
@@ -1990,6 +1990,7 @@ const rootRouteChildren: RootRouteChildren = {
   OverviewNodesRoute: OverviewNodesRoute,
   OverviewQuotasRoute: OverviewQuotasRoute,
   OverviewSummaryRoute: OverviewSummaryRoute,
+  SettingsChar123SectionChar125Route: SettingsChar123SectionChar125Route,
   AccessClusterrolebindingsIndexRoute: AccessClusterrolebindingsIndexRoute,
   AccessClusterrolesIndexRoute: AccessClusterrolesIndexRoute,
   AccessRolebindingsIndexRoute: AccessRolebindingsIndexRoute,

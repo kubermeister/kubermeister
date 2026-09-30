@@ -308,7 +308,7 @@ const SETTINGS_DOMAIN: Domain = {
 /** Every domain including Settings, which the sidebar renders in its footer rather than as a section. */
 export const ALL_DOMAINS: Domain[] = [...DOMAINS, SETTINGS_DOMAIN];
 
-export const CLUSTER_LANDING: RoutePath = '/overview/summary';
+export const CLUSTER_LANDING = '/overview/summary' satisfies RoutePath;
 
 /** `pathname` is `path` or a sub-page beneath it, matched on a `/` boundary. */
 export function isActivePath(pathname: string, path: string): boolean {

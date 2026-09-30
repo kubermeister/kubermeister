@@ -57,11 +57,11 @@ the size of the change rather than of the installer.
 (with **Update**) and when a download is ready (with **Restart**). Progress, errors and "up to date"
 never toast.
 
-**The About card** in **Settings › Updates** shows the same state in words, with **Check for
+**The About card** in **Settings › About** shows the same state in words, with **Check for
 updates**, and **Download update** or **Restart now** when either applies.
 
-**Check for updates** in the command palette runs a check and opens Settings, where the outcome
-shows.
+**Check for updates** in the command palette runs a check and opens **Settings › About**, where the
+outcome shows.
 
 **Check for Updates…** in the menu — **Kubermeister › Check for Updates…** on macOS, **File › Check
 for Updates…** on Windows and Linux — runs a check and answers in **native dialogs** rather than the

@@ -13,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Settings is split into sections down a rail on its left, General, Appearance, Cluster data,
+  Connection, Charts, Updates and About, and a screen that points at a setting opens the section it
+  is in.
+
 ## [0.9.2] - 2026-09-30
 
 ### Fixed

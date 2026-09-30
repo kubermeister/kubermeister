@@ -65,6 +65,11 @@ describe('linkablePath', () => {
         expect(linkablePath(router, '/workloads/pods')).toBe('/workloads/pods');
     });
 
+    it('opens a Settings section, and Settings itself', () => {
+        expect(linkablePath(router, '/settings/connection')).toBe('/settings/connection');
+        expect(linkablePath(router, '/settings')).toBe('/settings');
+    });
+
     it('opens a cluster-scoped detail, which has no namespace segment', () => {
         expect(linkablePath(router, '/overview/nodes/worker-1/describe')).toBe('/overview/nodes/worker-1/describe');
     });
@@ -87,7 +92,7 @@ describe('linkablePath', () => {
         ['a screen no route has', '/workloads/nope'],
         ['a detail missing its name', '/workloads/pods/default'],
         ['more segments than the screen has', '/workloads/pods/default/web-1/logs/extra'],
-        ['segments past a screen with none', '/settings/advanced'],
+        ['segments past a screen with none', '/overview/summary/advanced'],
     ])('opens nothing for %s', (_name, path) => {
         expect(linkablePath(router, path)).toBeNull();
     });

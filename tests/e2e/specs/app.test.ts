@@ -256,7 +256,9 @@ test('opens Settings from the sidebar and switches the theme', async () => {
         .click();
     const page = window.getByTestId('settings-page');
     await expect(page).toContainText('Preferences for this Kubermeister install.');
+    await page.getByRole('tab', { name: 'Connection' }).click();
     await expect(page.getByTestId('kubeconfig-path')).toContainText('.kubeconfig');
+    await page.getByRole('tab', { name: 'Appearance' }).click();
     await page.getByRole('radio', { name: /Light/ }).click();
     await expect(window.locator('html')).toHaveClass(/light/);
     await page.getByRole('radio', { name: /Dark/ }).click();

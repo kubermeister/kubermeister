@@ -484,13 +484,8 @@ test('manifest-review', async () => {
 
 test('settings-connection', async () => {
     const { window } = launched;
-    await goto('/settings');
-    await expect(window.getByTestId('settings-page')).toBeVisible({ timeout: 30_000 });
-    // The page is one scroll; the Connection section is brought to the top so the kubeconfig, proxy
-    // and certificate authority cards are the picture.
-    await window
-        .getByRole('heading', { name: 'Connection', exact: true })
-        .evaluate((heading) => heading.scrollIntoView({ block: 'start' }));
+    await goto('/settings/connection');
+    await expect(window.getByTestId('settings-section-connection')).toBeVisible({ timeout: 30_000 });
     // The demo kubeconfig lives in this checkout, so its path names whoever ran the harness. The
     // shots are published, so the home directory is written the way a shell abbreviates it.
     await window.getByTestId('kubeconfig-path').evaluate((path, home) => {

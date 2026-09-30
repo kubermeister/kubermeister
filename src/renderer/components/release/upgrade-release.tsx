@@ -174,7 +174,7 @@ export function UpgradeRelease({ namespace, name }: { namespace: string; name: s
                 <Notice title="No chart repository to upgrade from" testId="upgrade-no-sources">
                     A release does not record where its chart came from, so an upgrade takes the chart from a
                     repository or registry configured under{' '}
-                    <NavLink to="/settings" className="text-primary underline">
+                    <NavLink to="/settings/charts" className="text-primary underline">
                         Settings › Charts
                     </NavLink>
                     . Add the one this chart is published in, then open this screen again.

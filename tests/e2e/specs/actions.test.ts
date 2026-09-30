@@ -580,6 +580,7 @@ test('opens the shell with a connection notice when the kubeconfig path names no
             .getByTestId('sidebar')
             .getByRole('link', { name: /Settings/ })
             .click();
+        await bad.window.getByTestId('settings-page').getByRole('tab', { name: 'Connection' }).click();
         await expect(bad.window.getByTestId('settings-page').getByTestId('kubeconfig-path')).toContainText(
             'km-e2e-missing',
         );

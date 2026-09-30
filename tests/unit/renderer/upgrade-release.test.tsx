@@ -270,7 +270,12 @@ describe('upgrading a release', () => {
         data['helm.status'] = { found: true, path: '/usr/local/bin/helm', version: '3.15.1' };
         data['chartRepositories.list'] = [];
         renderRoutes(routeTree, PATH);
-        expect(await screen.findByTestId('upgrade-no-sources')).toHaveTextContent('Settings › Charts');
+        const none = await screen.findByTestId('upgrade-no-sources');
+        expect(none).toHaveTextContent('Settings › Charts');
+        expect(within(none).getByRole('link', { name: 'Settings › Charts' })).toHaveAttribute(
+            'href',
+            '/settings/charts',
+        );
     });
 
     it('is offered from the release’s own header', async () => {
