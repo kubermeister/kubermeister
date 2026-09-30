@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-09-30
+
 ### Changed
 
 - Settings is split into sections down a rail on its left, General, Appearance, Cluster data,
@@ -554,7 +556,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/kubermeister/kubermeister/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/kubermeister/kubermeister/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/kubermeister/kubermeister/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/kubermeister/kubermeister/compare/v0.8.0...v0.9.0
