@@ -26,7 +26,7 @@ Open it with **Settings** at the foot of the sidebar, from the command palette, 
 Each section has its own address, so a reload or **Back** returns to the section you were on, and
 the breadcrumb names it. A screen that points at a setting opens its section: an empty chart list
 opens **Charts**, a read that timed out opens **Cluster data**, and **Check for updates** in the
-command palette opens **About**. Moving between sections does not add to the history, so one
+command palette opens **Updates**. Moving between sections does not add to the history, so one
 **Back** leaves Settings.
 
 ## General
@@ -136,6 +136,10 @@ and the credential.
 
 ## Updates
 
+**Update status** comes first: the updater's latest outcome, with **Check for updates**. Depending on
+that outcome it adds **Download update**, **Restart now**, **What's new** or **Get the update**, each
+described in [updates](/docs/reference/updates/#where-you-see-it).
+
 **Automatic updates** decides what happens when a new version is found.
 
 | Field                           | Options                                                                                        | Default                        |
@@ -147,10 +151,7 @@ See [updates](/docs/reference/updates/) for what each mode does.
 
 ## About
 
-The **About** card shows the app's version, the Electron, Chrome and Node versions it runs on, and
-the updater's latest outcome, with **Check for updates**. Depending on that outcome it adds
-**Download update**, **Restart now**, **What's new** or **Get the update**, each described in
-[updates](/docs/reference/updates/#where-you-see-it).
+The **About** card shows the app's version and the Electron, Chrome and Node versions it runs on.
 
 **Report a bug** opens the bug report form on GitHub in your browser, with the version already
 filled in, and the operating system too on macOS and Windows. On Linux you pick the installer

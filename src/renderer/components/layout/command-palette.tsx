@@ -113,9 +113,9 @@ export function CommandPalette({ open, onOpenChange, onShowShortcuts, onInstallC
                     <CommandItem
                         value="check for updates"
                         onSelect={() => {
-                            // The outcome shows on the Settings screen's About card.
+                            // The outcome shows in the Settings screen's Updates section.
                             void checkForUpdates();
-                            go('/settings/about');
+                            go('/settings/updates');
                         }}
                     >
                         <RefreshCwIcon className="size-3.5 text-text-muted" />

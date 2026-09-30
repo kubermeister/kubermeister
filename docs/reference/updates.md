@@ -36,7 +36,7 @@ Changing the interval reschedules the next check from now; saving any _other_ se
 it out.
 
 A scheduled check that fails is recorded quietly: it never becomes a notification or a pill. The
-**About** card in Settings shows "Update check failed." with the reason, and you find out when you go
+**Update status** card in **Settings › Updates** shows "Update check failed." with the reason, and you find out when you go
 looking. A check you started yourself that fails does show, as **Update failed**.
 
 ## Where you see it
@@ -57,10 +57,10 @@ the size of the change rather than of the installer.
 (with **Update**) and when a download is ready (with **Restart**). Progress, errors and "up to date"
 never toast.
 
-**The About card** in **Settings › About** shows the same state in words, with **Check for
-updates**, and **Download update** or **Restart now** when either applies.
+**The Update status card** in **Settings › Updates** shows the same state in words, with **Check
+for updates**, and **Download update** or **Restart now** when either applies.
 
-**Check for updates** in the command palette runs a check and opens **Settings › About**, where the
+**Check for updates** in the command palette runs a check and opens **Settings › Updates**, where the
 outcome shows.
 
 **Check for Updates…** in the menu — **Kubermeister › Check for Updates…** on macOS, **File › Check
@@ -79,7 +79,7 @@ A `.deb` or `.rpm` belongs to your package manager, and an app that overwrote it
 package database describing something else. So such an install never downloads or installs a new
 version. It reads the release feed to learn one exists, and then:
 
-- the pill reads **Update available**, and its popover and the About card say "This package is
+- the pill reads **Update available**, and its popover and the Update status card say "This package is
   managed by the system, so the new version is installed the same way as this one.";
 - the one action is **Get the update**, which opens that version's release page, where you download
   the new package and install it as you did the first;
