@@ -103,8 +103,8 @@ notice always describes where you are now.
 
 ## Read timeouts
 
-Every cluster read has a ceiling, 60 seconds by default, set in **Settings › General › Cluster
-reads › Read timeout** (15, 30, 60, 120 or 300 seconds). When a read hits it the app both reports
+Every cluster read has a ceiling, 60 seconds by default, set in **Settings › Cluster data ›
+Cluster reads › Read timeout** (15, 30, 60, 120 or 300 seconds). When a read hits it the app both reports
 the timeout _and_ aborts the request, so a screen that polls cannot pile up requests and
 credential-plugin processes against a cluster that never answers.
 

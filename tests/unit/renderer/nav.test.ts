@@ -54,6 +54,12 @@ describe('navItemForPath / activeSectionId / domainForPath', () => {
         expect(DOMAINS.some((d) => d.id === 'settings')).toBe(false);
         expect(ALL_DOMAINS.at(-1)?.id).toBe('settings');
         expect(breadcrumbsForPath('/settings').map((c) => c.label)).toEqual(['Settings']);
+        // A section is the last segment, named by the label the screen publishes.
+        expect(navItemForPath('/settings/connection')?.item).toBe(SETTINGS_NAV);
+        expect(breadcrumbsForPath('/settings/data', 'Cluster data').map((c) => c.label)).toEqual([
+            'Settings',
+            'Cluster data',
+        ]);
     });
 
     it('returns undefined outside the configured tree', () => {

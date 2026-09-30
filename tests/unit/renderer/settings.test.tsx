@@ -63,22 +63,73 @@ describe('settings screen', () => {
         });
     });
 
-    it('is reachable from the sidebar footer and shows every section', async () => {
+    it('is reachable from the sidebar footer and opens on General', async () => {
         renderRoutes(routeTree, '/overview/summary');
         const sidebar = await screen.findByTestId('sidebar');
         await userEvent.click(within(sidebar).getByRole('link', { name: /Settings/ }));
         const page = await screen.findByTestId('settings-page');
         expect(page).toHaveTextContent('Preferences for this Kubermeister install.');
-        for (const title of ['General', 'Appearance', 'Updates', 'Charts', 'Connection'])
-            expect(page).toHaveTextContent(title);
+        const rail = within(page).getByRole('tablist', { name: 'Settings sections' });
+        expect(
+            within(rail)
+                .getAllByRole('tab')
+                .map((tab) => tab.textContent),
+        ).toEqual(['General', 'Appearance', 'Cluster data', 'Connection', 'Charts', 'Updates', 'About']);
+        expect(within(rail).getByRole('tab', { name: 'General' })).toHaveAttribute('aria-selected', 'true');
+        expect(within(page).getByTestId('settings-section-general')).toBeInTheDocument();
         // The cards themselves are tested on their own; that the screen carries them is asserted here.
-        expect(within(page).getByTestId('chart-repositories')).toBeInTheDocument();
         expect(within(page).getByTestId('settings-file')).toBeInTheDocument();
         expect(within(sidebar).getByRole('link', { name: /Settings/ })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Settings');
     });
 
-    it('writes the session toggle and the refresh interval through the bridge', async () => {
+    it('opens the section its path names, and names it in the breadcrumb', async () => {
+        renderRoutes(routeTree, '/settings/charts');
+        const page = await screen.findByTestId('settings-page');
+        expect(within(page).getByTestId('settings-section-charts')).toBeInTheDocument();
+        expect(within(page).getByTestId('chart-repositories')).toBeInTheDocument();
+        expect(within(page).queryByTestId('settings-file')).not.toBeInTheDocument();
+        expect(within(page).getByRole('tab', { name: 'Charts' })).toHaveAttribute('aria-selected', 'true');
+        await waitFor(() => expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/Settings.*Charts/));
+        // The sidebar's Settings entry stays current on every section.
+        const sidebar = screen.getByTestId('sidebar');
+        expect(within(sidebar).getByRole('link', { name: /Settings/ })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('opens General for a section id it does not know', async () => {
+        renderRoutes(routeTree, '/settings/nowhere');
+        const page = await screen.findByTestId('settings-page');
+        expect(within(page).getByTestId('settings-section-general')).toBeInTheDocument();
+        expect(within(page).getByRole('tab', { name: 'General' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('switches sections in place, so one Back leaves Settings, and writes General as the bare path', async () => {
+        const { router } = renderRoutes(routeTree, '/overview/summary');
+        await router.navigate({ to: '/settings' });
+        const page = await screen.findByTestId('settings-page');
+        await userEvent.click(within(page).getByRole('tab', { name: 'Connection' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/connection'));
+        expect(await within(page).findByTestId('settings-section-connection')).toBeInTheDocument();
+        await userEvent.click(within(page).getByRole('tab', { name: 'Updates' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/updates'));
+        await userEvent.click(within(page).getByRole('tab', { name: 'General' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+        router.history.back();
+        await waitFor(() => expect(router.state.location.pathname).toBe('/overview/summary'));
+    });
+
+    it('moves between sections with the arrow keys', async () => {
+        const { router } = renderRoutes(routeTree, '/settings');
+        const page = await screen.findByTestId('settings-page');
+        within(page).getByRole('tab', { name: 'General' }).focus();
+        await userEvent.keyboard('{ArrowDown}');
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/appearance'));
+        expect(within(page).getByRole('tab', { name: 'Appearance' })).toHaveFocus();
+        await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/about'));
+    });
+
+    it('writes the session toggle through the bridge', async () => {
         renderRoutes(routeTree, '/settings');
         const toggle = await screen.findByRole('switch', { name: 'Restore last session on launch' });
         await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
@@ -87,8 +138,11 @@ describe('settings screen', () => {
             expect(invoke).toHaveBeenCalledWith('settings.set', { session: { restoreOnLaunch: false } }),
         );
         await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
+    });
 
-        await userEvent.click(screen.getByRole('combobox', { name: 'Refresh interval' }));
+    it('writes the refresh interval through the bridge', async () => {
+        renderRoutes(routeTree, '/settings/data');
+        await userEvent.click(await screen.findByRole('combobox', { name: 'Refresh interval' }));
         await userEvent.click(await screen.findByRole('option', { name: '30 seconds' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('settings.set', { data: { refreshIntervalSec: 30 } }));
         expect(screen.getByRole('combobox', { name: 'Refresh interval' })).toHaveTextContent('30 seconds');
@@ -104,7 +158,7 @@ describe('settings screen', () => {
     });
 
     it('persists a larger log buffer through the bridge', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/data');
         await screen.findByTestId('settings-page');
         await userEvent.click(screen.getByRole('combobox', { name: 'Buffered lines' }));
         await userEvent.click(await screen.findByRole('option', { name: '10k lines' }));
@@ -113,7 +167,7 @@ describe('settings screen', () => {
     });
 
     it('persists the read timeout through the bridge and offers the presets plus the current value', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/data');
         await screen.findByTestId('settings-page');
         await userEvent.click(screen.getByRole('combobox', { name: 'Read timeout' }));
         const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
@@ -125,7 +179,7 @@ describe('settings screen', () => {
     });
 
     it('offers the preset intervals plus the current non-preset value', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/data');
         await screen.findByTestId('settings-page');
         await userEvent.click(screen.getByRole('combobox', { name: 'Refresh interval' }));
         const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
@@ -133,7 +187,7 @@ describe('settings screen', () => {
     });
 
     it('shows the default until a mode is chosen, then persists the choice', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/updates');
         const select = await screen.findByRole('combobox', { name: 'When a new version is found' });
         // Nobody has chosen: the screen names the mode the app would use, not an empty control.
         await waitFor(() => expect(select).toHaveTextContent('Download in the background'));
@@ -151,7 +205,7 @@ describe('settings screen', () => {
 
     it('persists the update check interval through the bridge, folding in a non-preset value', async () => {
         settings.updates.checkIntervalHours = 6;
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/updates');
         const select = await screen.findByRole('combobox', { name: 'Check for new versions' });
         await waitFor(() => expect(select).toHaveTextContent('Every 6 hours'));
         await userEvent.click(select);
@@ -165,7 +219,7 @@ describe('settings screen', () => {
     });
 
     it('links a bug report prefilled with the version and the operating system', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/about');
         const about = await screen.findByTestId('about-card');
         const link = await within(about).findByRole('link', { name: /Report a bug/ });
         const url = new URL(link.getAttribute('href')!);
@@ -182,7 +236,7 @@ describe('settings screen', () => {
                 ? { status: 'available', version: '0.2.2', releaseDate: '2026-09-16T06:48:44.854Z' }
                 : data[channel],
         );
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/about');
         const about = await screen.findByTestId('about-card');
         await waitFor(() => expect(about).toHaveTextContent('Kubermeister'));
         expect(about).toHaveTextContent('0.2.1');
@@ -208,7 +262,7 @@ describe('settings screen', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.state' ? { status: 'unsupported', message: 'Development build' } : data[channel],
         );
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/about');
         const status = await screen.findByTestId('update-status');
         await waitFor(() => expect(status).toHaveTextContent('In-app updates are unavailable here.'));
         expect(status).toHaveTextContent('Development build');
@@ -219,13 +273,13 @@ describe('settings screen', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'update.state' ? { status: 'downloaded', version: '0.3.0' } : data[channel],
         );
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/about');
         await userEvent.click(await screen.findByRole('button', { name: 'Restart now' }));
         expect(invoke).toHaveBeenCalledWith('update.install', {});
     });
 
     it('switches the theme from the cards and persists it', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/appearance');
         const group = await screen.findByRole('radiogroup', { name: 'Theme' });
         expect(within(group).getByRole('radio', { name: /Dark/ })).toHaveAttribute('aria-checked', 'true');
         await userEvent.click(within(group).getByRole('radio', { name: /Light/ }));
@@ -248,7 +302,7 @@ describe('settings screen', () => {
             if (channel === 'settings.get') return { ...settings, connection: { kubeconfigPath: path } };
             return data[channel];
         });
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/connection');
         const shown = await screen.findByTestId('kubeconfig-path');
         expect(shown).toHaveTextContent('$KUBECONFIG or ~/.kube/config (default)');
         expect(screen.getByRole('button', { name: 'Use default' })).toBeDisabled();
@@ -261,7 +315,7 @@ describe('settings screen', () => {
     });
 
     it('chooses where cluster traffic goes and keeps the proxy it is given', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/connection');
         await screen.findByTestId('settings-page');
         const mode = screen.getByRole('combobox', { name: 'Proxy' });
         await waitFor(() => expect(mode).toHaveTextContent('Follow the environment'));
@@ -285,7 +339,7 @@ describe('settings screen', () => {
     });
 
     it('refuses to save something that is not a proxy URL, and says so', async () => {
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/connection');
         await screen.findByTestId('settings-page');
         await userEvent.click(screen.getByRole('combobox', { name: 'Proxy' }));
         await userEvent.click(await screen.findByRole('option', { name: 'Use this proxy' }));
@@ -299,7 +353,7 @@ describe('settings screen', () => {
 
     it('saves the bypass list, and clears it when it is emptied', async () => {
         settings.network.noProxy = '.corp.example';
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/connection');
         const bypass = await screen.findByRole('textbox', { name: 'Never proxy these hosts' });
         await waitFor(() => expect(bypass).toHaveValue('.corp.example'));
         await userEvent.clear(bypass);
@@ -324,7 +378,7 @@ describe('settings screen', () => {
             }
             return data[channel];
         });
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/connection');
         const shown = await screen.findByTestId('ca-bundle-path');
         expect(shown).toHaveTextContent('The system certificate authorities only');
         expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
@@ -339,7 +393,7 @@ describe('settings screen', () => {
         invoke.mockImplementation(async (channel: string) =>
             channel === 'kubeconfig.pick' ? { path: null } : data[channel],
         );
-        renderRoutes(routeTree, '/settings');
+        renderRoutes(routeTree, '/settings/connection');
         await userEvent.click(await screen.findByRole('button', { name: 'Browse…' }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('kubeconfig.pick', {}));
         expect(invoke.mock.calls.filter(([c]) => c === 'settings.get')).toHaveLength(1);

@@ -140,7 +140,7 @@ describe('the install chart dialog', () => {
         const none = await within(dialog).findByTestId('install-chart-no-repositories');
         expect(none).toHaveTextContent('No chart repository is configured');
         await userEvent.click(within(none).getByRole('link', { name: 'Settings › Charts' }));
-        await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/charts'));
     });
 
     it('opens a chart it was given without asking anything', async () => {

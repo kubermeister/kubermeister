@@ -12,7 +12,14 @@ import { followSettingsFile } from '@/lib/settings';
 
 export function App() {
     // The application menu's Settings item pushes this from the main process.
-    useEffect(() => subscribe('open-settings', () => void router.navigate({ to: '/settings' })), []);
+    useEffect(
+        () =>
+            subscribe(
+                'open-settings',
+                () => void router.navigate({ to: '/settings/{-$section}', params: { section: undefined } }),
+            ),
+        [],
+    );
     // An edit to the settings file on disk reaches every screen reading a setting.
     useEffect(() => followSettingsFile(queryClient), []);
     return (

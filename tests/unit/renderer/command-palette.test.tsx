@@ -108,7 +108,7 @@ describe('command palette', () => {
         const dialog = await screen.findByRole('dialog', { name: 'Quick actions' });
         await userEvent.click(within(dialog).getByRole('option', { name: /Check for updates/ }));
         await waitFor(() => expect(invoke).toHaveBeenCalledWith('update.check', {}));
-        await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/about'));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 

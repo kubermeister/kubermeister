@@ -87,7 +87,7 @@ line. It differs from a pod's tab in a few ways:
 - **Live off shows nothing.** There is no snapshot for a workload; the console is empty until you turn
   Live back on.
 - **The set of pods is checked on the refresh interval** — **Live data refresh** in
-  [**Settings › General**](/docs/reference/settings/), 12 seconds by default — rather than watched.
+  [**Settings › Cluster data**](/docs/reference/settings/#cluster-data), 12 seconds by default — rather than watched.
   When it changes, every follow restarts and the console is cleared, each pod reading its tail again.
   A pod replaced in a rollout is therefore picked up within one interval, not at once.
 - When a pod's follow fails, the error names the pod: `<pod>: <message>`.
@@ -127,7 +127,8 @@ cluster, so they are stored locally rather than in the settings file.
 ## The log buffer
 
 A live follow keeps a bounded buffer and drops the oldest lines once it is full. The size is **Log
-buffer** › **Buffered lines** in [**Settings › General**](/docs/reference/settings/): **2k lines**
+buffer** › **Buffered lines** in [**Settings › Cluster data**](/docs/reference/settings/#cluster-data):
+**2k lines**
 (the default), **10k lines** or **50k lines**. On a workload's tab the limit is on all its pods'
 lines together, not per pod.
 

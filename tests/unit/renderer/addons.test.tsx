@@ -150,7 +150,7 @@ describe('add-on lists', () => {
         const empty = await screen.findByTestId('charts-empty');
         expect(empty).toHaveTextContent('No chart repository is configured');
         await userEvent.click(within(empty).getByRole('link', { name: 'Settings › Charts' }));
-        await waitFor(() => expect(router.state.location.pathname).toBe('/settings'));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/settings/charts'));
     });
 
     it('says an OCI registry publishes no list of its charts', async () => {

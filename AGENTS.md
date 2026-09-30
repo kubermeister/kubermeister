@@ -1067,6 +1067,14 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   value is no evidence that anybody chose it.
 - The settings screen at `/settings` edits them through `settings.set`; the application menu
   (`src/main/menu.ts`) opens it with `Cmd+,` on macOS by pushing `open-settings`.
+- **The screen is a rail of sections** (`SettingsPage` in `components/templates/settings-page.tsx`,
+  the list in `routes/settings.{-$section}.tsx`), the section being the route's optional last segment
+  the way a detail tab is: the rail replaces, General is the bare path, an unknown id opens General,
+  and the breadcrumb names the section through `lib/detail-tab.ts`. A section id is a URL other
+  screens link to (`/settings/charts`, `/settings/data`), so rename one only with that fallback in
+  mind. The route sets `remountDeps` to nothing, since a section switch is the rail moving and a
+  remount would take its focus. `RoutePath` includes each optional-tail route's bare path, which is
+  what lets the sidebar's `/settings` stay typed.
 - Theme lives in renderer `localStorage`, not here, because it must apply before first paint.
 - The renderer can never set a file path: the kubeconfig goes through the native dialog channel
   `kubeconfig.pick` and the CA bundle through `caBundle.pick`/`caBundle.clear`, which is why

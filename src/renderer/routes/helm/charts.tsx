@@ -83,7 +83,7 @@ function ChartsPage() {
 /** Why there is nothing to list, which is always something to do under Settings › Charts. */
 function ChartsEmpty({ repositories }: { repositories: ChartRepositoryStatus[] | undefined }) {
     const settings = (
-        <NavLink to="/settings" className="text-primary underline">
+        <NavLink to="/settings/charts" className="text-primary underline">
             Settings › Charts
         </NavLink>
     );

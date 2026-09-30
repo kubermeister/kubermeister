@@ -1,42 +1,68 @@
 ---
 title: Settings
-description: Every Kubermeister setting with its label, options and default — session restore, quit confirmation, refresh interval, read timeout, terminal font, log buffer, theme, updates, chart repositories, kubeconfig, proxy and CA bundle.
+description: Every Kubermeister setting by section, with its label, options and default — session restore, quit confirmation, theme, terminal font, refresh interval, read timeout, log buffer, kubeconfig, proxy, CA bundle, chart repositories and updates.
 sidebar:
   order: 1
 ---
 
 import Figure from '@/components/docs/Figure.astro';
 
-Settings is one screen, "Preferences for this Kubermeister install.", in sections: **General**,
-**Appearance**, **Updates** (with **About**), **Charts** and **Connection**. There is no Save
-button: a toggle or a choice applies at once, and a text field when you press Return or leave it.
-Escape in a text field puts back what was there.
+Settings is one screen, "Preferences for this Kubermeister install.", with a rail of sections down
+its left side: **General**, **Appearance**, **Cluster data**, **Connection**, **Charts**, **Updates**
+and **About**. Click a section, or move through them with the up and down arrow keys. There is no
+Save button: a toggle or a choice applies at once, and a text field when you press Return or leave
+it. Escape in a text field puts back what was there.
 
 <Figure
   name="settings"
-  alt="The Kubermeister settings screen."
-  caption="General comes first: session restore, the quit dialog, and the cadences every screen runs on."
+  alt="The Kubermeister settings screen, with its sections down the left."
+  caption="General comes first: the settings file, session restore and the quit dialog."
 />
 
 Open it with **Settings** at the foot of the sidebar, from the command palette, or from the menu:
 **Kubermeister › Settings…** on macOS, **File › Settings…** on Windows and Linux, or with `⌘,` or
-`Ctrl+,`.
+`Ctrl+,`. Each opens on **General**.
+
+Each section has its own address, so a reload or **Back** returns to the section you were on, and
+the breadcrumb names it. A screen that points at a setting opens its section: an empty chart list
+opens **Charts**, a read that timed out opens **Cluster data**, and **Check for updates** in the
+command palette opens **About**. Moving between sections does not add to the history, so one
+**Back** leaves Settings.
 
 ## General
 
-| Setting                            | Field            | Options                        | Default    |
-| ---------------------------------- | ---------------- | ------------------------------ | ---------- |
-| **Restore last session on launch** | toggle           | on, off                        | on         |
-| **Confirm before quitting**        | toggle           | on, off                        | on         |
-| **Live data refresh**              | Refresh interval | 5, 10, 15, 30 or 60 seconds    | 12 seconds |
-| **Cluster reads**                  | Read timeout     | 15, 30, 60, 120 or 300 seconds | 60 seconds |
-| **Terminal**                       | Font size        | 11, 12, 14 or 16 pt            | 12 pt      |
-| **Log buffer**                     | Buffered lines   | 2k, 10k or 50k lines           | 2k lines   |
+| Setting                            | Field  | Options | Default |
+| ---------------------------------- | ------ | ------- | ------- |
+| **Restore last session on launch** | toggle | on, off | on      |
+| **Confirm before quitting**        | toggle | on, off | on      |
 
+- The **Settings file** card comes first. See [the settings file](#the-settings-file).
 - **Restore last session on launch** reopens on the context and namespace you last used. When off,
   the app follows your kubeconfig's `current-context` instead. See
   [where it reopens](/docs/clusters/contexts-namespaces/#where-it-reopens).
 - **Confirm before quitting** decides whether quitting asks first. See [quitting](#quitting).
+
+## Appearance
+
+| Setting      | Field     | Options             | Default |
+| ------------ | --------- | ------------------- | ------- |
+| **Theme**    |           | Light, Dark, System | Dark    |
+| **Terminal** | Font size | 11, 12, 14 or 16 pt | 12 pt   |
+
+- **Theme** switches the whole window between **Light**, **Dark** and **System**, which follows your
+  operating system's preference and changes with it. The theme is not in the settings file: it is
+  kept in the window's own local storage.
+- **Font size** is the size of the [shell](/docs/sessions/shell/) terminal on a pod. A shell already
+  open keeps its size; the next one uses the new one.
+
+## Cluster data
+
+| Setting               | Field            | Options                        | Default    |
+| --------------------- | ---------------- | ------------------------------ | ---------- |
+| **Live data refresh** | Refresh interval | 5, 10, 15, 30 or 60 seconds    | 12 seconds |
+| **Cluster reads**     | Read timeout     | 15, 30, 60, 120 or 300 seconds | 60 seconds |
+| **Log buffer**        | Buffered lines   | 2k, 10k or 50k lines           | 2k lines   |
+
 - **Refresh interval** is how often lists, metrics and the dashboard poll for updates, and how often
   the context selector's health dot is refreshed. Lists kept current by a watch do not wait for it.
   The 12-second default is not one of the choices; once you pick another, it is gone from the list.
@@ -44,40 +70,32 @@ Open it with **Settings** at the foot of the sidebar, from the command palette, 
   out. It both fails the request and **aborts** it, so a screen that polls cannot pile up requests
   against a cluster that never answers. Large clusters need longer. See
   [read timeouts](/docs/clusters/connecting/#read-timeouts).
-- **Font size** is the size of the [shell](/docs/sessions/shell/) terminal on a pod. A shell already
-  open keeps its size; the next one uses the new one.
 - **Buffered lines** is how many lines a live [log follow](/docs/sessions/logs/) keeps before
   dropping the oldest. It is read live, so changing it trims from the next batch on rather than
   restarting the follow.
 
-## Appearance
+## Connection
 
-**Theme** switches the whole window between **Light**, **Dark** and **System**, which follows your
-operating system's preference and changes with it. The default is **Dark**.
+| Card                      | Field                   | Default                                   |
+| ------------------------- | ----------------------- | ----------------------------------------- |
+| **Kubeconfig**            | Kubeconfig path         | `$KUBECONFIG or ~/.kube/config (default)` |
+| **Proxy**                 | Proxy                   | **Follow the environment**                |
+|                           | Proxy URL               | empty, shown under **Use this proxy**     |
+|                           | Never proxy these hosts | empty, which follows `NO_PROXY`           |
+| **Certificate authority** | CA bundle               | The system certificate authorities only   |
 
-The theme is not in the settings file: it is kept in the window's own local storage.
+- **Kubeconfig path** changes through **Browse…**, a native file dialog, and **Use default**. See
+  [which kubeconfig it reads](/docs/clusters/connecting/#which-kubeconfig-it-reads).
+- **Proxy** is **Follow the environment**, **Use this proxy** or **Connect directly**. A context whose
+  kubeconfig sets its own `proxy-url` always uses that one, in every mode.
+- **Never proxy these hosts** is a comma-separated list, as `NO_PROXY` spells it, shown under the
+  first two modes.
+- **CA bundle** changes through **Choose file…**, a native file dialog, and **Clear**. It is added to
+  the authorities already trusted, never put in their place.
 
-## Updates
-
-**Automatic updates** decides what happens when a new version is found.
-
-| Field                           | Options                                                                                        | Default                        |
-| ------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------ |
-| **When a new version is found** | **Download in the background**, **Notify me and let me choose**, **Never check automatically** | **Download in the background** |
-| **Check for new versions**      | **Every hour**, **Every 4 hours**, **Every 12 hours**, **Once a day**                          | **Every 4 hours**              |
-
-See [updates](/docs/reference/updates/) for what each mode does.
-
-### About
-
-The **About** card shows the app's version, the Electron, Chrome and Node versions it runs on, and
-the updater's latest outcome, with **Check for updates**. Depending on that outcome it adds
-**Download update**, **Restart now**, **What's new** or **Get the update**, each described in
-[updates](/docs/reference/updates/#where-you-see-it).
-
-**Report a bug** opens the bug report form on GitHub in your browser, with the version already
-filled in, and the operating system too on macOS and Windows. On Linux you pick the installer
-yourself, since the app cannot tell an AppImage from a `.deb` or an `.rpm`.
+The interface never sets a file path itself: both paths come from the operating system's dialog.
+Changing the kubeconfig, the proxy or the CA bundle ends every stream and reloads the kubeconfig. See
+[proxies and certificates](/docs/clusters/proxies-and-certificates/).
 
 ## Charts
 
@@ -116,28 +134,27 @@ and the credential.
 - A failed refresh keeps the last good index. Removing a source removes its cached index and its
   credential with it; nothing in the cluster changes.
 
-## Connection
+## Updates
 
-| Card                      | Field                   | Default                                   |
-| ------------------------- | ----------------------- | ----------------------------------------- |
-| **Kubeconfig**            | Kubeconfig path         | `$KUBECONFIG or ~/.kube/config (default)` |
-| **Proxy**                 | Proxy                   | **Follow the environment**                |
-|                           | Proxy URL               | empty, shown under **Use this proxy**     |
-|                           | Never proxy these hosts | empty, which follows `NO_PROXY`           |
-| **Certificate authority** | CA bundle               | The system certificate authorities only   |
+**Automatic updates** decides what happens when a new version is found.
 
-- **Kubeconfig path** changes through **Browse…**, a native file dialog, and **Use default**. See
-  [which kubeconfig it reads](/docs/clusters/connecting/#which-kubeconfig-it-reads).
-- **Proxy** is **Follow the environment**, **Use this proxy** or **Connect directly**. A context whose
-  kubeconfig sets its own `proxy-url` always uses that one, in every mode.
-- **Never proxy these hosts** is a comma-separated list, as `NO_PROXY` spells it, shown under the
-  first two modes.
-- **CA bundle** changes through **Choose file…**, a native file dialog, and **Clear**. It is added to
-  the authorities already trusted, never put in their place.
+| Field                           | Options                                                                                        | Default                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------ |
+| **When a new version is found** | **Download in the background**, **Notify me and let me choose**, **Never check automatically** | **Download in the background** |
+| **Check for new versions**      | **Every hour**, **Every 4 hours**, **Every 12 hours**, **Once a day**                          | **Every 4 hours**              |
 
-The interface never sets a file path itself: both paths come from the operating system's dialog.
-Changing the kubeconfig, the proxy or the CA bundle ends every stream and reloads the kubeconfig. See
-[proxies and certificates](/docs/clusters/proxies-and-certificates/).
+See [updates](/docs/reference/updates/) for what each mode does.
+
+## About
+
+The **About** card shows the app's version, the Electron, Chrome and Node versions it runs on, and
+the updater's latest outcome, with **Check for updates**. Depending on that outcome it adds
+**Download update**, **Restart now**, **What's new** or **Get the update**, each described in
+[updates](/docs/reference/updates/#where-you-see-it).
+
+**Report a bug** opens the bug report form on GitHub in your browser, with the version already
+filled in, and the operating system too on macOS and Windows. On Linux you pick the installer
+yourself, since the app cannot tell an AppImage from a `.deb` or an `.rpm`.
 
 ## The settings file
 
@@ -206,7 +223,7 @@ same change made in Settings would: a new kubeconfig path, proxy or CA bundle en
 reconnects, and the Settings screen follows the file. Deleting the file puts every setting back to
 its default.
 
-The **Settings file** card at the top of General names the file, with **Show file** to open it in
+The **Settings file** card at the top of **General** names the file, with **Show file** to open it in
 the file manager, and lists every value the app did not use and why, by its path
 (`data.readTimeoutSec`). A value that is not valid falls back to its own default and leaves the rest
 of the file alone; a key the app does not know is named as ignored.
@@ -260,6 +277,6 @@ opens the window again. It does still end every port forward, shell, log follow 
 had open. An update's restart and a shutdown the operating system asks for do not ask
 either.
 
-Turn it off with **Confirm before quitting** in **Settings › General**, or with **Don't ask again**
+Turn it off with **Confirm before quitting** in [**Settings › General**](#general), or with **Don't ask again**
 in the dialog itself. The checkbox is only acted on when you answer **Quit**: a cancelled quit is no
 moment to write a preference nobody agreed to.

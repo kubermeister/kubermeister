@@ -192,7 +192,7 @@ describe('ResourceListPage', () => {
             renderPage({ query: timedOut() });
             const hint = await screen.findByTestId('read-timeout-hint');
             expect(hint).toHaveTextContent('raise the read timeout');
-            expect(within(hint).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+            expect(within(hint).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings/data');
         });
 
         it('says nothing about namespaces when one is already selected', async () => {

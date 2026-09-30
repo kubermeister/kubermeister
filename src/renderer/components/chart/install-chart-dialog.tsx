@@ -27,7 +27,7 @@ export const installChartPath = (source: string, chart: string, version: string)
 /** Where a repository is added, named the way the docs and the empty states name it. */
 function SettingsLink({ onNavigate }: { onNavigate: () => void }) {
     return (
-        <NavLink to="/settings" onClick={onNavigate} className="text-primary underline">
+        <NavLink to="/settings/charts" onClick={onNavigate} className="text-primary underline">
             Settings › Charts
         </NavLink>
     );
