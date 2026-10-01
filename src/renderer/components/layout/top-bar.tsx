@@ -61,7 +61,7 @@ export function TopBar() {
         // A container, so what gives way as the bar narrows follows the bar's own width, which the
         // sidebar takes its share of, rather than the window's.
         <header
-            className="@container flex h-12 shrink-0 items-center gap-2.5 border-b border-border bg-background px-4 select-none"
+            className="@container flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-3 select-none @2xl:gap-2.5 @2xl:px-4"
             data-testid="top-bar"
         >
             <Button variant="ghost" size="icon-xs" aria-label="Back" onClick={() => router.history.back()}>
@@ -216,7 +216,9 @@ export function ContextSelector() {
                     data-testid="context-selector"
                 >
                     <StatusDot tone={health.tone} title={health.title} />
-                    <span className="max-w-28 truncate font-medium @3xl:max-w-56">{current?.name ?? 'No cluster'}</span>
+                    <span className="max-w-20 truncate font-medium @2xl:max-w-28 @3xl:max-w-56">
+                        {current?.name ?? 'No cluster'}
+                    </span>
                     <ChevronDownIcon className="size-3 text-text-muted" />
                 </Button>
             </DropdownMenuTrigger>
@@ -281,7 +283,7 @@ export function NamespaceSelector() {
                     ) : (
                         <TagIcon className="size-3 text-text-muted" />
                     )}
-                    <span data-testid="active-namespace" className="max-w-24 truncate @3xl:max-w-48">
+                    <span data-testid="active-namespace" className="max-w-16 truncate @2xl:max-w-24 @3xl:max-w-48">
                         {/* Until the selection is known, "All namespaces" would be a claim rather than a label,
                             and so would it be when the selection could not be read at all. */}
                         {active.isPending

@@ -73,17 +73,21 @@ export function UpdatePill() {
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
+                {/* Its words need room the breadcrumb needs too, so on a bar narrower than 64rem
+                    (the top bar is a container) the pill is its icon alone, still named by them. */}
                 <button
                     type="button"
                     data-testid="update-pill"
                     data-status={state.status}
+                    aria-label={pill.label}
+                    title={pill.label}
                     className={cn(
-                        'flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-label font-medium whitespace-nowrap transition-colors',
+                        'flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 text-label font-medium whitespace-nowrap transition-colors @5xl:px-2.5',
                         TONE_CLASS[pill.tone],
                     )}
                 >
                     <Icon className={cn('size-3', state.status === 'downloading' && 'animate-pulse')} />
-                    {pill.label}
+                    <span className="hidden @5xl:inline">{pill.label}</span>
                 </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80 p-4" data-testid="update-popover">
