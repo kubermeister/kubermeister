@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { useRouter, useRouterState } from '@tanstack/react-router';
+import { useParams, useRouter, useRouterState } from '@tanstack/react-router';
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
@@ -53,6 +53,8 @@ export function TopBar() {
     const pathname = useRouterState({ select: (s) => s.location.pathname });
     const tabLabel = useDetailTabLabel(pathname);
     const crumbs = breadcrumbsForPath(pathname, tabLabel);
+    // The namespace of the object open, which the selector beside the breadcrumb already shows.
+    const { namespace } = useParams({ strict: false });
     const router = useRouter();
 
     return (
@@ -76,8 +78,8 @@ export function TopBar() {
             {/* The breadcrumb takes the room the bar has left and no more, and clips whatever still
                 does not fit rather than running under the controls to its right. As the bar narrows
                 it gives way in steps: an object's name is cut in the middle; the crumbs between the
-                first and the last two (a namespace, which the selector beside it already shows) go;
-                then the first crumb keeps only its icon. */}
+                first and the last two go, and so does the namespace, which the selector beside it
+                already shows; then the first crumb keeps only its icon. */}
             <nav
                 aria-label="Breadcrumb"
                 className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden text-body whitespace-nowrap"
@@ -87,7 +89,10 @@ export function TopBar() {
                     const Icon = crumb.icon;
                     const last = i === crumbs.length - 1;
                     const shrinks = crumb.label.length > SHORT_CRUMB;
-                    const middle = i > 0 && i < crumbs.length - 2;
+                    // The crumbs between the first and the last two, and the namespace wherever it
+                    // sits, since a detail with no tab in its path ends on namespace and name.
+                    const middle =
+                        i > 0 && (i < crumbs.length - 2 || (i < crumbs.length - 1 && crumb.label === namespace));
                     const content = (
                         <span
                             className={cn(

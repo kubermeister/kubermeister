@@ -99,6 +99,15 @@ describe('TopBar', () => {
         expect(within(crumbs).getByRole('link', { name: 'Pods' })).toHaveAttribute('href', '/workloads/pods');
     });
 
+    it('drops the namespace on a narrow bar also when the path ends on the name', async () => {
+        renderRoutes(routeTree, '/workloads/pods/team-a/web-1');
+        const crumbs = await screen.findByTestId('breadcrumbs');
+        await waitFor(() => expect(crumbs).toHaveTextContent('Podsteam-aweb-1'));
+        expect(within(crumbs).getByText('team-a').closest('.\\@5xl\\:flex')).not.toBeNull();
+        // The name it ends on stays.
+        expect(within(crumbs).getByText('web-1').closest('.\\@5xl\\:flex')).toBeNull();
+    });
+
     it('leaves Copy link to the detail header', async () => {
         renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
         const bar = await screen.findByTestId('top-bar');
