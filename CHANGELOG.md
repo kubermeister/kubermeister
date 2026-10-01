@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-01
+
 ### Added
 
 - The log console has a **Copy logs** button that copies every line of the buffer, and `⌘A` or `Ctrl+A` in the console selects the log alone, a copy of it carrying the whole buffer too.
@@ -580,7 +582,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.9.4...HEAD
+[0.9.4]: https://github.com/kubermeister/kubermeister/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/kubermeister/kubermeister/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/kubermeister/kubermeister/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/kubermeister/kubermeister/compare/v0.9.0...v0.9.1
