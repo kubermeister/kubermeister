@@ -150,6 +150,43 @@ describe('ResourceDetail', () => {
         expect(screen.getByRole('tabpanel')).toHaveClass('overflow-hidden');
     });
 
+    it('says the row continues past an edge, and pages it toward that edge', async () => {
+        // jsdom lays nothing out, so the row is given the sizes of one too long for its window.
+        let scrollLeft = 0;
+        const scrollBy = vi.fn();
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(1200);
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500);
+        vi.spyOn(HTMLElement.prototype, 'scrollLeft', 'get').mockImplementation(() => scrollLeft);
+        Object.assign(HTMLElement.prototype, { scrollBy });
+        try {
+            renderDetail({});
+            const row = await screen.findByRole('tablist');
+            const edge = (side: string) => row.parentElement!.querySelector(`[data-tab-scroll="${side}"]`);
+            await waitFor(() => expect(edge('end')).toBeInTheDocument());
+            expect(edge('start')).not.toBeInTheDocument();
+            await userEvent.click(edge('end') as HTMLElement);
+            expect(scrollBy).toHaveBeenCalledWith({ left: 400, behavior: 'smooth' });
+
+            scrollLeft = 700;
+            row.dispatchEvent(new Event('scroll'));
+            await waitFor(() => expect(edge('start')).toBeInTheDocument());
+            expect(edge('end')).not.toBeInTheDocument();
+            await userEvent.click(edge('start') as HTMLElement);
+            expect(scrollBy).toHaveBeenLastCalledWith({ left: -400, behavior: 'smooth' });
+            // A mouse affordance only: the arrow keys already move along the row.
+            expect(edge('start')).toHaveAttribute('tabindex', '-1');
+        } finally {
+            vi.restoreAllMocks();
+            delete (HTMLElement.prototype as Partial<HTMLElement>).scrollBy;
+        }
+    });
+
+    it('has no edge buttons on a row that fits', async () => {
+        renderDetail({});
+        const row = await screen.findByRole('tablist');
+        expect(row.parentElement!.querySelector('[data-tab-scroll]')).not.toBeInTheDocument();
+    });
+
     it('moves the selection with arrow keys, wrapping around the flat order', async () => {
         renderDetail({});
         const overview = await screen.findByRole('tab', { name: /Overview/ });
