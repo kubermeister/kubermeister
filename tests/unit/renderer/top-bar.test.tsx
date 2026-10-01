@@ -83,6 +83,22 @@ describe('TopBar', () => {
         expect(crumbs).toHaveClass('min-w-0');
     });
 
+    it('gives way in steps as the bar narrows, and never runs under the controls after it', async () => {
+        renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
+        const bar = await screen.findByTestId('top-bar');
+        const crumbs = within(bar).getByTestId('breadcrumbs');
+        // jsdom applies no container query, so what is asserted is what each width is told to do.
+        expect(bar).toHaveClass('@container');
+        expect(crumbs).toHaveClass('overflow-hidden');
+        // The namespace, between the first crumb and the last two, goes first.
+        expect(within(crumbs).getByText('team-a').closest('.\\@5xl\\:flex')).not.toBeNull();
+        // The plus keeps the button's name when the words go.
+        const create = within(bar).getByRole('link', { name: 'Create resource' });
+        expect(within(create).getByText('Create resource')).toHaveClass('hidden', '@3xl:inline');
+        // The first crumb keeps its name as a link when only its icon shows.
+        expect(within(crumbs).getByRole('link', { name: 'Pods' })).toHaveAttribute('href', '/workloads/pods');
+    });
+
     it('leaves Copy link to the detail header', async () => {
         renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
         const bar = await screen.findByTestId('top-bar');
