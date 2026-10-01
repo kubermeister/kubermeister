@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ActivityIcon, BoxesIcon, HeartIcon, HistoryIcon, LayersIcon } from 'lucide-react';
 import { StatusBadge } from '@/components/data-display/status-badge';
 import { RefreshButton } from '@/components/refresh-button';
-import { DetailCard, DetailMetrics } from '@/components/templates/detail-cards';
+import { DetailCard, DetailMetrics, PropertyGrid } from '@/components/templates/detail-cards';
 import { eventsTab, labelsTab, ResourceDetail, type DetailTabGroup } from '@/components/templates/resource-detail';
 import { podsTab } from '@/components/templates/owned-pods';
 import { workloadLogsTab } from '@/components/workload/workload-logs-tab';
@@ -47,32 +47,48 @@ function DeploymentDetailPage() {
                     label: 'Overview',
                     icon: HeartIcon,
                     content: (
-                        <DetailMetrics
-                            metrics={[
-                                {
-                                    label: 'Replicas',
-                                    value: deployment ? String(deployment.replicas) : '—',
-                                    sub: 'desired',
-                                },
-                                {
-                                    label: 'Available',
-                                    value: deployment ? String(deployment.available) : '—',
-                                    sub: 'ready',
-                                },
-                                {
-                                    label: 'Updated',
-                                    value: deployment ? String(deployment.updated) : '—',
-                                    sub: 'up-to-date',
-                                },
-                                {
-                                    label: 'CPU',
-                                    value: lastCpu != null ? `${lastCpu}m` : '—',
-                                    sub: 'sum of pods',
-                                    spark: sparkCpu,
-                                    sparkColor: 'var(--warn)',
-                                },
-                            ]}
-                        />
+                        <>
+                            <DetailMetrics
+                                metrics={[
+                                    {
+                                        label: 'Replicas',
+                                        value: deployment ? String(deployment.replicas) : '—',
+                                        sub: 'desired',
+                                    },
+                                    {
+                                        label: 'Available',
+                                        value: deployment ? String(deployment.available) : '—',
+                                        sub: 'ready',
+                                    },
+                                    {
+                                        label: 'Updated',
+                                        value: deployment ? String(deployment.updated) : '—',
+                                        sub: 'up-to-date',
+                                    },
+                                    {
+                                        label: 'CPU',
+                                        value: lastCpu != null ? `${lastCpu}m` : '—',
+                                        sub: 'sum of pods',
+                                        spark: sparkCpu,
+                                        sparkColor: 'var(--warn)',
+                                    },
+                                ]}
+                            />
+                            {/* The image is a full registry path, longer than the header's meta
+                                line has room for, so it is a row of its own here. One column gives
+                                it the card's whole width. */}
+                            {deployment && (
+                                <DetailCard title="Details">
+                                    <PropertyGrid
+                                        columns={1}
+                                        rows={[
+                                            ['Image', deployment.image],
+                                            ['Age', deployment.age],
+                                        ]}
+                                    />
+                                </DetailCard>
+                            )}
+                        </>
                     ),
                 },
                 podsTab({ kind: 'Deployment', name, namespace }),
@@ -212,7 +228,6 @@ function DeploymentDetailPage() {
                           `namespace: ${deployment.namespace}`,
                           `replicas: ${deployment.ready}`,
                           `strategy: ${deployment.strategy}`,
-                          deployment.image,
                       ]
                     : undefined
             }

@@ -80,7 +80,10 @@ export function PropertyGrid({ rows, columns = 2 }: { rows: [string, string][]; 
             {rows.map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-3">
                     <span className="text-text-muted">{k}</span>
-                    <span className="truncate text-right font-mono text-text-2">{v}</span>
+                    {/* Cut at its end when it has to be, so the whole value is the title. */}
+                    <span className="truncate text-right font-mono text-text-2" title={v}>
+                        {v}
+                    </span>
                 </div>
             ))}
         </div>

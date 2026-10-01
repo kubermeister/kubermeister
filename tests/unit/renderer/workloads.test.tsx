@@ -224,6 +224,12 @@ describe('workload details', () => {
         expect(page).toHaveTextContent('Replicas3');
         expect(page).toHaveTextContent('Available2');
         expect(page).toHaveTextContent('Updated3');
+        // The image is a row of the Overview's Details card, not a fact in the header's meta line,
+        // and a value the card has to cut is there in full on hover.
+        const header = within(page).getByText('strategy: Recreate').parentElement!;
+        expect(header).not.toHaveTextContent('nginx:1.27');
+        expect(within(page).getByText('nginx:1.27')).toHaveAttribute('title', 'nginx:1.27');
+        expect(page).toHaveTextContent('Imagenginx:1.27');
         expect(within(page).getByRole('button', { name: 'Restart' })).toBeEnabled();
         expect(within(page).getByRole('button', { name: 'Scale' })).toBeEnabled();
 
