@@ -181,8 +181,8 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   sibling, not inside the list's outlet.
 - **A detail screen's tab is the route's optional last segment** (`{-$tab}`), which
   `ResourceDetail` reads and writes itself, so a reload or Back lands on the tab the reader left. A
-  switch on the rail navigates with `replace`, so one Back leaves the object; a jump from outside
-  the rail (the header's Edit) pushes. The first tab is the bare path, an unknown id opens the
+  switch on the tab row navigates with `replace`, so one Back leaves the object; a jump from outside
+  the row (the header's Edit) pushes. The first tab is the bare path, an unknown id opens the
   first tab rather than a not-found page, and a tab id is therefore part of a URL: rename one only
   with that fallback in mind. The breadcrumb names the tab by the label `ResourceDetail` publishes
   through `src/renderer/lib/detail-tab.ts`, since the top bar sits outside the route.
@@ -202,7 +202,8 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - The shadcn CLI writes `import { cn } from "cn"`, installs a `cn` package and puts new packages
   under `dependencies`: fix the import to `@/lib/utils`, uninstall `cn` and move the package to
   `devDependencies`. It also rewrites primitives it added earlier (`button.tsx`, `card.tsx`): diff
-  and restore them. Its `sonner` primitive assumes next-themes; ours reads `ThemeProvider`.
+  and restore them. `button.tsx` carries sizes of our own: `xs` and `icon-xs` are 28 px with 14 px
+  icons (shadcn's are 24 px with 12 px), the height of the inputs they sit beside. Its `sonner` primitive assumes next-themes; ours reads `ThemeProvider`.
 
 ### Design system
 
@@ -210,16 +211,28 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - Lists render through `ResourceListPage` (`src/renderer/components/templates`) with columns from
   the `list-columns` factories (`nameColumn`, `statusColumn` with the kind's tone map, `ageColumn`,
   `readyRatioColumn`, `textColumn`, `meterColumn` for usage percentages).
-- Details render through `ResourceDetail`: the shared header over a left rail of tabs in labeled
-  groups (OBSERVE, INSPECT, CONNECT), built from the `overviewTab`, `labelsTab` and `eventsTab`
-  factories plus bespoke tabs, with `fill` for panels that scroll themselves and `keepMounted` for
-  panels holding live state.
+- Details render through `ResourceDetail`: the shared header over a row of tabs, built from the
+  `overviewTab`, `labelsTab` and `eventsTab` factories plus bespoke tabs, with `fill` for panels that
+  scroll themselves and `keepMounted` for panels holding live state. The tabs still come in groups
+  (`DetailTabGroup`, whose `label` is for the code only) and a divider sets each apart; the left rail
+  of labelled groups was replaced in 0.9.4 because it took a fixed column of every detail screen.
+  A row too wide for the window scrolls sideways rather than wrapping: `useScrollEdges`
+  (`lib/scroll-edges.ts`) says which edge continues, which fades under a button paging the row (mouse
+  only, since the arrow keys already move along it), and the open tab is scrolled into view when it
+  changes, when the row first renders and whenever the row resizes, clear of the fade by each tab's
+  scroll margin.
+- The detail header (`DetailHeader`) keeps its title block at least 18rem wide, so actions that do
+  not fit beside it wrap to a row under it rather than squeezing the name out. A long value, such as
+  a deployment's image, is a row of the Overview's `PropertyGrid`, not a fact in the header's meta
+  line, and a value the grid cuts is its own `title`.
 - A failed detail read says why the way a list does: both take the sentence from
   `readErrorSentence` in `src/renderer/lib/k8s-error.ts` (a plural noun for a list, one object for a
   detail) under `describeError`'s title, so the two never word one failure differently. A `notFound`
   error is the not-found panel, not a failure, since the custom-resource and Helm readers throw it
   where the others answer `null`.
-- Cards inside tabs use `DetailCard`, `PropertyGrid`, `KeyValueCard` and `DetailMetrics`.
+- Cards inside tabs use `DetailCard`, `PropertyGrid`, `KeyValueCard` and `DetailMetrics`. The metric
+  cards take one column each up to three, so they share the row however many a kind has, and four go
+  two by two below 48rem of console.
 - Status always goes through `StatusBadge`/`StatusDot` with a `StatusTone` from the per-kind maps
   in `src/renderer/lib/status.ts`. Status vocabularies are per domain (`PodStatus`,
   `DeploymentStatus`, `NetworkStatus`, ...), never one shared enum.
@@ -238,8 +251,14 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - A Kubernetes name that may not fit goes through `MiddleTruncate`
   (`components/data-display/middle-truncate.tsx`), which keeps the last characters whole and lets the
   start take a CSS ellipsis, since names that start alike differ at the end. The top bar's breadcrumb
-  uses it: the breadcrumb is `min-w-0 flex-1`, a crumb of 24 characters or fewer never shrinks, and
-  every control to its right keeps its size.
+  uses it: the breadcrumb is `min-w-0 flex-1` and clips, a crumb of 24 characters or fewer never
+  shrinks, and a name squeezed below the end it keeps is clipped inside its own box.
+- **The top bar is a container** (`@container`) and gives way in steps as its own width shrinks, so
+  nothing on it is ever drawn under anything else: below 64rem the crumbs between the first and the
+  last two go, as does the route's own namespace crumb, and the update pill is its icon alone; below
+  48rem the first crumb keeps only its icon, **Create resource** is a plus and the selectors' names
+  are capped; below 42rem the gaps tighten. Every control that loses its words keeps them as its
+  accessible name.
 
 ### Scope: context and namespace
 
@@ -421,7 +440,7 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   icon-only control still has to say what it is. Marking inside a line (`matchRanges`) is only ever
   about saying where a line matched, in either mode.
 - **Every control is on the console's toolbar**: the pickers (container, since, tail), the search
-  and its toggles, the display toggles (wrap, pod names, timestamps), Live, copy and download. A View
+  and its toggles, the display toggles (wrap, pod names, timestamps) as one `ButtonGroup`, Live, copy and download. A View
   menu held the display options until 0.9.4, when they moved out to be one click away. The console is a container (`@container`), so the toolbar answers the
   console's width rather than the window's: below `@3xl` the pickers' words go (each keeps its
   `aria-label`, and the tail reads "100 lines"), the search shrinks, and the toolbar wraps between its

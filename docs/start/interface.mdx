@@ -1,6 +1,6 @@
 ---
 title: Finding your way around
-description: The Kubermeister window — the sidebar and its domains, the top bar with the context and namespace selectors, the command palette, list screens and the detail tab rail.
+description: The Kubermeister window — the sidebar and its domains, the top bar with the context and namespace selectors, the command palette, list screens and the detail tabs.
 sidebar:
   order: 2
 ---
@@ -57,6 +57,12 @@ From left to right:
 - The **Settings** gear opens [Settings](/docs/reference/settings/), and is lit while you are in it.
   Its tooltip names the keys, `⌘,` or `Ctrl+,`.
 
+On a narrow window the bar gives way in steps rather than running anything under the controls on
+its right: the breadcrumb drops the namespace and the crumbs between its first and its last two,
+then the first crumb keeps only its icon; the update pill shows only its icon; **Create resource**
+becomes a **+**; and the context and namespace names are cut short. Each still says what it is when
+the pointer rests on it.
+
 Switching context or namespace resets every cluster query, so screens go back to loading rather
 than showing the previous scope's rows. If you are on a detail page, the app takes you back to its
 list first, because the object you were looking at belongs to the scope you are leaving. A context
@@ -81,7 +87,7 @@ switch also stops every port forward.
 
 `?` opens a cheat sheet of the app's own keys: `⌘1` to `⌘7` (`Ctrl+1` to `Ctrl+7`) for the seven
 domains, `⌘R` or `Ctrl+R` to refresh the screen, `/` for its search box, and back and forward. Those
-and the keys of the tab rail and the editors are listed under
+and the keys of the detail tabs and the editors are listed under
 [keyboard shortcuts](/docs/reference/shortcuts/), and moving through the window with `Tab` or a
 screen reader under [accessibility](/docs/reference/accessibility/).
 
@@ -105,18 +111,18 @@ delete.
 ## Detail screens
 
 A header naming the object, with its status and actions (**Refresh**, **Edit**, **Delete** and any
-the kind adds), over a left rail of tabs in labelled groups:
+the kind adds), over a row of tabs in groups a thin divider sets apart:
 
-- **OBSERVE**, on every kind: usually Overview and Events, plus what the kind has to watch, such
-  as a pod's Logs and Related tabs or a workload's Pods and Logs.
-- **INSPECT**, on every kind: usually Manifest and Labels, plus Describe on pods and nodes and a
+- What the object is doing, on every kind: usually Overview and Events, plus what the kind has to
+  watch, such as a pod's Logs and Related tabs or a workload's Pods and Logs.
+- What it is, on every kind: usually Manifest and Labels, plus Describe on pods and nodes and a
   pod's Network tab, where its port forwards are started.
-- **CONNECT**, on pods only: Shell.
+- Shell, on pods only, in a group of its own at the end.
 
-A few kinds add a group of their own: **DATA** on ConfigMaps (Entries) and Secrets (Keys),
-**NETWORK** on Services (Ports, Endpoints, Selector), **ROUTING** on Ingresses (Rules, TLS) and
-**ROLLOUT** on Deployments (Status, History, Replica Sets). There is no metrics tab; usage is shown
-on the Overview.
+A few kinds add a group of their own between the first two: Entries on ConfigMaps and Keys on
+Secrets; Ports, Endpoints and Selector on Services; Rules and TLS on Ingresses; and Status, History
+and Replica Sets on Deployments. There is no metrics tab; usage is shown on the Overview, whose
+cards share the width between them however many a kind has.
 
 The arrow keys move between tabs once one has focus. Tabs that hold something you would not want to
 lose — a pod's Logs and Network tabs, and every Manifest tab — stay mounted when you switch away, so

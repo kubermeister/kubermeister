@@ -119,13 +119,15 @@ function renderDetail(props: Props, path = '/pods/web-1') {
 const selected = (name: RegExp) => expect(screen.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true');
 
 describe('ResourceDetail', () => {
-    it('renders the header, grouped rail with counts and hints, and the first tab', async () => {
+    it('renders the header, a row of tabs with counts and hints, and the first tab', async () => {
         renderDetail({});
         expect(await screen.findByText('web-1')).toBeInTheDocument();
         const rail = screen.getByRole('tablist');
-        expect(rail).toHaveAttribute('aria-orientation', 'vertical');
-        expect(rail).toHaveTextContent('OBSERVE');
-        expect(rail).toHaveTextContent('CONNECT');
+        expect(rail).toHaveAttribute('aria-orientation', 'horizontal');
+        // The groups are told apart by a divider between them, not by a heading.
+        expect(rail).not.toHaveTextContent('OBSERVE');
+        expect(rail).not.toHaveTextContent('CONNECT');
+        expect(rail.querySelectorAll('[data-tab-divider]')).toHaveLength(1);
         expect(within(rail).getAllByRole('tab')).toHaveLength(5);
         expect(within(rail).getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
         expect(within(rail).getByRole('tab', { name: /Shell/ })).toHaveTextContent('2');
@@ -146,6 +148,43 @@ describe('ResourceDetail', () => {
         await userEvent.click(screen.getByRole('tab', { name: /Logs/ }));
         await waitFor(() => expect(screen.getByText('logs body')).toBeVisible());
         expect(screen.getByRole('tabpanel')).toHaveClass('overflow-hidden');
+    });
+
+    it('says the row continues past an edge, and pages it toward that edge', async () => {
+        // jsdom lays nothing out, so the row is given the sizes of one too long for its window.
+        let scrollLeft = 0;
+        const scrollBy = vi.fn();
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(1200);
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(500);
+        vi.spyOn(HTMLElement.prototype, 'scrollLeft', 'get').mockImplementation(() => scrollLeft);
+        Object.assign(HTMLElement.prototype, { scrollBy });
+        try {
+            renderDetail({});
+            const row = await screen.findByRole('tablist');
+            const edge = (side: string) => row.parentElement!.querySelector(`[data-tab-scroll="${side}"]`);
+            await waitFor(() => expect(edge('end')).toBeInTheDocument());
+            expect(edge('start')).not.toBeInTheDocument();
+            await userEvent.click(edge('end') as HTMLElement);
+            expect(scrollBy).toHaveBeenCalledWith({ left: 400, behavior: 'smooth' });
+
+            scrollLeft = 700;
+            row.dispatchEvent(new Event('scroll'));
+            await waitFor(() => expect(edge('start')).toBeInTheDocument());
+            expect(edge('end')).not.toBeInTheDocument();
+            await userEvent.click(edge('start') as HTMLElement);
+            expect(scrollBy).toHaveBeenLastCalledWith({ left: -400, behavior: 'smooth' });
+            // A mouse affordance only: the arrow keys already move along the row.
+            expect(edge('start')).toHaveAttribute('tabindex', '-1');
+        } finally {
+            vi.restoreAllMocks();
+            delete (HTMLElement.prototype as Partial<HTMLElement>).scrollBy;
+        }
+    });
+
+    it('has no edge buttons on a row that fits', async () => {
+        renderDetail({});
+        const row = await screen.findByRole('tablist');
+        expect(row.parentElement!.querySelector('[data-tab-scroll]')).not.toBeInTheDocument();
     });
 
     it('moves the selection with arrow keys, wrapping around the flat order', async () => {

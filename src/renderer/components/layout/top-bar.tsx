@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { useRouter, useRouterState } from '@tanstack/react-router';
+import { useParams, useRouter, useRouterState } from '@tanstack/react-router';
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
@@ -7,6 +7,7 @@ import {
     ChevronDownIcon,
     ChevronRightIcon,
     Loader2Icon,
+    PlusIcon,
     TagIcon,
 } from 'lucide-react';
 import { MiddleTruncate } from '@/components/data-display/middle-truncate';
@@ -52,11 +53,15 @@ export function TopBar() {
     const pathname = useRouterState({ select: (s) => s.location.pathname });
     const tabLabel = useDetailTabLabel(pathname);
     const crumbs = breadcrumbsForPath(pathname, tabLabel);
+    // The namespace of the object open, which the selector beside the breadcrumb already shows.
+    const { namespace } = useParams({ strict: false });
     const router = useRouter();
 
     return (
+        // A container, so what gives way as the bar narrows follows the bar's own width, which the
+        // sidebar takes its share of, rather than the window's.
         <header
-            className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border bg-background px-4 select-none"
+            className="@container flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-3 select-none @2xl:gap-2.5 @2xl:px-4"
             data-testid="top-bar"
         >
             <Button variant="ghost" size="icon-xs" aria-label="Back" onClick={() => router.history.back()}>
@@ -70,40 +75,60 @@ export function TopBar() {
             <NamespaceSelector />
             <ConnectionNotice />
             {crumbs.length > 0 && <div className="ml-1 h-4 w-px bg-border" />}
-            {/* The breadcrumb takes the room the bar has left and no more: an object's name can be
-                longer than the window, and it is the name that gives way, cut in the middle, while
-                the short crumbs around it and every control to its right keep their size. */}
+            {/* The breadcrumb takes the room the bar has left and no more, and clips whatever still
+                does not fit rather than running under the controls to its right. As the bar narrows
+                it gives way in steps: an object's name is cut in the middle; the crumbs between the
+                first and the last two go, and so does the namespace, which the selector beside it
+                already shows; then the first crumb keeps only its icon. */}
             <nav
                 aria-label="Breadcrumb"
-                className="flex min-w-0 flex-1 items-center gap-2.5 text-body whitespace-nowrap"
+                className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden text-body whitespace-nowrap"
                 data-testid="breadcrumbs"
             >
                 {crumbs.map((crumb, i) => {
                     const Icon = crumb.icon;
                     const last = i === crumbs.length - 1;
                     const shrinks = crumb.label.length > SHORT_CRUMB;
+                    // The crumbs between the first and the last two, and the namespace wherever it
+                    // sits, since a detail with no tab in its path ends on namespace and name.
+                    const middle =
+                        i > 0 && (i < crumbs.length - 2 || (i < crumbs.length - 1 && crumb.label === namespace));
                     const content = (
                         <span
                             className={cn(
                                 'flex min-w-0 items-center gap-1.5',
-                                !shrinks && 'shrink-0',
+                                // A name squeezed narrower than the end it keeps is clipped inside
+                                // its own box rather than drawn over the crumb after it.
+                                shrinks ? 'overflow-hidden' : 'shrink-0',
                                 last ? 'text-foreground' : 'text-text-muted',
                             )}
                         >
                             {Icon && <Icon className="size-3 shrink-0" />}
-                            <MiddleTruncate text={crumb.label} />
+                            <MiddleTruncate text={crumb.label} className={cn(i === 0 && Icon && 'hidden @3xl:flex')} />
                         </span>
                     );
                     return (
                         <Fragment key={i}>
-                            {i > 0 && <ChevronRightIcon className="size-3 shrink-0 text-text-dim" />}
+                            {i > 0 && (
+                                <ChevronRightIcon
+                                    className={cn('size-3 shrink-0 text-text-dim', middle && 'hidden @5xl:block')}
+                                />
+                            )}
                             {crumb.to && !last ? (
                                 <NavLink
                                     to={crumb.to}
-                                    className={cn('min-w-0 hover:text-foreground', !shrinks && 'shrink-0')}
+                                    // The label is the link's name, also when only the icon shows.
+                                    aria-label={crumb.label}
+                                    className={cn(
+                                        'min-w-0 hover:text-foreground',
+                                        !shrinks && 'shrink-0',
+                                        middle && 'hidden @5xl:block',
+                                    )}
                                 >
                                     {content}
                                 </NavLink>
+                            ) : middle ? (
+                                <span className="hidden min-w-0 @5xl:flex">{content}</span>
                             ) : (
                                 content
                             )}
@@ -113,8 +138,12 @@ export function TopBar() {
             </nav>
             <ForwardManager />
             <UpdatePill />
+            {/* Named the same at every width, since a narrow bar shows only the plus. */}
             <Button size="sm" asChild>
-                <NavLink to="/create">Create resource</NavLink>
+                <NavLink to="/create" aria-label="Create resource" className="@max-3xl:px-2">
+                    <PlusIcon className="@3xl:hidden" aria-hidden />
+                    <span className="hidden @3xl:inline">Create resource</span>
+                </NavLink>
             </Button>
             <SettingsButton />
         </header>
@@ -187,7 +216,9 @@ export function ContextSelector() {
                     data-testid="context-selector"
                 >
                     <StatusDot tone={health.tone} title={health.title} />
-                    <span className="font-medium">{current?.name ?? 'No cluster'}</span>
+                    <span className="max-w-20 truncate font-medium @2xl:max-w-28 @3xl:max-w-56">
+                        {current?.name ?? 'No cluster'}
+                    </span>
                     <ChevronDownIcon className="size-3 text-text-muted" />
                 </Button>
             </DropdownMenuTrigger>
@@ -252,7 +283,7 @@ export function NamespaceSelector() {
                     ) : (
                         <TagIcon className="size-3 text-text-muted" />
                     )}
-                    <span data-testid="active-namespace">
+                    <span data-testid="active-namespace" className="max-w-16 truncate @2xl:max-w-24 @3xl:max-w-48">
                         {/* Until the selection is known, "All namespaces" would be a claim rather than a label,
                             and so would it be when the selection could not be read at all. */}
                         {active.isPending

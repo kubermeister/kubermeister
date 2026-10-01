@@ -1,7 +1,7 @@
-import { useLayoutEffect, type KeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
-import { CalendarClockIcon, InfoIcon, TagIcon, type LucideIcon } from 'lucide-react';
+import { CalendarClockIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon, TagIcon, type LucideIcon } from 'lucide-react';
 import type { ObjectEventsInput } from '../../../shared/k8s/events';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { ObjectMetaCard } from '@/components/templates/object-meta-card';
 import { isClusterScopedManifestKind, isManifestKind } from '../../../shared/k8s/manifest';
 import { ReadErrorHints } from '@/components/templates/read-error-hints';
 import { publishDetailTab } from '@/lib/detail-tab';
+import { useScrollEdges } from '@/lib/scroll-edges';
 import { describeError, readErrorSentence } from '@/lib/k8s-error';
 import { cn } from '@/lib/utils';
 
@@ -144,10 +145,10 @@ function StatePanel({ children, testId }: { children: ReactNode; testId?: string
 }
 
 /**
- * The single resource-detail page: an icon, eyebrow and title header over a left-rail tab switcher
- * grouped into labeled sections. Every detail screen composes this with an explicit `groups` array
- * built from the tab factories plus any bespoke tabs. The active tab's content renders in a
- * scrollable region beside the rail.
+ * The single resource-detail page: an icon, eyebrow and title header over a row of tabs, the groups
+ * told apart by a divider rather than a heading. Every detail screen composes this with an explicit
+ * `groups` array built from the tab factories plus any bespoke tabs. The active tab's content renders
+ * below the row at the page's full width.
  */
 export function ResourceDetail({
     groups,
@@ -183,11 +184,14 @@ export function ResourceDetail({
     // half of that handshake when it mounts.
     const editControl = useManifestEditBridge(() => openTab('manifest', false));
 
-    // The breadcrumb names the tab by its label; the rail is the only place that knows it.
+    // The breadcrumb names the tab by its label; the tab row is the only place that knows it.
     const tabLabel = tabParam ? activeTab?.label : undefined;
     useLayoutEffect(() => publishDetailTab(pathname, tabLabel), [pathname, tabLabel]);
 
-    // Roving tabindex with arrow keys across the flat tab order, the WAI-ARIA pattern for a vertical tablist.
+    const tabRow = useRef<HTMLDivElement>(null);
+    const activeId = activeTab?.id;
+
+    // Roving tabindex with arrow keys across the flat tab order, the WAI-ARIA pattern for a tablist.
     const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
         const delta =
             e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
@@ -218,6 +222,24 @@ export function ResourceDetail({
     // A cluster-scoped kind lives in no namespace, so the not-found copy names none.
     const clusterScoped = clusterScopedProp ?? (isManifestKind(kind) && isClusterScopedManifestKind(kind));
     const where = clusterScoped ? '' : namespace ? ` in namespace “${namespace}”` : ' in the current namespace';
+    // The row exists only once the object has loaded, and a page can hand a different set of tabs as
+    // what it read changes, so either one is a reason to measure the edges again.
+    const tabEdges = useScrollEdges(tabRow, `${state}\u0000${allTabs.map((tab) => tab.id).join(',')}`);
+    // A row too long for the window scrolls sideways, and the open tab may be past its edge: the one
+    // a link or a reload opened on, or the one a narrowing window pushed out. It is brought into view
+    // when it changes, when the row first appears, and whenever the row is resized.
+    useLayoutEffect(() => {
+        const row = tabRow.current;
+        if (!row || !activeId) return;
+        const reveal = () =>
+            row
+                .querySelector<HTMLElement>(`#tab-${CSS.escape(activeId)}`)
+                ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+        reveal();
+        const observer = new ResizeObserver(reveal);
+        observer.observe(row);
+        return () => observer.disconnect();
+    }, [activeId, state]);
 
     return (
         <ManifestEditContext value={editControl}>
@@ -236,13 +258,13 @@ export function ResourceDetail({
 
                 {state === 'loading' ? (
                     <div
-                        className="grid min-h-0 flex-1 grid-cols-[var(--spacing-rail)_1fr] gap-3.5 border-t border-border px-4.5 pt-3.5 pb-4.5"
+                        className="flex min-h-0 flex-1 flex-col gap-3.5 border-t border-border px-4.5 pt-2 pb-4.5"
                         role="status"
                         aria-label="Loading"
                     >
-                        <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
                             {Array.from({ length: 5 }).map((_, i) => (
-                                <Skeleton key={i} className="h-7 w-full" />
+                                <Skeleton key={i} className="h-7 w-24" />
                             ))}
                         </div>
                         <div className="flex flex-col gap-3">
@@ -285,67 +307,106 @@ export function ResourceDetail({
                         )}
                     </StatePanel>
                 ) : (
-                    <div className="grid min-h-0 flex-1 grid-cols-[var(--spacing-rail)_1fr] gap-3.5 border-t border-border px-4.5 pb-4.5">
-                        <div
-                            role="tablist"
-                            aria-orientation="vertical"
-                            className="overflow-auto pt-3.5 pr-1 select-none"
-                        >
-                            {groups.map((group) => (
-                                <div key={group.label} role="presentation" className="mb-3.5">
-                                    <div className="px-1 pt-1 pb-1.5 text-eyebrow font-semibold tracking-[0.1em] text-text-dim">
-                                        {group.label}
-                                    </div>
-                                    {group.items.map((tab) => {
-                                        const TabIcon = tab.icon;
-                                        const active = tab.id === activeTab?.id;
-                                        return (
-                                            <button
-                                                key={tab.id}
-                                                id={`tab-${tab.id}`}
-                                                type="button"
-                                                role="tab"
-                                                aria-selected={active}
-                                                aria-controls={`panel-${tab.id}`}
-                                                tabIndex={active ? 0 : -1}
-                                                onClick={() => openTab(tab.id, true)}
-                                                onKeyDown={(e) => onTabKeyDown(e, allTabs.indexOf(tab))}
-                                                className={cn(
-                                                    'mb-px flex w-full items-center gap-2.5 border-l-2 py-1.5 pr-2 pl-2 text-left text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                                                    active
-                                                        ? 'border-primary bg-elev-2 text-foreground'
-                                                        : 'border-transparent text-text-2 hover:bg-elev-2/60',
-                                                )}
-                                            >
-                                                <TabIcon
-                                                    className={cn(
-                                                        'size-3.25',
-                                                        active ? 'text-primary' : 'text-text-muted',
-                                                    )}
-                                                />
-                                                <span className="flex-1">{tab.label}</span>
-                                                {tab.count != null && (
-                                                    <span className="rounded-[3px] bg-elev-3 px-1.5 font-mono text-caption text-text-muted">
-                                                        {tab.count}
-                                                    </span>
-                                                )}
-                                                {tab.hint && (
-                                                    <span className="font-mono text-eyebrow text-text-dim">
-                                                        {tab.hint}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            ))}
+                    <div className="flex min-h-0 flex-1 flex-col border-t border-border">
+                        {/* One row of tabs. A row longer than the window scrolls sideways rather than
+                            wrapping, so the content below never moves down a line on a narrow one. */}
+                        <div className="relative shrink-0 border-b border-border">
+                            <div
+                                ref={tabRow}
+                                role="tablist"
+                                aria-orientation="horizontal"
+                                className="flex items-stretch overflow-x-auto px-3 select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            >
+                                {groups.map((group, groupIndex) => (
+                                    <Fragment key={group.label}>
+                                        {groupIndex > 0 && (
+                                            <div
+                                                role="presentation"
+                                                data-tab-divider
+                                                className="mx-1.5 my-2.5 w-px shrink-0 bg-border"
+                                            />
+                                        )}
+                                        <div role="presentation" className="flex items-stretch">
+                                            {group.items.map((tab) => {
+                                                const TabIcon = tab.icon;
+                                                const active = tab.id === activeTab?.id;
+                                                return (
+                                                    <button
+                                                        key={tab.id}
+                                                        id={`tab-${tab.id}`}
+                                                        type="button"
+                                                        role="tab"
+                                                        aria-selected={active}
+                                                        aria-controls={`panel-${tab.id}`}
+                                                        tabIndex={active ? 0 : -1}
+                                                        onClick={() => openTab(tab.id, true)}
+                                                        onKeyDown={(e) => onTabKeyDown(e, allTabs.indexOf(tab))}
+                                                        className={cn(
+                                                            '-mb-px flex shrink-0 scroll-mx-10 items-center gap-2 border-b-2 px-2.5 py-2.5 text-body whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                                                            active
+                                                                ? 'border-primary text-foreground'
+                                                                : 'border-transparent text-text-2 hover:text-foreground',
+                                                        )}
+                                                    >
+                                                        <TabIcon
+                                                            className={cn(
+                                                                'size-3.25',
+                                                                active ? 'text-primary' : 'text-text-muted',
+                                                            )}
+                                                        />
+                                                        <span>{tab.label}</span>
+                                                        {tab.count != null && (
+                                                            <span className="rounded-[3px] bg-elev-3 px-1.5 font-mono text-caption text-text-muted">
+                                                                {tab.count}
+                                                            </span>
+                                                        )}
+                                                        {tab.hint && (
+                                                            <span className="font-mono text-eyebrow text-text-dim">
+                                                                {tab.hint}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </Fragment>
+                                ))}
+                            </div>
+                            {/* What lies past either edge is said by a fade and a button that pages the
+                                row toward it. Mouse only: the arrow keys already move along the row, and
+                                the tab they land on is scrolled into view, clear of the fade, since each
+                                tab's scroll margin is the fade's width. */}
+                            {(['start', 'end'] as const).map((edge) =>
+                                tabEdges.edges[edge] ? (
+                                    <button
+                                        key={edge}
+                                        type="button"
+                                        tabIndex={-1}
+                                        aria-hidden
+                                        data-tab-scroll={edge}
+                                        onClick={() => tabEdges.page(edge === 'start' ? -1 : 1)}
+                                        className={cn(
+                                            'absolute inset-y-0 flex w-10 items-center text-text-muted hover:text-foreground',
+                                            edge === 'start'
+                                                ? 'left-0 justify-start bg-linear-to-r from-background from-50% to-transparent pl-1'
+                                                : 'right-0 justify-end bg-linear-to-l from-background from-50% to-transparent pr-1',
+                                        )}
+                                    >
+                                        {edge === 'start' ? (
+                                            <ChevronLeftIcon className="size-4" />
+                                        ) : (
+                                            <ChevronRightIcon className="size-4" />
+                                        )}
+                                    </button>
+                                ) : null,
+                            )}
                         </div>
 
                         {/* The active tab plus any keepMounted tabs (hidden) so live state survives a switch.
-                            `min-w-0` keeps this grid item from growing past its track when a fill tab holds
+                            `min-w-0` keeps the body from growing past the page when a fill tab holds
                             wide content (long log lines, the terminal): the inner region scrolls instead. */}
                         <div
-                            className="flex min-h-0 min-w-0 flex-col"
+                            className="flex min-h-0 min-w-0 flex-1 flex-col px-4.5 pb-4.5"
                             data-testid={testId ? `${testId}-body` : undefined}
                         >
                             {allTabs.map((tab) => {

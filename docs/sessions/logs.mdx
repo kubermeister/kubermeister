@@ -12,7 +12,7 @@ you have to switch on first is a step in front of the answer.
 
 ## Pod logs
 
-A pod's **Logs** tab is in the **OBSERVE** group. It starts live: it reads the recent tail of the
+A pod's **Logs** tab comes right after its **Overview**. It starts live: it reads the recent tail of the
 container and then follows it. Turning **Live** off stops the follow and shows a one-shot read of
 the same container, window and tail instead, which is what holds the view still while you read.
 Turning it back on starts a new follow.
@@ -37,8 +37,9 @@ The toolbar holds every control the console has.
   back.
 - **Tail** — how many lines each follow reads. See [How the lines read](#how-the-lines-read).
 - **Search**, with its three toggles — see [Searching](#searching).
-- **Wrap long lines**, **Show pod names** and **Show timestamps** — the icon toggles after the
-  search. See [How the lines read](#how-the-lines-read).
+- **Wrap long lines**, **Show pod names** and **Show timestamps** — one group of icon toggles after
+  the search's own, apart from them because they change how a line reads rather than which lines
+  are shown. See [How the lines read](#how-the-lines-read).
 - **Live** — follow, or hold a snapshot.
 - **Copy logs** and **Download** — the two icons at the end. See [Copying](#copying) and
   [Downloading](#downloading).

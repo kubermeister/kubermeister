@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateState } from '../../../src/shared/ipc';
@@ -34,6 +34,16 @@ describe('UpdatePill', () => {
         act(() => push?.({ status: 'downloaded', version: '0.3.0' }));
         await act(async () => resolveInitial({ status: 'up-to-date' }));
         expect(screen.getByTestId('update-pill')).toHaveTextContent('Restart to update');
+    });
+
+    it('keeps its words as its name when a narrow bar shows only its icon', async () => {
+        invoke.mockResolvedValue({ status: 'downloaded', version: '0.3.0' });
+        render(<UpdatePill />);
+        const pill = await screen.findByTestId('update-pill');
+        expect(pill).toHaveAccessibleName('Restart to update');
+        expect(pill).toHaveAttribute('title', 'Restart to update');
+        // jsdom applies no container query: the words are what a bar below 64rem hides.
+        expect(within(pill).getByText('Restart to update')).toHaveClass('hidden', '@5xl:inline');
     });
 
     it('renders nothing while up to date, during checks, and for background failures', async () => {

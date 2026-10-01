@@ -83,6 +83,24 @@ describe('DetailMetrics and MetricCard', () => {
         expect(screen.getByText('42').closest('[data-slot="card"]')?.querySelector('svg')).not.toBeNull();
     });
 
+    it('shares the width between however many cards there are', () => {
+        const cards = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `M${i}`, value: String(i) }));
+        const { rerender } = render(<DetailMetrics metrics={cards(2)} />);
+        const grid = () => screen.getByTestId('detail-metrics');
+        // A pod's two cards take half each, not two of four fixed columns.
+        expect(grid()).toHaveClass('grid-cols-2');
+        expect(grid()).not.toHaveClass('grid-cols-4');
+        rerender(<DetailMetrics metrics={cards(3)} />);
+        expect(grid()).toHaveClass('grid-cols-3');
+        // Four go two by two in a narrow console rather than three and one.
+        rerender(<DetailMetrics metrics={cards(4)} />);
+        expect(grid()).toHaveClass('grid-cols-2', '@3xl:grid-cols-4');
+        expect(grid().parentElement).toHaveClass('@container');
+        // A count no screen has yet wraps as the room allows.
+        rerender(<DetailMetrics metrics={cards(6)} />);
+        expect(grid().className).toContain('auto-fit');
+    });
+
     it('renders a metric card without sparkline or sub line', () => {
         const { container } = render(<MetricCard label="CPU" value="12%" />);
         expect(screen.getByText('12%')).toBeInTheDocument();
