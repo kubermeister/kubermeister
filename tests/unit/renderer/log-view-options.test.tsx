@@ -129,6 +129,13 @@ describe('the console’s display controls', () => {
             expect(toggle.querySelector('svg')).toBeInTheDocument();
         }
         expect(screen.getByRole('button', { name: 'Tail' })).toBeInTheDocument();
+        // How a line reads is one group, apart from the search's own toggles.
+        const display = screen.getByRole('group', { name: 'Line display' });
+        expect(
+            within(display)
+                .getAllByRole('button')
+                .map((button) => button.getAttribute('aria-label')),
+        ).toEqual(['Wrap long lines', 'Show timestamps']);
         // A console following one pod labels no line with a pod, so it has no pod names to hide.
         expect(screen.queryByRole('button', { name: 'Show pod names' })).not.toBeInTheDocument();
     });

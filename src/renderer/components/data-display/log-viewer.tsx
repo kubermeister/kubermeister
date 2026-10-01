@@ -21,6 +21,7 @@ import { matchRanges, type LogSearch } from '@/lib/log-filter';
 import { sharedPodPrefix } from '@/lib/multi-pod-logs';
 import { formatLogTimestamp } from '@/lib/log-timestamp';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
@@ -344,34 +345,37 @@ export function LogViewer({
                     >
                         <HighlighterIcon />
                     </Toggle>
-                    <Toggle
-                        pressed={view.wrap}
-                        onToggle={() => setView({ wrap: !view.wrap })}
-                        label="Wrap long lines"
-                        title="Wrap long lines"
-                    >
-                        <WrapTextIcon />
-                    </Toggle>
-                    {/* Only a console following several pods labels its lines; a pod's own has nothing
-                    to hide. */}
-                    {podColors && (
+                    {/* How a line reads, one group apart from the search's own toggles. */}
+                    <ButtonGroup aria-label="Line display">
                         <Toggle
-                            pressed={view.podNames}
-                            onToggle={() => setView({ podNames: !view.podNames })}
-                            label="Show pod names"
-                            title="Show pod names"
+                            pressed={view.wrap}
+                            onToggle={() => setView({ wrap: !view.wrap })}
+                            label="Wrap long lines"
+                            title="Wrap long lines"
                         >
-                            <TagIcon />
+                            <WrapTextIcon />
                         </Toggle>
-                    )}
-                    <Toggle
-                        pressed={showTimestamps}
-                        onToggle={() => setView({ timestamps: !showTimestamps })}
-                        label="Show timestamps"
-                        title="Show timestamps"
-                    >
-                        <ClockIcon />
-                    </Toggle>
+                        {/* Only a console following several pods labels its lines; a pod's own has nothing
+                        to hide. */}
+                        {podColors && (
+                            <Toggle
+                                pressed={view.podNames}
+                                onToggle={() => setView({ podNames: !view.podNames })}
+                                label="Show pod names"
+                                title="Show pod names"
+                            >
+                                <TagIcon />
+                            </Toggle>
+                        )}
+                        <Toggle
+                            pressed={showTimestamps}
+                            onToggle={() => setView({ timestamps: !showTimestamps })}
+                            label="Show timestamps"
+                            title="Show timestamps"
+                        >
+                            <ClockIcon />
+                        </Toggle>
+                    </ButtonGroup>
                     <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
                         <span
                             aria-hidden
