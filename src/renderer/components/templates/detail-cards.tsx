@@ -11,13 +11,33 @@ export interface DetailMetric {
     sparkColor?: string;
 }
 
+/**
+ * Columns per number of cards, so the cards share the width between them however many a screen has:
+ * a pod's two take half each rather than two of four fixed columns. Four go two by two in a narrow
+ * console rather than three and one, and a count no screen has yet wraps as the room allows.
+ */
+const METRIC_COLUMNS: Record<number, string> = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-2 @3xl:grid-cols-4',
+};
+
 export function DetailMetrics({ metrics }: { metrics: DetailMetric[] }) {
     if (metrics.length === 0) return null;
     return (
-        <div className="grid grid-cols-4 gap-3">
-            {metrics.map((metric) => (
-                <MetricCard key={metric.label} {...metric} />
-            ))}
+        <div className="@container">
+            <div
+                className={cn(
+                    'grid gap-3',
+                    METRIC_COLUMNS[metrics.length] ?? 'grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]',
+                )}
+                data-testid="detail-metrics"
+            >
+                {metrics.map((metric) => (
+                    <MetricCard key={metric.label} {...metric} />
+                ))}
+            </div>
         </div>
     );
 }
