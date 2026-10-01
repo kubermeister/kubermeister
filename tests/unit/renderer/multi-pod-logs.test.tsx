@@ -22,7 +22,7 @@ vi.mock('@/lib/ipc', async () => ({
 const download = vi.fn();
 vi.mock('@/lib/download', () => ({ downloadTextFile: download }));
 
-const { podColors, useMultiPodLogStream } = await import('@/lib/multi-pod-logs');
+const { podColors, sharedPodPrefix, useMultiPodLogStream } = await import('@/lib/multi-pod-logs');
 const { WorkloadLogs } = await import('@/components/workload/workload-logs-tab');
 const { resetLogViewOptions, setLogViewOptions } = await import('@/lib/log-view-options');
 
@@ -83,6 +83,35 @@ describe('colouring pods', () => {
         const many = podColors(Array.from({ length: 9 }, (_, i) => `pod-${i}`));
         expect(many.size).toBe(9);
         expect(new Set(many.values()).size).toBeLessThan(9);
+    });
+});
+
+describe('the shared start of pod names', () => {
+    const label = (pods: string[]) => pods.map((pod) => pod.slice(sharedPodPrefix(pods)));
+
+    it('drops what one replica set’s pods share, leaving the generated suffix', () => {
+        expect(label(['web-7d9f-abcde', 'web-7d9f-xyz12'])).toEqual(['abcde', 'xyz12']);
+    });
+
+    it('keeps the template hash while two rollouts are both running', () => {
+        expect(label(['web-7d9f-abcde', 'web-55aa-xyz12'])).toEqual(['7d9f-abcde', '55aa-xyz12']);
+    });
+
+    it('never cuts into a suffix, even where two of them start alike', () => {
+        expect(label(['web-7d9f-abcde', 'web-7d9f-abxyz'])).toEqual(['abcde', 'abxyz']);
+    });
+
+    it('labels one pod by its suffix, as the API server cut a long name to 58 characters', () => {
+        const pod = 'organization-directory-service-public-projects-join-consumjrmbk';
+        expect(label([pod])).toEqual(['jrmbk']);
+    });
+
+    it('keeps names with no generated suffix whole, as a stateful set’s are', () => {
+        expect(label(['db-0', 'db-1'])).toEqual(['db-0', 'db-1']);
+    });
+
+    it('drops nothing from an empty set', () => {
+        expect(sharedPodPrefix([])).toBe(0);
     });
 });
 
@@ -161,15 +190,15 @@ describe('the workload logs tab', () => {
         expect(rows.querySelector('[data-pod="web-1"]')).toHaveTextContent('web-1');
     });
 
-    it('shows every pod name in full, sized to the longest one', async () => {
-        const long = 'payment-gateway-worker-5f9c7d8b64-2xk9p';
-        const short = 'web-1';
+    it('labels each line with the part of its pod name that differs, sized to the longest', async () => {
+        const one = 'payment-gateway-worker-5f9c7d8b64-2xk9p';
+        const two = 'payment-gateway-worker-5f9c7d8b64-q7m4z';
         invoke.mockImplementation(async (channel: string) =>
             channel === 'settings.get'
                 ? SETTINGS
                 : [
-                      { ...pods[0]!, name: long },
-                      { ...pods[1]!, name: short },
+                      { ...pods[0]!, name: one },
+                      { ...pods[1]!, name: two },
                   ],
         );
         renderWithQuery(<WorkloadLogs kind="Deployment" name="web" namespace="team-a" />);
@@ -177,14 +206,15 @@ describe('the workload logs tab', () => {
         act(() => opened.forEach((open) => open.onMessage({ type: 'data', data: line('hello') })));
 
         const rows = await screen.findByRole('list', { name: 'Log lines' });
-        await waitFor(() => expect(rows.querySelector(`[data-pod="${long}"]`)).toBeInTheDocument());
-        const cell = rows.querySelector(`[data-pod="${long}"]`)!;
-        // The whole name, not a prefix and an ellipsis.
-        expect(cell).toHaveTextContent(long);
-        expect(cell.className).not.toContain('truncate');
-        // Both columns are one width, so the rows still line up, and it fits the longest name.
-        expect(cell.getAttribute('style')).toContain(`width: ${long.length}ch`);
-        expect(rows.querySelector(`[data-pod="${short}"]`)?.getAttribute('style')).toContain(`width: ${long.length}ch`);
+        await waitFor(() => expect(rows.querySelector(`[data-pod="${one}"]`)).toBeInTheDocument());
+        const cell = rows.querySelector(`[data-pod="${one}"]`)!;
+        // What both pods share is dropped, never the suffix that tells them apart; the whole name
+        // is the label's title.
+        expect(cell).toHaveTextContent(/^\[2xk9p\]$/);
+        expect(cell).toHaveAttribute('title', one);
+        expect(rows.querySelector(`[data-pod="${two}"]`)).toHaveTextContent(/^\[q7m4z\]$/);
+        // Both columns are one width, so the rows still line up: the suffix and its brackets.
+        expect(cell.getAttribute('style')).toContain('min-width: 7ch');
     });
 
     it('reads the picked tail once per pod, as its own default is', async () => {

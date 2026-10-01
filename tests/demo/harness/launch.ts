@@ -57,6 +57,9 @@ export async function launchApp(theme: Theme, options: LaunchOptions = {}): Prom
             KUBECONFIG: KUBECONFIG_PATH,
             // Never steal focus: a run takes minutes and the developer keeps typing elsewhere.
             KUBERMEISTER_SHOW_INACTIVE: '1',
+            // The log console shows times in the reader's zone; a published shot shows UTC rather
+            // than wherever the person who took it happened to be.
+            TZ: 'UTC',
         },
     });
     const window = await app.firstWindow();

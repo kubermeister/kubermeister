@@ -65,6 +65,7 @@ vi.mock('sonner', async () => ({
 // above has its variables, which fails at module-evaluation time.
 const { forwardSnapshot, stopAllForwards } = await import('@/lib/port-forwards');
 const { LogViewer, SINCE_OPTIONS } = await import('@/components/data-display/log-viewer');
+const { formatLogTimestamp } = await import('@/lib/log-timestamp');
 const { LogsTab } = await import('@/components/pod/logs-tab');
 const { resetLogViewOptions, setLogViewOptions } = await import('@/lib/log-view-options');
 const { NetworkTab } = await import('@/components/pod/network-tab');
@@ -178,16 +179,19 @@ describe('LogViewer', () => {
         onSearchChange: noop,
         timestamps: true,
         onDownload: noop,
+        defaultTail: 500,
     };
-    it('renders numbered lines as the container wrote them and a snapshot footer', () => {
+    it('renders lines as the container wrote them and a snapshot footer', () => {
         renderWithQuery(<LogViewer {...props} lines={[line('ERROR boom'), line('fine')]} filtered />);
         const list = screen.getByRole('list', { name: 'Log lines' });
         const rows = within(list).getAllByRole('listitem');
         expect(rows).toHaveLength(2);
-        // The whole row: its number, its timestamp and the line. A level the container printed is
-        // part of the line and is rendered once, never repeated as a column of the app's own.
-        expect(rows[0]!.textContent).toBe('12026-09-15T12:00:00ZERROR boom');
-        expect(rows[1]!.textContent).toBe('22026-09-15T12:00:00Zfine');
+        // The whole row: its timestamp and the line, with no number of the app's own in front. A
+        // level the container printed is part of the line and is rendered once, never repeated as
+        // a column of the app's own.
+        const stamp = formatLogTimestamp('2026-09-15T12:00:00Z');
+        expect(rows[0]!.textContent).toBe(`${stamp}ERROR boom`);
+        expect(rows[1]!.textContent).toBe(`${stamp}fine`);
         expect(screen.getByTestId('log-status')).toHaveTextContent('snapshot · 2 lines (filtered)');
         // Only the follow state is a live region; the line count changes with every batch.
         expect(screen.getByRole('status')).toHaveTextContent(/^snapshot$/);
@@ -424,7 +428,7 @@ describe('LogsTab', () => {
         streams.usePodLogStream.mockReturnValue(following(line('a very long line')));
         renderWithQuery(<LogsTab name="web-1" namespace="team-a" pod={pod} />);
         await screen.findByText('a very long line');
-        expect(screen.getByText('2026-09-15T12:00:00Z')).toBeInTheDocument();
+        expect(screen.getByText(formatLogTimestamp('2026-09-15T12:00:00Z'))).toBeInTheDocument();
         expect(screen.getByRole('list', { name: 'Log lines' }).querySelector('[role="listitem"]')).toHaveClass(
             'whitespace-nowrap',
         );
