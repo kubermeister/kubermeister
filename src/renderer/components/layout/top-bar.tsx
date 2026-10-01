@@ -9,6 +9,7 @@ import {
     Loader2Icon,
     TagIcon,
 } from 'lucide-react';
+import { MiddleTruncate } from '@/components/data-display/middle-truncate';
 import { StatusDot } from '@/components/data-display/status-dot';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,6 +45,9 @@ import { NavLink } from './nav-link';
 import { ForwardManager } from './forward-manager';
 import { UpdatePill } from './update-pill';
 
+/** A crumb this short is a kind or a tab, never what overflows the bar, so it never gives way. */
+const SHORT_CRUMB = 24;
+
 export function TopBar() {
     const pathname = useRouterState({ select: (s) => s.location.pathname });
     const tabLabel = useDetailTabLabel(pathname);
@@ -66,21 +70,38 @@ export function TopBar() {
             <NamespaceSelector />
             <ConnectionNotice />
             {crumbs.length > 0 && <div className="ml-1 h-4 w-px bg-border" />}
-            <nav aria-label="Breadcrumb" className="flex items-center gap-2.5 text-body" data-testid="breadcrumbs">
+            {/* The breadcrumb takes the room the bar has left and no more: an object's name can be
+                longer than the window, and it is the name that gives way, cut in the middle, while
+                the short crumbs around it and every control to its right keep their size. */}
+            <nav
+                aria-label="Breadcrumb"
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-body whitespace-nowrap"
+                data-testid="breadcrumbs"
+            >
                 {crumbs.map((crumb, i) => {
                     const Icon = crumb.icon;
                     const last = i === crumbs.length - 1;
+                    const shrinks = crumb.label.length > SHORT_CRUMB;
                     const content = (
-                        <span className={cn('flex items-center gap-1.5', last ? 'text-foreground' : 'text-text-muted')}>
-                            {Icon && <Icon className="size-3" />}
-                            {crumb.label}
+                        <span
+                            className={cn(
+                                'flex min-w-0 items-center gap-1.5',
+                                !shrinks && 'shrink-0',
+                                last ? 'text-foreground' : 'text-text-muted',
+                            )}
+                        >
+                            {Icon && <Icon className="size-3 shrink-0" />}
+                            <MiddleTruncate text={crumb.label} />
                         </span>
                     );
                     return (
                         <Fragment key={i}>
-                            {i > 0 && <ChevronRightIcon className="size-3 text-text-dim" />}
+                            {i > 0 && <ChevronRightIcon className="size-3 shrink-0 text-text-dim" />}
                             {crumb.to && !last ? (
-                                <NavLink to={crumb.to} className="hover:text-foreground">
+                                <NavLink
+                                    to={crumb.to}
+                                    className={cn('min-w-0 hover:text-foreground', !shrinks && 'shrink-0')}
+                                >
                                     {content}
                                 </NavLink>
                             ) : (
@@ -90,7 +111,6 @@ export function TopBar() {
                     );
                 })}
             </nav>
-            <div className="flex-1" />
             <ForwardManager />
             <UpdatePill />
             <Button size="sm" asChild>

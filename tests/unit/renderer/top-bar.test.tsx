@@ -66,6 +66,23 @@ describe('TopBar', () => {
         expect(crumbs).not.toHaveTextContent('network');
     });
 
+    it('lets a long object name give way in the middle, and nothing else', async () => {
+        const name = 'organization-directory-service-public-projects-join-consumer';
+        renderRoutes(routeTree, `/workloads/pods/team-a/${name}`);
+        const crumbs = await screen.findByTestId('breadcrumbs');
+        // The text is the whole name, so a reader or a copy still gets it all.
+        await waitFor(() => expect(crumbs).toHaveTextContent(`Podsteam-a${name}`));
+        const full = within(crumbs).getByTitle(name);
+        // The start is what an ellipsis may eat; the end is kept, since that is where names differ.
+        const [start, end] = Array.from(full.children);
+        expect(start).toHaveClass('truncate');
+        expect(end!.textContent).toBe(name.slice(-12));
+        expect(end).toHaveClass('shrink-0');
+        // The short crumbs never give way, and the breadcrumb takes only the room the bar has left.
+        expect(within(crumbs).getByText('team-a').parentElement).toHaveClass('shrink-0');
+        expect(crumbs).toHaveClass('min-w-0');
+    });
+
     it('leaves Copy link to the detail header', async () => {
         renderRoutes(routeTree, '/workloads/pods/team-a/web-1/network');
         const bar = await screen.findByTestId('top-bar');

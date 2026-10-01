@@ -279,10 +279,15 @@ test('follows every pod of the seeded deployment in one view', async () => {
     // which is the point of the view.
     await expect(viewer).toHaveAttribute('data-live', 'true');
     await expect(viewer.getByRole('list', { name: 'Log lines' })).toContainText('km-e2e-marker', { timeout: 60_000 });
-    // Named in full, never cut short: a deployment's pods differ only in the suffix.
+    // Labelled by the part that tells the pods apart, never cut at its end, since a deployment's
+    // pods differ only in the suffix; the whole name is the label's title.
     const podCell = viewer.getByRole('list', { name: 'Log lines' }).locator('[data-pod^="web-"]').first();
     await expect(podCell).toBeVisible();
-    expect(await podCell.textContent()).toBe(await podCell.getAttribute('data-pod'));
+    const pod = (await podCell.getAttribute('data-pod'))!;
+    await expect(podCell).toHaveAttribute('title', pod);
+    const label = (await podCell.textContent())!;
+    expect(label).toMatch(/^\[.+\]$/);
+    expect(pod.endsWith(label.slice(1, -1))).toBe(true);
 });
 
 test('forwards a service, which resolves to whichever pod is ready', async () => {

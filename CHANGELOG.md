@@ -13,6 +13,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The log console has a **Copy logs** button that copies every line of the buffer, and `⌘A` or `Ctrl+A` in the console selects the log alone, a copy of it carrying the whole buffer too.
+- A workload's log console can hide the pod names at the start of its lines.
+
+### Changed
+
+- The log console's display options, **Wrap long lines**, **Show timestamps** and **Tail**, are on its toolbar instead of behind a **View** button, and on a narrow window the toolbar drops its labels and moves the search to a second row rather than running off the edge.
+- Log lines carry no line numbers, and a workload's lines are labelled with the part of the pod name that tells its pods apart, in square brackets, rather than the whole name.
+- Log timestamps are shown in your own time zone to the millisecond, with the offset from UTC.
+- A wrapped log line runs on under its pod label and timestamp instead of in a column beside them.
+
+### Fixed
+
+- A long object name no longer breaks the top bar: it is cut in the middle, and **Restart to update** stays on one line.
+
 ## [0.9.3] - 2026-09-30
 
 ### Changed

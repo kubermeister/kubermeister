@@ -1,6 +1,6 @@
 ---
 title: Reading logs
-description: Following Kubernetes pod logs in Kubermeister — the container and Since pickers, following every pod of a workload at once, search that narrows or highlights, the View menu, the log buffer and downloading.
+description: Following Kubernetes pod logs in Kubermeister — the container and Since pickers, following every pod of a workload at once, search that narrows or highlights, how the lines read, copying, the log buffer and downloading.
 sidebar:
   order: 1
 ---
@@ -20,7 +20,7 @@ Turning it back on starts a new follow.
 <Figure
   name="pod-logs"
   alt="A pod log console, following, with timestamps on every line."
-  caption="A pod reads 500 lines and stamps each one, until the View menu says otherwise."
+  caption="A pod reads 500 lines and stamps each one, until you say otherwise on the toolbar."
 />
 
 The tab stays mounted when you move to another tab of the same pod, so a follow survives that — and
@@ -28,17 +28,24 @@ it ends when you leave the page.
 
 ## The toolbar
 
-The toolbar is one row, and it decides _which_ lines are shown.
+The toolbar holds every control the console has.
 
 - **Container** — which container of the pod to read. See [Choosing a container](#choosing-a-container).
 - **Since** — how far back to read: **5 minutes** (the default), **15 minutes**, **1 hour** or
   **All logs**. It bounds the follow, the Live-off read and the download alike. On a quiet pod the
   default window can hold far fewer lines than the tail asks for; choose **All logs** to see further
   back.
+- **Tail** — how many lines each follow reads. See [How the lines read](#how-the-lines-read).
 - **Search**, with its three toggles — see [Searching](#searching).
-- **View** — how the lines read. See [The View menu](#the-view-menu).
+- **Wrap long lines**, **Show pod names** and **Show timestamps** — the icon toggles after the
+  search. See [How the lines read](#how-the-lines-read).
 - **Live** — follow, or hold a snapshot.
-- **Download** — the download icon at the end. See [Downloading](#downloading).
+- **Copy logs** and **Download** — the two icons at the end. See [Copying](#copying) and
+  [Downloading](#downloading).
+
+On a narrow window the words beside the pickers are left out, the Tail picker reading **100 lines**
+instead, and once one row cannot hold everything the search and the controls after it move to a
+second row.
 
 Changing the container, the Since window or the tail starts the read again and clears the console,
 since what is on screen belongs to the old choice.
@@ -75,12 +82,17 @@ owns at once**.
 <Figure
   name="workload-logs"
   alt="A deployment log console merging every pod it owns, each pod’s lines in its own colour."
-  caption="Each line starts with its pod's name, in that pod's colour."
+  caption="Each line starts with the part of its pod's name that differs, in that pod's colour."
 />
 
 There is no API call for "the logs of this deployment", so the app opens one follow per pod, merges
-the lines in the order they arrive and gives each pod a colour and its full name at the start of the
-line. It differs from a pod's tab in a few ways:
+the lines in the order they arrive and gives each pod a colour and a label in square brackets at the
+start of the line. The label leaves out the start every followed pod shares, which for one rollout is
+the workload's name and its template hash, so it is the part that tells the pods apart: `[2xk9p]`
+rather than `web-5f9c7d8b64-2xk9p`. It never cuts into the random suffix the API server ends a pod's
+name with, so a single pod is labelled by that suffix, and a pod whose name has none, as a
+StatefulSet's do, keeps its whole name. Holding the pointer over a label shows the pod's full name.
+It differs from a pod's tab in a few ways:
 
 - **Each pod's first app container is followed.** There is no choice of container: the picker's place
   shows the number of pods, and the pods it lists are there for reference, not as a filter.
@@ -104,18 +116,22 @@ in it.
   unhighlighted, and the status bar adds **(filtered)**.
 - **Highlight** is the other mode: every line stays and the matches are marked where they sit, which
   is often the only way a hit is legible — the stack trace under the line that named the error. Its
-  toggle is the highlighter icon beside **.\*** and **Aa**, not in the View menu, because it changes
-  the search the way they do.
+  toggle is the highlighter icon beside **.\*** and **Aa**.
 - **An unfinished regular expression filters nothing** rather than emptying the console
   mid-keystroke. The toolbar says **Not a valid pattern yet** in red until it parses.
 
-## The View menu
+## How the lines read
 
-How the lines are _read_ sits behind the **View** button:
+These controls change how the lines are _read_ rather than which are shown:
 
-- **Wrap long lines** — wrap instead of scrolling sideways. Off by default.
+- **Wrap long lines** — wrap instead of scrolling sideways. Off by default. A wrapped line runs on
+  under its pod label and timestamp, using the console's whole width.
+- **Show pod names** — on a workload's tab, label each line with its pod. On by default; turning it
+  off leaves the colour alone to tell the pods apart. A pod's own tab has no pod names, and no toggle.
 - **Show timestamps** — a pod stamps every line by default; a workload does not, since each of its
-  lines already spends a column on the pod's name.
+  lines already spends a column on its pod. A timestamp is shown in your own time zone, to the
+  millisecond, with its offset from UTC: `2026-10-01T15:46:59.091+04:00`. Holding the pointer over
+  one shows it as the API server wrote it, in UTC to the nanosecond.
 - **Tail** — how many lines each follow reads before it starts following: **100**, **500**, **1,000**
   or **10,000**. A pod reads 500 by default. A workload reads 100 **per pod**, and the Tail you
   choose applies per pod there too.
@@ -123,6 +139,15 @@ How the lines are _read_ sits behind the **View** button:
 Until you touch them, timestamps and tail are left to the screen. Once you change one, your choice
 applies on every log console from then on. These are preferences about your window rather than the
 cluster, so they are stored locally rather than in the settings file.
+
+## Copying
+
+**Copy logs** puts every line of the buffer on the clipboard, not only the lines on screen, one per
+line and read as the console shows them: the pod label and the timestamp when they are shown, then
+the message, after the search. A notice says how many lines were copied.
+
+`⌘A` or `Ctrl+A` in the console selects the log rather than the whole window, and copying that
+selection copies the whole buffer the same way. A selection you drag yourself copies as selected.
 
 ## The log buffer
 

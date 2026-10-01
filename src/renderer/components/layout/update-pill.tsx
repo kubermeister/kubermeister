@@ -78,7 +78,7 @@ export function UpdatePill() {
                     data-testid="update-pill"
                     data-status={state.status}
                     className={cn(
-                        'flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-label font-medium transition-colors',
+                        'flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-label font-medium whitespace-nowrap transition-colors',
                         TONE_CLASS[pill.tone],
                     )}
                 >

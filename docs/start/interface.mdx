@@ -45,7 +45,9 @@ From left to right:
 - A **connection notice** appears here when the kubeconfig will not load or the context is
   unusable. See [connecting a cluster](/docs/clusters/connecting/).
 - **Breadcrumbs**: the sidebar item you are under, then the namespace and name of the object you
-  have open. The first crumb links back to the list.
+  have open. The first crumb links back to the list. A name too long for the bar is cut in the
+  middle, keeping its end, where names that start alike differ; holding the pointer over it shows the
+  whole name.
 - The **port forwards** button, shown once there is a forward to list, opens every forward in one
   place wherever you started it. See [port forwarding](/docs/sessions/port-forwarding/).
 - The **update pill**, shown only when there is something to say about an update: "Update
