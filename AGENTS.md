@@ -235,6 +235,11 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   tailwind-merge the theme font sizes (`text-body`, `text-meta`, ...) so they are not merged away
   as colors.
 - Charts use recharts through the shadcn `chart` wrapper; the summary dashboard is the reference.
+- A Kubernetes name that may not fit goes through `MiddleTruncate`
+  (`components/data-display/middle-truncate.tsx`), which keeps the last characters whole and lets the
+  start take a CSS ellipsis, since names that start alike differ at the end. The top bar's breadcrumb
+  uses it: the breadcrumb is `min-w-0 flex-1`, a crumb of 24 characters or fewer never shrinks, and
+  every control to its right keeps its size.
 
 ### Scope: context and namespace
 
@@ -411,26 +416,46 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   unhighlighted — and an unfinished regular expression reads as "no filter yet" rather than emptying
   the console mid-keystroke. `highlight` on the search is the other mode: every line stays and the
   matches are marked where they sit, since a hit is often only legible next to what surrounds it.
-  Its toggle is the highlighter icon beside `.*` and `Aa`, because it modifies the search rather
-  than how a line reads, which is what the View menu is for; `Toggle` takes an icon as its child and
-  keeps `label` as the accessible name, since an icon-only control still has to say what it is. Marking inside a line (`matchRanges`) is only ever
+  Its toggle is the highlighter icon beside `.*` and `Aa`, because it modifies the search the way
+  they do; `Toggle` takes an icon as its child and keeps `label` as the accessible name, since an
+  icon-only control still has to say what it is. Marking inside a line (`matchRanges`) is only ever
   about saying where a line matched, in either mode.
-- **The console's toolbar is one row**, and what stays on it decides _which_ lines are shown: the
-  container, the since window, the search and Live. How those lines are _read_ sits behind the View
-  button (`log-view-menu.tsx`), so an option can be added without a second row of controls growing
-  back. Preferences there are about the window, not the cluster, so they live in `localStorage`
+- **Every control is on the console's toolbar**: the pickers (container, since, tail), the search
+  and its toggles, the display toggles (wrap, pod names, timestamps), Live, copy and download. A View
+  menu held the display options until 0.9.4, when they moved out to be one click away. The console is a container (`@container`), so the toolbar answers the
+  console's width rather than the window's: below `@3xl` the pickers' words go (each keeps its
+  `aria-label`, and the tail reads "100 lines"), the search shrinks, and the toolbar wraps between its
+  two groups, pickers first, rather than running off the edge. The display options are preferences
+  about the window, not the cluster, so they live in `localStorage`
   through `src/renderer/lib/log-view-options.ts` with every access wrapped, shared by every console
   rather than kept per screen. They are one store outside React (`useSyncExternalStore`), because
   the tail is read by the screen opening the log as well as by the console showing it and two copies
   of a preference are two answers. Wrapping changes every row's height, so toggling it re-measures
   the virtualiser.
+- **A wrapped row is one run of text**, not columns: unwrapped, the labels are flex columns beside a
+  message that scrolls sideways; wrapped, the message runs on under its labels (`wrap-anywhere`), so
+  the space beneath them is never left empty for as long as the message is. Each label is
+  `whitespace-nowrap`, so the row's wrapping never splits one.
+- **A pod's label is the part of its name that differs**, in square brackets: `sharedPodPrefix` in
+  `multi-pod-logs.ts` drops what every followed pod shares, never reaching into the shortest name's
+  five-character generated suffix, so one rollout's pods read `[2xk9p]` and a single pod its suffix
+  (the API server cuts a long `generateName` to 58 characters, which can eat the template hash). The
+  full name is the label's `title`, and the column is as wide as the longest label, so rows line up.
+  Lines carry no number: it was a column of the app's own that said nothing about the log.
+- **A timestamp is shown in the reader's zone to the millisecond, with its offset**
+  (`formatLogTimestamp` in `src/renderer/lib/log-timestamp.ts`), the API server's RFC 3339 nanosecond
+  stamp kept as its `title`. Only the display changes: search, copy and download read the same lines.
+- **Copying is of the buffer, not the DOM**, since only the rows in view are mounted: **Copy logs**
+  and a copy after `⌘A`/`Ctrl+A` in the console (which the console handles, so the window's own Select
+  All never runs) both write every line as the console reads it — the parts shown, after the search.
+  A selection the reader drags is the browser's to copy.
 - An option that defers to the screen is `null`, not a default copied into the store: `timestamps`
   and `tail` start there, so a pod still reads 500 lines and stamps them while a workload reads 100
   per pod and does not, until the reader says otherwise. `TAIL_OPTIONS` contains both screens' own
   defaults, so the picker always has a value to show, and a stored tail outside it is refused.
 - Whether a line carries its timestamp starts as the screen's decision — a pod stamps every line, a
   workload following many pods does not, since its rows already spend a column naming the pod — and
-  the View menu's switch overrides it. `timestamps` is therefore `boolean | null` in the options,
+  the toolbar's toggle overrides it. `timestamps` is therefore `boolean | null` in the options,
   where `null` means "as the screen has it"; once the switch is touched the answer is the reader's
   on every console.
 - `pods.logDownload` saves the whole log from the API server rather than the buffer on screen,

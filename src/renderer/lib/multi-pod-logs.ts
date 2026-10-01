@@ -45,6 +45,35 @@ export function podColors(pods: string[]): Map<string, string> {
     return new Map(sorted.map((pod, index) => [pod, POD_COLORS[index % POD_COLORS.length]!]));
 }
 
+/** The random tail the API server appends to a `generateName`, which is what tells two replicas apart. */
+const GENERATED_SUFFIX = 5;
+
+/**
+ * How many leading characters every followed pod shares, which is the part a line's label can drop:
+ * a workload's pods differ only at the end, and a long workload name otherwise fills half the
+ * console. It never reaches into the shortest name's generated suffix, so a label is never cut
+ * mid-way through the part that distinguishes it, and a single pod keeps that suffix rather than
+ * being labelled with nothing.
+ */
+export function sharedPodPrefix(pods: Iterable<string>): number {
+    let first: string | undefined;
+    let shared = 0;
+    let shortest = Infinity;
+    for (const pod of pods) {
+        shortest = Math.min(shortest, pod.length);
+        if (first === undefined) {
+            first = pod;
+            shared = pod.length;
+            continue;
+        }
+        let at = 0;
+        while (at < shared && first[at] === pod[at]) at++;
+        shared = at;
+    }
+    if (first === undefined) return 0;
+    return Math.max(0, Math.min(shared, shortest - GENERATED_SUFFIX));
+}
+
 /** Keep the newest lines within the cap; the oldest fall off the front as they do for one pod. */
 function appendCapped(current: PodLogLine[], incoming: PodLogLine[], cap: number): PodLogLine[] {
     const merged = [...current, ...incoming];

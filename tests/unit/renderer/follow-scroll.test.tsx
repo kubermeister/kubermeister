@@ -130,6 +130,7 @@ describe('LogViewer follow', () => {
         onSearchChange: () => {},
         timestamps: true,
         onDownload: () => {},
+        defaultTail: 500,
     };
 
     it('says it is following, and offers the way back once the reader scrolls away', async () => {

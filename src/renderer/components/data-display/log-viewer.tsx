@@ -1,13 +1,25 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowDownIcon, ChevronDownIcon, DownloadIcon, HighlighterIcon, SearchIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+    ArrowDownIcon,
+    ChevronDownIcon,
+    ClockIcon,
+    CopyIcon,
+    DownloadIcon,
+    HighlighterIcon,
+    SearchIcon,
+    TagIcon,
+    WrapTextIcon,
+} from 'lucide-react';
 import type { LogLine } from '../../../shared/k8s/logs';
 import type { ContainerRole } from '../../../shared/k8s/pods';
 import { ContainerRoleNote } from '@/components/pod/container-role-note';
-import { LogViewMenu } from '@/components/data-display/log-view-menu';
 import { useFollowBottom } from '@/lib/follow-scroll';
-import { useLogViewOptions } from '@/lib/log-view-options';
+import { TAIL_OPTIONS, useLogViewOptions } from '@/lib/log-view-options';
 import { matchRanges, type LogSearch } from '@/lib/log-filter';
+import { sharedPodPrefix } from '@/lib/multi-pod-logs';
+import { formatLogTimestamp } from '@/lib/log-timestamp';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +29,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { describeError } from '@/lib/k8s-error';
 import { SCREEN_SEARCH } from '@/lib/shortcuts';
 import { cn } from '@/lib/utils';
 
@@ -155,123 +168,231 @@ export function LogViewer({
         // nothing is mounted until layout has run, and the first paint of a log is blank.
         initialRect: { width: 900, height: 600 },
     });
-    // A log is read from its end: the console follows the newest line while the end is on screen,
-    // and a container, since window or Live change is a new log, which is followed from its end too.
-    // A pod's name is never cut short: the column is as wide as the longest name it has to carry,
-    // in `ch`, which is exact in the console's monospace font. Two pods of one workload differ only
-    // in the suffix an ellipsis eats, so a truncated name tells the streams apart no better than
-    // none at all.
-    const podColumnCh = useMemo(() => {
-        if (!podColors) return 0;
+    // A pod's label is never cut short at its end: two pods of one workload differ only in the
+    // suffix an ellipsis eats. What every followed pod shares is dropped from the front instead, so
+    // the label is the part that tells the streams apart, and the full name is the label's title.
+    // The column is as wide as the longest label, in `ch`, which is exact in the monospace font.
+    const podLabels = useMemo(() => {
+        if (!podColors) return { prefix: 0, widthCh: 0 };
+        // Read from the lines too, so a pod that has since left the followed set is still labelled
+        // by the same rule as the others.
+        const pods = new Set(podColors.keys());
+        for (const line of lines) if (line.pod) pods.add(line.pod);
+        const prefix = sharedPodPrefix(pods);
         let longest = 0;
-        for (const pod of podColors.keys()) longest = Math.max(longest, pod.length);
-        // Sized from the lines too, so a name on screen is shown whole even if its pod has since
-        // left the followed set.
-        for (const line of lines) if (line.pod) longest = Math.max(longest, line.pod.length);
-        return longest;
+        for (const pod of pods) longest = Math.max(longest, pod.length);
+        // Two more for the brackets the label sits in.
+        return { prefix, widthCh: longest - prefix + 2 };
     }, [podColors, lines]);
     // Wrapping changes every row's height, and the virtualiser holds the ones it has measured.
     useEffect(() => virtualizer.measure(), [virtualizer, view.wrap]);
+    // A log is read from its end: the console follows the newest line while the end is on screen,
+    // and a container, since window or Live change is a new log, which is followed from its end too.
     const follow = useFollowBottom(
         scrollRef,
         virtualizer.getTotalSize(),
         `${container ?? ''}\u0000${since.label}\u0000${live}`,
     );
 
+    // Every line of the buffer as the console reads it — the parts on screen, after the search —
+    // rather than the rows the virtualiser happens to have mounted.
+    const linesAsText = () =>
+        lines
+            .map((line) =>
+                [
+                    line.pod && view.podNames ? `[${line.pod.slice(podLabels.prefix)}]` : null,
+                    showTimestamps ? formatLogTimestamp(line.timestamp) : null,
+                    line.message,
+                ]
+                    .filter((part) => part !== null)
+                    .join(' '),
+            )
+            .join('\n');
+    const copyLines = async () => {
+        try {
+            await navigator.clipboard.writeText(linesAsText());
+        } catch (error) {
+            toast.error('Could not copy the log', { description: describeError(error).detail });
+            return;
+        }
+        toast.success(`${lines.length.toLocaleString()} ${lines.length === 1 ? 'line' : 'lines'} copied`);
+    };
+    // ⌘A in the console is the log, not the whole window. Only the rows in view are in the DOM, so
+    // the selection it makes is what can be shown, and a copy while it stands is the whole buffer,
+    // which is what "select all" promised.
+    const allSelected = useRef(false);
+    const selectAll = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const isSelectAll =
+            (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'a';
+        if (!isSelectAll || !scrollRef.current) return;
+        event.preventDefault();
+        const range = document.createRange();
+        range.selectNodeContents(scrollRef.current);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        allSelected.current = true;
+    };
+    const copyAll = (event: React.ClipboardEvent<HTMLDivElement>) => {
+        if (!allSelected.current || window.getSelection()?.isCollapsed !== false) return;
+        event.preventDefault();
+        event.clipboardData.setData('text/plain', linesAsText());
+    };
+
     return (
         <Card
-            className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden rounded-card py-0 shadow-none"
+            className="@container flex min-h-0 flex-1 flex-col gap-0 overflow-hidden rounded-card py-0 shadow-none"
             data-testid="log-viewer"
             data-live={String(live)}
             data-following={String(follow.following)}
         >
-            <div className="flex items-center gap-2.5 border-b border-border px-3.5 py-2">
-                <span className="text-meta text-text-muted">Container</span>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="xs" disabled={containers.length === 0} aria-label="Container">
-                            {container ?? '—'}
-                            <ChevronDownIcon />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        {containers.map((c) => (
-                            <DropdownMenuItem key={c} onSelect={() => onContainerChange(c)}>
-                                {c}
-                                <ContainerRoleNote role={containerRoles?.get(c)} />
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <span className="ml-2 text-meta text-text-muted">Since</span>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="xs" aria-label="Since">
-                            {since.label}
-                            <ChevronDownIcon />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        {SINCE_OPTIONS.map((option) => (
-                            <DropdownMenuItem key={option.label} onSelect={() => onSinceChange(option)}>
-                                {option.label}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <div className="flex-1" />
-                {brokenPattern && <span className="text-label text-danger">Not a valid pattern yet</span>}
-                <div className="relative w-[200px]">
-                    <SearchIcon className="absolute top-1/2 left-2.5 size-3 -translate-y-1/2 text-text-dim" />
-                    <Input
-                        value={search.query}
-                        onChange={(e) => onSearchChange({ ...search, query: e.target.value })}
-                        placeholder="search…"
-                        aria-label="Filter log lines"
-                        {...SCREEN_SEARCH}
-                        className={cn('h-7 pl-7 text-cell', brokenPattern && 'border-danger')}
-                    />
+            {/* One row while the console is wide enough to hold it. Narrower, the words naming the
+                pickers go first (each picker still says what it is to a screen reader), then the
+                search and its toggles move to a row of their own rather than running off the edge. */}
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b border-border px-3.5 py-2">
+                <div className="flex items-center gap-2.5">
+                    <span className="hidden text-meta text-text-muted @3xl:inline">Container</span>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="xs"
+                                disabled={containers.length === 0}
+                                aria-label="Container"
+                            >
+                                <span className="max-w-40 truncate">{container ?? '—'}</span>
+                                <ChevronDownIcon />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            {containers.map((c) => (
+                                <DropdownMenuItem key={c} onSelect={() => onContainerChange(c)}>
+                                    {c}
+                                    <ContainerRoleNote role={containerRoles?.get(c)} />
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <span className="ml-2 hidden text-meta text-text-muted @3xl:inline">Since</span>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="xs" aria-label="Since">
+                                {since.label}
+                                <ChevronDownIcon />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            {SINCE_OPTIONS.map((option) => (
+                                <DropdownMenuItem key={option.label} onSelect={() => onSinceChange(option)}>
+                                    {option.label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <span className="ml-2 hidden text-meta text-text-muted @3xl:inline">Tail</span>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="xs" aria-label="Tail">
+                                {(view.tail ?? defaultTail).toLocaleString()}
+                                {/* Without its word beside it, a bare number says nothing. */}
+                                <span className="@3xl:hidden">lines</span>
+                                <ChevronDownIcon />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            {TAIL_OPTIONS.map((size) => (
+                                <DropdownMenuItem key={size} onSelect={() => setView({ tail: size })}>
+                                    {size.toLocaleString()}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-                <Toggle
-                    pressed={search.regex}
-                    onToggle={() => onSearchChange({ ...search, regex: !search.regex })}
-                    label=".*"
-                    title="Read the search as a regular expression"
-                />
-                <Toggle
-                    pressed={search.caseSensitive}
-                    onToggle={() => onSearchChange({ ...search, caseSensitive: !search.caseSensitive })}
-                    label="Aa"
-                    title="Match case"
-                />
-                {/* Beside the other two because it modifies the search the way they do, rather than
-                    in the View menu, which is about how any line reads. */}
-                <Toggle
-                    pressed={search.highlight}
-                    onToggle={() => onSearchChange({ ...search, highlight: !search.highlight })}
-                    label="Highlight matches"
-                    title="Highlight matches instead of hiding other lines"
-                >
-                    <HighlighterIcon />
-                </Toggle>
-                <LogViewMenu
-                    wrap={view.wrap}
-                    onWrapChange={(wrap) => setView({ wrap })}
-                    timestamps={showTimestamps}
-                    onTimestampsChange={(value) => setView({ timestamps: value })}
-                    tail={view.tail ?? defaultTail}
-                    onTailChange={(tail) => setView({ tail })}
-                />
-                <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
-                    <span
-                        aria-hidden
-                        className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')}
+                <div className="ml-auto flex min-w-0 items-center gap-1.5 @3xl:gap-2.5">
+                    {/* Narrow, the red border alone says it; the sentence would push the search out. */}
+                    {brokenPattern && (
+                        <span className="hidden text-label text-danger @3xl:inline">Not a valid pattern yet</span>
+                    )}
+                    <div className="relative w-[200px] min-w-24 shrink">
+                        <SearchIcon className="absolute top-1/2 left-2.5 size-3 -translate-y-1/2 text-text-dim" />
+                        <Input
+                            value={search.query}
+                            onChange={(e) => onSearchChange({ ...search, query: e.target.value })}
+                            placeholder="search…"
+                            aria-label="Filter log lines"
+                            {...SCREEN_SEARCH}
+                            className={cn('h-7 pl-7 text-cell', brokenPattern && 'border-danger')}
+                        />
+                    </div>
+                    <Toggle
+                        pressed={search.regex}
+                        onToggle={() => onSearchChange({ ...search, regex: !search.regex })}
+                        label=".*"
+                        title="Read the search as a regular expression"
                     />
-                    Live
-                </Button>
-                <Button variant="ghost" size="icon-xs" aria-label="Download logs" onClick={onDownload}>
-                    <DownloadIcon />
-                </Button>
+                    <Toggle
+                        pressed={search.caseSensitive}
+                        onToggle={() => onSearchChange({ ...search, caseSensitive: !search.caseSensitive })}
+                        label="Aa"
+                        title="Match case"
+                    />
+                    <Toggle
+                        pressed={search.highlight}
+                        onToggle={() => onSearchChange({ ...search, highlight: !search.highlight })}
+                        label="Highlight matches"
+                        title="Highlight matches instead of hiding other lines"
+                    >
+                        <HighlighterIcon />
+                    </Toggle>
+                    <Toggle
+                        pressed={view.wrap}
+                        onToggle={() => setView({ wrap: !view.wrap })}
+                        label="Wrap long lines"
+                        title="Wrap long lines"
+                    >
+                        <WrapTextIcon />
+                    </Toggle>
+                    {/* Only a console following several pods labels its lines; a pod's own has nothing
+                    to hide. */}
+                    {podColors && (
+                        <Toggle
+                            pressed={view.podNames}
+                            onToggle={() => setView({ podNames: !view.podNames })}
+                            label="Show pod names"
+                            title="Show pod names"
+                        >
+                            <TagIcon />
+                        </Toggle>
+                    )}
+                    <Toggle
+                        pressed={showTimestamps}
+                        onToggle={() => setView({ timestamps: !showTimestamps })}
+                        label="Show timestamps"
+                        title="Show timestamps"
+                    >
+                        <ClockIcon />
+                    </Toggle>
+                    <Button variant={live ? 'default' : 'outline'} size="xs" onClick={onLiveToggle} aria-pressed={live}>
+                        <span
+                            aria-hidden
+                            className={cn('size-1.5 rounded-full', live ? 'animate-pulse bg-ok' : 'bg-text-dim')}
+                        />
+                        Live
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label="Copy logs"
+                        title="Copy every line shown"
+                        disabled={lines.length === 0}
+                        onClick={() => void copyLines()}
+                    >
+                        <CopyIcon />
+                    </Button>
+                    <Button variant="ghost" size="icon-xs" aria-label="Download logs" onClick={onDownload}>
+                        <DownloadIcon />
+                    </Button>
+                </div>
             </div>
             {/* Only the rows in view are mounted: the buffer can be tens of thousands of lines, and
                 every one of them in the DOM is what makes a log console crawl. */}
@@ -279,7 +400,18 @@ export function LogViewer({
                 <div
                     ref={scrollRef}
                     onScroll={follow.onScroll}
-                    className="min-h-0 flex-1 overflow-auto bg-code-bg py-2 font-mono text-meta"
+                    // Focusable so ⌘A has somewhere to land, and so the arrows scroll the log.
+                    tabIndex={0}
+                    onKeyDown={selectAll}
+                    onCopy={copyAll}
+                    // Any other selection is the reader's own, and copies as the browser has it.
+                    onMouseDown={() => {
+                        allSelected.current = false;
+                    }}
+                    onBlur={() => {
+                        allSelected.current = false;
+                    }}
+                    className="min-h-0 flex-1 overflow-auto bg-code-bg py-2 font-mono text-meta outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset"
                     role="list"
                     aria-label="Log lines"
                     data-testid="log-rows"
@@ -299,29 +431,46 @@ export function LogViewer({
                                     data-index={item.index}
                                     role="listitem"
                                     className={cn(
-                                        'absolute top-0 left-0 flex w-full gap-3 px-3.5 py-px whitespace-nowrap text-text-2',
-                                        // The gutter columns keep their own line while the message
-                                        // runs on, so a wrapped line still reads as one row.
-                                        view.wrap && 'items-start',
+                                        'absolute top-0 left-0 w-full px-3.5 py-px text-text-2',
+                                        // Unwrapped, the labels are columns beside a message that
+                                        // runs off to the right. Wrapped, the whole row is one run of
+                                        // text: the message continues under its labels rather than
+                                        // in a column beside them, which would leave the space under
+                                        // the labels empty for as long as the message is.
+                                        view.wrap
+                                            ? 'whitespace-pre-wrap wrap-anywhere'
+                                            : 'flex gap-3 whitespace-nowrap',
                                     )}
                                     style={{ transform: `translateY(${item.start}px)` }}
                                 >
-                                    <span className="w-7 shrink-0 text-right text-text-dim">{item.index + 1}</span>
-                                    {log.pod && (
+                                    {log.pod && view.podNames && (
                                         <span
-                                            className={cn('shrink-0', podColors?.get(log.pod) ?? 'text-text-2')}
-                                            style={{ width: `${podColumnCh}ch` }}
+                                            className={cn(
+                                                // A label is one word whatever the row does
+                                                // around it: wrapping inside one splits it.
+                                                'shrink-0 whitespace-nowrap',
+                                                view.wrap && 'mr-3 inline-block',
+                                                podColors?.get(log.pod) ?? 'text-text-2',
+                                            )}
+                                            style={{ minWidth: `${podLabels.widthCh}ch` }}
                                             data-pod={log.pod}
+                                            title={log.pod}
                                         >
-                                            {log.pod}
+                                            [{log.pod.slice(podLabels.prefix)}]
                                         </span>
                                     )}
-                                    {showTimestamps && <span className="shrink-0 text-text-dim">{log.timestamp}</span>}
-                                    <span
-                                        className={cn('flex-1', view.wrap && 'min-w-0 break-words whitespace-pre-wrap')}
-                                    >
-                                        {highlight(log.message, search)}
-                                    </span>
+                                    {showTimestamps && (
+                                        <span
+                                            className={cn(
+                                                'shrink-0 whitespace-nowrap text-text-dim',
+                                                view.wrap && 'mr-3',
+                                            )}
+                                            title={log.timestamp}
+                                        >
+                                            {formatLogTimestamp(log.timestamp)}
+                                        </span>
+                                    )}
+                                    <span className={cn(!view.wrap && 'flex-1')}>{highlight(log.message, search)}</span>
                                 </div>
                             );
                         })}

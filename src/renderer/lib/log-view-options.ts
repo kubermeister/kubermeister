@@ -30,9 +30,19 @@ export interface LogViewOptions {
      * where it starts, since a workload reads its tail once per pod and a pod reads it once.
      */
     tail: number | null;
+    /**
+     * Label each line with the pod it came from, on a console following several. Hiding them gives
+     * the width back to the message once the colours alone tell the streams apart well enough.
+     */
+    podNames: boolean;
 }
 
-export const DEFAULT_LOG_VIEW_OPTIONS: LogViewOptions = { wrap: false, timestamps: null, tail: null };
+export const DEFAULT_LOG_VIEW_OPTIONS: LogViewOptions = {
+    wrap: false,
+    timestamps: null,
+    tail: null,
+    podNames: true,
+};
 
 export function readLogViewOptions(): LogViewOptions {
     try {
@@ -51,6 +61,7 @@ export function readLogViewOptions(): LogViewOptions {
             tail: TAIL_OPTIONS.some((size) => size === stored.tail)
                 ? (stored.tail as number)
                 : DEFAULT_LOG_VIEW_OPTIONS.tail,
+            podNames: typeof stored.podNames === 'boolean' ? stored.podNames : DEFAULT_LOG_VIEW_OPTIONS.podNames,
         };
     } catch {
         // Private windows and blocked site data throw on access; the console must still render.
