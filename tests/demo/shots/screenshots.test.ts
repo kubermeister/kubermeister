@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { clusterKubectl, NAMESPACE } from '../harness/cluster';
+import { answerChartsWith } from '../harness/history';
 import { launchApp, switchTheme, type LaunchedApp, type Theme } from '../harness/launch';
 
 /**
@@ -15,8 +16,8 @@ import { launchApp, switchTheme, type LaunchedApp, type Theme } from '../harness
  * memory and starts empty on every launch.
  *
  * One launch shoots both themes: the whole list once in dark, then again in light, with a reload
- * between them that leaves main and its series alone. Only the shots that draw a series wait for
- * one, so they come last in a pass, and a run of shots without a chart waits for nothing.
+ * between them. The charts draw a history the harness hands their channels
+ * (`harness/history.ts`), since the sampler starts empty on every launch.
  *
  * Shots navigate by hash rather than by clicking through the sidebar: the router uses hash history,
  * so a route is reachable in one step, and a shot that fails then fails on its own screen rather
@@ -26,8 +27,6 @@ import { launchApp, switchTheme, type LaunchedApp, type Theme } from '../harness
 let launched: LaunchedApp;
 let theme: Theme;
 let outDir: string;
-/** When the dashboard was first opened, which is what started the sampler. */
-let samplerStartedAt = 0;
 
 const THEMES: readonly Theme[] = ['dark', 'light'];
 
@@ -74,9 +73,6 @@ async function serveChartRepository(): Promise<string | null> {
     return url;
 }
 
-/** How long the sampler runs before a chart is photographed; it reads every 12 s. */
-const SOAK_MS = Number(process.env.KM_DEMO_SOAK_SEC ?? 150) * 1_000;
-
 // Deliberately not `mode: 'serial'`, although the shots do share one app and run in order under a
 // single worker: serial mode skips the rest of the file after the first failure, which is the
 // opposite of the point. A shot that cannot be composed should name itself and let the rest
@@ -86,22 +82,10 @@ test.beforeAll(async () => {
     const chartUrl = await serveChartRepository();
     launched = await launchApp(chartUrl ? { chartRepository: { name: CHART_REPOSITORY, url: chartUrl } } : {});
 
-    // The sampler starts when a reader asks for it, so the dashboard is opened first, and every shot
-    // that does not draw a series is taken while it fills.
+    await answerChartsWith(launched.app);
     await goto('/overview/summary');
     await launched.window.getByTestId('cluster-summary').waitFor({ timeout: 60_000 });
-    samplerStartedAt = Date.now();
 });
-
-/**
- * Wait out whatever is left of the soak: a chart of one point is a chart of nothing. The first chart
- * of a run pays it, less the time the shots before it took, and every later one, the other theme's
- * included, finds the series already there.
- */
-async function soaked(): Promise<void> {
-    const left = SOAK_MS - (Date.now() - samplerStartedAt);
-    if (left > 0) await launched.window.waitForTimeout(left);
-}
 
 /** Start shooting in one theme: every later `shoot` writes into that theme's directory. */
 async function shootIn(next: Theme): Promise<void> {
@@ -475,10 +459,9 @@ function shotList(): void {
         await shoot('settings-connection');
     });
 
-    // The shots that draw a series, last so that everything above is taken while it fills.
+    // The shots that draw a series.
 
     test('summary', async () => {
-        await soaked();
         const { window } = launched;
         await goto('/overview/summary');
         const summary = window.getByTestId('cluster-summary');
@@ -489,7 +472,6 @@ function shotList(): void {
     });
 
     test('node-detail', async () => {
-        await soaked();
         const { window } = launched;
         await goto(`/overview/nodes/${nodeName()}`);
         await expect(window.getByTestId('node-page')).toBeVisible({ timeout: 30_000 });
@@ -497,7 +479,6 @@ function shotList(): void {
     });
 
     test('node-drain-plan', async () => {
-        await soaked();
         const { window } = launched;
         await goto(`/overview/nodes/${nodeName()}`);
         await expect(window.getByTestId('node-page')).toBeVisible({ timeout: 30_000 });

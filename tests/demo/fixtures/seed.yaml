@@ -644,9 +644,9 @@ spec:
           image: busybox:1.36
           command: ['sh', '-c']
           # Wall-clock bursts rather than a fixed iteration count, which would be a different length
-          # of burn on every machine. The period is long against the sampler's 12 s, so a soak of a
-          # couple of minutes covers three cycles. Kept out of `args` itself: that is pod template,
-          # which the Manifest tab and the revision diff put on screen.
+          # of burn on every machine. The period is long against the sampler's 12 s, so the usage the
+          # lists show moves from one sample to the next. Kept out of `args` itself: that is pod
+          # template, which the Manifest tab and the revision diff put on screen.
           args:
             - |
               while true; do

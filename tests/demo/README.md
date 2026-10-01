@@ -48,11 +48,10 @@ release screens read bookkeeping Helm itself wrote rather than pre-encoded Secre
 
 ## Environment
 
-| Variable           | Default | Effect                                                                 |
-| ------------------ | ------- | ---------------------------------------------------------------------- |
-| `KM_DEMO_FRESH`    | unset   | `1` removes the container and reseeds from scratch                     |
-| `KM_DEMO_SOAK_SEC` | `150`   | How long the app runs before the dashboard is shot                     |
-| `KM_DEMO_SCALE`    | unset   | `2` forces a 2x device scale factor (a retina Mac already captures 2x) |
+| Variable        | Default | Effect                                                                 |
+| --------------- | ------- | ---------------------------------------------------------------------- |
+| `KM_DEMO_FRESH` | unset   | `1` removes the container and reseeds from scratch                     |
+| `KM_DEMO_SCALE` | unset   | `2` forces a 2x device scale factor (a retina Mac already captures 2x) |
 
 The cluster is **kept between runs** by default, which the end-to-end one is not. Two reasons: a
 run is slow to boot, and every object's Age column reads `30s` on a cluster that started a minute
@@ -61,15 +60,24 @@ Remove it with `docker rm -f km-demo-cluster`.
 
 ## Timing traps
 
-- **The sampler is in memory and starts empty.** Its buffers do not survive a relaunch, so the
-  dashboard cannot be shot until the app has been running a while: `KM_DEMO_SOAK_SEC` is that wait,
-  and 150 s is about a dozen samples. Below ~60 s the charts are a flat line.
+- **The sampler is in memory and starts empty.** Its buffers do not survive a relaunch and it reads
+  every 12 s, so a chart of the app as it ships is a flat line for minutes and a different one every
+  run. The app is left as it ships: `harness/history.ts` replaces the handlers of the three channels
+  the charts read (`metrics.sparklines`, `metrics.workloadHealth`, `metrics.nodeSeries`) from
+  outside, through Playwright's `app.evaluate` and Electron's public `ipcMain`, with a hundred
+  points that end at the cluster's real usage from `kubectl top node` and have the same shape every
+  run. Every other channel, the figures beside the charts included, answers from the cluster.
 - **Ages and events want different vintages.** A kept cluster ages its objects usefully but its
   seeded events fall out of the recent window after about an hour, so a set shot on a days-old
   cluster has convincing ages and an empty events panel. Reseed with `KM_DEMO_FRESH=1` when the
   events panel is in the shot.
-- **`deployment-compare` writes to the cluster.** It restarts the deployment to create a second
-  revision, which rolls the pods every earlier shot was taken against, so it runs last.
+- **One launch shoots both themes**, the whole list in dark and then in light, with a reload
+  between them, so whatever a shot leaves behind is still there for every shot after it.
+- **`deployment-compare` can write to the cluster.** On a cluster with one rollout it restarts the
+  deployment to create a second revision, which rolls the pods every other shot was taken against,
+  so it runs after both passes, and only the first of its two runs ever writes.
+- **`port-forwards` leaves a forward remembered** for as long as the app runs, which puts its button
+  in the top bar of every later screen, so it runs after both passes too.
 
 ## Adding a shot
 
