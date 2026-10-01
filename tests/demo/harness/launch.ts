@@ -25,7 +25,7 @@ export interface LaunchOptions {
     chartRepository?: { name: string; url: string };
 }
 
-export async function launchApp(theme: Theme, options: LaunchOptions = {}): Promise<LaunchedApp> {
+export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedApp> {
     const userData = mkdtempSync(join(tmpdir(), 'km-demo-'));
     writeFileSync(
         join(userData, 'settings.json'),
@@ -64,13 +64,19 @@ export async function launchApp(theme: Theme, options: LaunchOptions = {}): Prom
     });
     const window = await app.firstWindow();
     await window.waitForLoadState('domcontentloaded');
+    await window.getByTestId('app-shell').waitFor({ timeout: 60_000 });
+    return { app, window, userData };
+}
 
-    // The theme is renderer `localStorage`, read by `ThemeProvider` as it mounts, so it is written
-    // and the window reloaded rather than toggled through the UI, which would leave the Settings
-    // screen on show in every shot.
+/**
+ * The theme is renderer `localStorage`, read by `ThemeProvider` as it mounts, so it is written and
+ * the window reloaded rather than toggled through the UI, which would leave the Settings screen on
+ * show in every shot. A reload leaves main alone, so the sampler's series survive it, which is what
+ * lets one launch shoot both themes.
+ */
+export async function switchTheme(window: Page, theme: Theme): Promise<void> {
     await window.evaluate((value) => localStorage.setItem('km-theme', value), theme);
     await window.reload();
     await window.waitForLoadState('domcontentloaded');
     await window.getByTestId('app-shell').waitFor({ timeout: 60_000 });
-    return { app, window, userData };
 }
