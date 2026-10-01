@@ -119,13 +119,15 @@ function renderDetail(props: Props, path = '/pods/web-1') {
 const selected = (name: RegExp) => expect(screen.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true');
 
 describe('ResourceDetail', () => {
-    it('renders the header, grouped rail with counts and hints, and the first tab', async () => {
+    it('renders the header, a row of tabs with counts and hints, and the first tab', async () => {
         renderDetail({});
         expect(await screen.findByText('web-1')).toBeInTheDocument();
         const rail = screen.getByRole('tablist');
-        expect(rail).toHaveAttribute('aria-orientation', 'vertical');
-        expect(rail).toHaveTextContent('OBSERVE');
-        expect(rail).toHaveTextContent('CONNECT');
+        expect(rail).toHaveAttribute('aria-orientation', 'horizontal');
+        // The groups are told apart by a divider between them, not by a heading.
+        expect(rail).not.toHaveTextContent('OBSERVE');
+        expect(rail).not.toHaveTextContent('CONNECT');
+        expect(rail.querySelectorAll('[data-tab-divider]')).toHaveLength(1);
         expect(within(rail).getAllByRole('tab')).toHaveLength(5);
         expect(within(rail).getByRole('tab', { name: /Overview/ })).toHaveAttribute('aria-selected', 'true');
         expect(within(rail).getByRole('tab', { name: /Shell/ })).toHaveTextContent('2');

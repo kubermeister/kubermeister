@@ -1,4 +1,4 @@
-import { useLayoutEffect, type KeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import { CalendarClockIcon, InfoIcon, TagIcon, type LucideIcon } from 'lucide-react';
@@ -144,10 +144,10 @@ function StatePanel({ children, testId }: { children: ReactNode; testId?: string
 }
 
 /**
- * The single resource-detail page: an icon, eyebrow and title header over a left-rail tab switcher
- * grouped into labeled sections. Every detail screen composes this with an explicit `groups` array
- * built from the tab factories plus any bespoke tabs. The active tab's content renders in a
- * scrollable region beside the rail.
+ * The single resource-detail page: an icon, eyebrow and title header over a row of tabs, the groups
+ * told apart by a divider rather than a heading. Every detail screen composes this with an explicit
+ * `groups` array built from the tab factories plus any bespoke tabs. The active tab's content renders
+ * below the row at the page's full width.
  */
 export function ResourceDetail({
     groups,
@@ -183,11 +183,21 @@ export function ResourceDetail({
     // half of that handshake when it mounts.
     const editControl = useManifestEditBridge(() => openTab('manifest', false));
 
-    // The breadcrumb names the tab by its label; the rail is the only place that knows it.
+    // The breadcrumb names the tab by its label; the tab row is the only place that knows it.
     const tabLabel = tabParam ? activeTab?.label : undefined;
     useLayoutEffect(() => publishDetailTab(pathname, tabLabel), [pathname, tabLabel]);
 
-    // Roving tabindex with arrow keys across the flat tab order, the WAI-ARIA pattern for a vertical tablist.
+    // A row too long for the window scrolls sideways, and the tab a link or a reload opened on may
+    // be past its edge: bring it into view whenever it changes.
+    const tabRow = useRef<HTMLDivElement>(null);
+    const activeId = activeTab?.id;
+    useLayoutEffect(() => {
+        if (!activeId) return;
+        const button = tabRow.current?.querySelector<HTMLElement>(`#tab-${CSS.escape(activeId)}`);
+        button?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    }, [activeId]);
+
+    // Roving tabindex with arrow keys across the flat tab order, the WAI-ARIA pattern for a tablist.
     const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
         const delta =
             e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
@@ -236,13 +246,13 @@ export function ResourceDetail({
 
                 {state === 'loading' ? (
                     <div
-                        className="grid min-h-0 flex-1 grid-cols-[var(--spacing-rail)_1fr] gap-3.5 border-t border-border px-4.5 pt-3.5 pb-4.5"
+                        className="flex min-h-0 flex-1 flex-col gap-3.5 border-t border-border px-4.5 pt-2 pb-4.5"
                         role="status"
                         aria-label="Loading"
                     >
-                        <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
                             {Array.from({ length: 5 }).map((_, i) => (
-                                <Skeleton key={i} className="h-7 w-full" />
+                                <Skeleton key={i} className="h-7 w-24" />
                             ))}
                         </div>
                         <div className="flex flex-col gap-3">
@@ -285,67 +295,76 @@ export function ResourceDetail({
                         )}
                     </StatePanel>
                 ) : (
-                    <div className="grid min-h-0 flex-1 grid-cols-[var(--spacing-rail)_1fr] gap-3.5 border-t border-border px-4.5 pb-4.5">
+                    <div className="flex min-h-0 flex-1 flex-col border-t border-border">
+                        {/* One row of tabs. A row longer than the window scrolls sideways rather than
+                            wrapping, so the content below never moves down a line on a narrow one. */}
                         <div
+                            ref={tabRow}
                             role="tablist"
-                            aria-orientation="vertical"
-                            className="overflow-auto pt-3.5 pr-1 select-none"
+                            aria-orientation="horizontal"
+                            className="flex shrink-0 items-stretch overflow-x-auto border-b border-border px-3 select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                         >
-                            {groups.map((group) => (
-                                <div key={group.label} role="presentation" className="mb-3.5">
-                                    <div className="px-1 pt-1 pb-1.5 text-eyebrow font-semibold tracking-[0.1em] text-text-dim">
-                                        {group.label}
-                                    </div>
-                                    {group.items.map((tab) => {
-                                        const TabIcon = tab.icon;
-                                        const active = tab.id === activeTab?.id;
-                                        return (
-                                            <button
-                                                key={tab.id}
-                                                id={`tab-${tab.id}`}
-                                                type="button"
-                                                role="tab"
-                                                aria-selected={active}
-                                                aria-controls={`panel-${tab.id}`}
-                                                tabIndex={active ? 0 : -1}
-                                                onClick={() => openTab(tab.id, true)}
-                                                onKeyDown={(e) => onTabKeyDown(e, allTabs.indexOf(tab))}
-                                                className={cn(
-                                                    'mb-px flex w-full items-center gap-2.5 border-l-2 py-1.5 pr-2 pl-2 text-left text-body transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                                                    active
-                                                        ? 'border-primary bg-elev-2 text-foreground'
-                                                        : 'border-transparent text-text-2 hover:bg-elev-2/60',
-                                                )}
-                                            >
-                                                <TabIcon
+                            {groups.map((group, groupIndex) => (
+                                <Fragment key={group.label}>
+                                    {groupIndex > 0 && (
+                                        <div
+                                            role="presentation"
+                                            data-tab-divider
+                                            className="mx-1.5 my-2.5 w-px shrink-0 bg-border"
+                                        />
+                                    )}
+                                    <div role="presentation" className="flex items-stretch">
+                                        {group.items.map((tab) => {
+                                            const TabIcon = tab.icon;
+                                            const active = tab.id === activeTab?.id;
+                                            return (
+                                                <button
+                                                    key={tab.id}
+                                                    id={`tab-${tab.id}`}
+                                                    type="button"
+                                                    role="tab"
+                                                    aria-selected={active}
+                                                    aria-controls={`panel-${tab.id}`}
+                                                    tabIndex={active ? 0 : -1}
+                                                    onClick={() => openTab(tab.id, true)}
+                                                    onKeyDown={(e) => onTabKeyDown(e, allTabs.indexOf(tab))}
                                                     className={cn(
-                                                        'size-3.25',
-                                                        active ? 'text-primary' : 'text-text-muted',
+                                                        '-mb-px flex shrink-0 items-center gap-2 border-b-2 px-2.5 py-2.5 text-body whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                                                        active
+                                                            ? 'border-primary text-foreground'
+                                                            : 'border-transparent text-text-2 hover:text-foreground',
                                                     )}
-                                                />
-                                                <span className="flex-1">{tab.label}</span>
-                                                {tab.count != null && (
-                                                    <span className="rounded-[3px] bg-elev-3 px-1.5 font-mono text-caption text-text-muted">
-                                                        {tab.count}
-                                                    </span>
-                                                )}
-                                                {tab.hint && (
-                                                    <span className="font-mono text-eyebrow text-text-dim">
-                                                        {tab.hint}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                                >
+                                                    <TabIcon
+                                                        className={cn(
+                                                            'size-3.25',
+                                                            active ? 'text-primary' : 'text-text-muted',
+                                                        )}
+                                                    />
+                                                    <span>{tab.label}</span>
+                                                    {tab.count != null && (
+                                                        <span className="rounded-[3px] bg-elev-3 px-1.5 font-mono text-caption text-text-muted">
+                                                            {tab.count}
+                                                        </span>
+                                                    )}
+                                                    {tab.hint && (
+                                                        <span className="font-mono text-eyebrow text-text-dim">
+                                                            {tab.hint}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </Fragment>
                             ))}
                         </div>
 
                         {/* The active tab plus any keepMounted tabs (hidden) so live state survives a switch.
-                            `min-w-0` keeps this grid item from growing past its track when a fill tab holds
+                            `min-w-0` keeps the body from growing past the page when a fill tab holds
                             wide content (long log lines, the terminal): the inner region scrolls instead. */}
                         <div
-                            className="flex min-h-0 min-w-0 flex-col"
+                            className="flex min-h-0 min-w-0 flex-1 flex-col px-4.5 pb-4.5"
                             data-testid={testId ? `${testId}-body` : undefined}
                         >
                             {allTabs.map((tab) => {
