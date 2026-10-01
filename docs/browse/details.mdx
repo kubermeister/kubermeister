@@ -1,14 +1,14 @@
 ---
 title: Detail pages, events and describe
-description: The Kubermeister detail layout — the header and its actions, copying and opening links, the tab rail, overview, events and the Events stream, labels and the Object card, describe for pods and nodes, and a pod's related objects.
+description: The Kubermeister detail layout — the header and its actions, copying and opening links, the row of tabs, overview, events and the Events stream, labels and the Object card, describe for pods and nodes, and a pod's related objects.
 sidebar:
   order: 2
 ---
 
 import Figure from '@/components/docs/Figure.astro';
 
-Every detail page has the same shape: a header naming the object, over a left rail of tabs in
-labelled groups.
+Every detail page has the same shape: a header naming the object, over a row of tabs in groups a
+thin divider sets apart.
 
 ## The header
 
@@ -24,7 +24,8 @@ are the actions:
   [writing to the cluster](/docs/workloads/writing/).
 
 Some kinds add their own, such as **Evict** on a pod, **Restart** on a workload or **View
-instances** on a CRD. A custom-resource instance has no **Delete**, and a Helm release has its own
+instances** on a CRD. On a window too narrow for them beside the name, the actions move to a row of
+their own under it. A custom-resource instance has no **Delete**, and a Helm release has its own
 actions in place of all three; see [Helm releases](/docs/operations/helm/).
 
 While the object loads, the page shows its outline. If the read fails, the page says why, the way
@@ -47,12 +48,18 @@ A tab that reads something of its own — **Related**, **Describe**, **Rollout**
 **Pods**, a release's **Resources** — says it is reading while it waits, and when that read fails it
 gives the same reason in the same words, with **Retry**, rather than showing an empty tab.
 
-## The tab rail
+## The tabs
 
-The groups are **OBSERVE** and **INSPECT** on every kind, **CONNECT** on pods only, and **DATA**,
-**NETWORK**, **ROUTING** or **ROLLOUT** on the kinds that need them —
+The tabs run in one row under the header, in groups a thin divider sets apart: what the object is
+doing first (**Overview**, **Events** and what the kind has to watch), then what it is
+(**Manifest**, **Labels** and the like), then **Shell** on a pod, with a group of the kind's own
+between them on the kinds that need one —
 [finding your way around](/docs/start/interface/#detail-screens) lists which. The arrow keys move
 between tabs once one has focus.
+
+When the row is wider than the window it scrolls sideways rather than wrapping. The edge with more
+tabs past it fades under an arrow that scrolls the row toward it, and the open tab is always
+scrolled into view, also when the window narrows under it.
 
 The page remembers its tab. A reload stays on it, and when you leave the object and come back with
 **Back**, it opens on the tab you left, so opening a pod's **Logs**, following it to its node and
@@ -133,7 +140,7 @@ that.
 
 ## Labels and annotations
 
-The **Labels** tab shows the labels and annotations as two cards, with the label count on the rail.
+The **Labels** tab shows the labels and annotations as two cards, with the label count on its tab.
 
 Every built-in kind adds an **Object** card here with the parts of `metadata` no view model
 carries: the **Owner** reference, the **Created** time, and the **Finalizers**, marked "holding

@@ -17,9 +17,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The log console has a **Copy logs** button that copies every line of the buffer, and `⌘A` or `Ctrl+A` in the console selects the log alone, a copy of it carrying the whole buffer too.
 - A workload's log console can hide the pod names at the start of its lines.
+- A detail page's row of tabs fades at an edge with more tabs past it, under an arrow that scrolls the row that way.
 
 ### Changed
 
+- A detail page's tabs run in one row under its header instead of down a rail on its left, so its content takes the page's full width.
+- The log console's line display toggles, **Wrap long lines**, **Show pod names** and **Show timestamps**, are one button group, apart from the search's own toggles.
+- The small buttons on toolbars and panels, the log console's among them, are a size larger.
+- A deployment's image is a row of a **Details** card on its **Overview** instead of unlabelled text under its name.
 - The log console's display options, **Wrap long lines**, **Show timestamps** and **Tail**, are on its toolbar instead of behind a **View** button, and on a narrow window the toolbar drops its labels and moves the search to a second row rather than running off the edge.
 - Log lines carry no line numbers, and a workload's lines are labelled with the part of the pod name that tells its pods apart, in square brackets, rather than the whole name.
 - Log timestamps are shown in your own time zone to the millisecond, with the offset from UTC.
@@ -28,6 +33,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - A long object name no longer breaks the top bar: it is cut in the middle, and **Restart to update** stays on one line.
+- On a narrow window the top bar no longer draws its breadcrumb under **Create resource** or pushes its controls past the window's edge: it drops crumbs, then words, as it narrows.
+- On a narrow window a detail page's actions move under its name instead of covering it.
+- A detail page's metric cards share the row between them instead of leaving part of it empty.
 
 ## [0.9.3] - 2026-09-30
 

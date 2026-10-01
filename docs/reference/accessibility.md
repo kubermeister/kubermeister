@@ -20,7 +20,7 @@ the keyboard only, not for a click.
 
 In a list, `Tab` reaches the column headings, which sort the list, then in each row its selection
 checkbox, where the list has one, and the link in its Name column, which opens the object. In a
-detail page the left rail is one stop: the arrow keys move between its tabs, and the next `Tab` goes
+detail page the row of tabs is one stop: the arrow keys move between them, and the next `Tab` goes
 to the open tab.
 
 ## What a screen reader hears

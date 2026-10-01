@@ -14,21 +14,21 @@ In the tables, `⌘` is Command on macOS and `Ctrl` is Control on Windows and Li
 
 ## The app's own shortcuts
 
-| Keys                                              | Does                                                                       |
-| ------------------------------------------------- | -------------------------------------------------------------------------- |
-| `⌘K`/`Ctrl+K`                                     | Opens the command palette, or closes it                                    |
-| `⌘1` … `⌘7` / `Ctrl+1` … `Ctrl+7`                 | Goes to Overview, Workloads, Network, Storage, Access, Add-ons or Helm     |
-| `⌘[` / `⌘]` on macOS, `Alt+←` / `Alt+→` elsewhere | Goes back / forward; the mouse's back and forward buttons do the same      |
-| `⌘R`/`Ctrl+R`                                     | Refreshes the screen's data, as its **Refresh** button does                |
-| `/`, or `⌘F`/`Ctrl+F`                             | Puts the cursor in the screen's search box: a list's, or a log console's   |
-| `⌘,`/`Ctrl+,`                                     | Opens Settings                                                             |
-| `?`                                               | Opens the keyboard shortcuts cheat sheet                                   |
-| `⇧⌘R` / `Ctrl+Shift+R`                            | Reloads the window, which ends every port forward, shell and log follow    |
-| `⌘Q`                                              | Quits, after [asking](/docs/reference/settings/#quitting) (macOS)          |
-| `Ctrl+W` or `Alt+F4`                              | Closes the window, which quits after asking (Windows and Linux)            |
-| `↑` `↓` `←` `→`                                   | Moves between tabs in a detail page's left rail, when a rail tab has focus |
-| `Return`                                          | Applies the replica count you typed in the **Scale** popover               |
-| `Return` / `Escape`                               | Saves a Settings text field, or puts back what was there                   |
+| Keys                                              | Does                                                                     |
+| ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `⌘K`/`Ctrl+K`                                     | Opens the command palette, or closes it                                  |
+| `⌘1` … `⌘7` / `Ctrl+1` … `Ctrl+7`                 | Goes to Overview, Workloads, Network, Storage, Access, Add-ons or Helm   |
+| `⌘[` / `⌘]` on macOS, `Alt+←` / `Alt+→` elsewhere | Goes back / forward; the mouse's back and forward buttons do the same    |
+| `⌘R`/`Ctrl+R`                                     | Refreshes the screen's data, as its **Refresh** button does              |
+| `/`, or `⌘F`/`Ctrl+F`                             | Puts the cursor in the screen's search box: a list's, or a log console's |
+| `⌘,`/`Ctrl+,`                                     | Opens Settings                                                           |
+| `?`                                               | Opens the keyboard shortcuts cheat sheet                                 |
+| `⇧⌘R` / `Ctrl+Shift+R`                            | Reloads the window, which ends every port forward, shell and log follow  |
+| `⌘Q`                                              | Quits, after [asking](/docs/reference/settings/#quitting) (macOS)        |
+| `Ctrl+W` or `Alt+F4`                              | Closes the window, which quits after asking (Windows and Linux)          |
+| `↑` `↓` `←` `→`                                   | Moves between a detail page's tabs, when one of them has focus           |
+| `Return`                                          | Applies the replica count you typed in the **Scale** popover             |
+| `Return` / `Escape`                               | Saves a Settings text field, or puts back what was there                 |
 
 A number goes to the first screen of its domain: `⌘2` opens Pods, `⌘6` opens CRDs and `⌘7` opens Releases. `⌘R` refreshes
 only what the screen's own **Refresh** button would, and spins it; on a screen without one it
@@ -38,7 +38,7 @@ without a search box.
 On macOS `Ctrl+K` opens the palette as well as `⌘K`. The palette and the other chords match the
 key's position rather than its letter, so they work with Caps Lock on and with non-Latin layouts.
 
-In the detail rail the arrow keys run through every tab in order, across the groups, and wrap from
+Among a detail page's tabs the arrow keys run through every tab in order, across the groups, and wrap from
 the last tab to the first.
 
 ## Where the keys work
