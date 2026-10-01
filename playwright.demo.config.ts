@@ -12,7 +12,7 @@ export default defineConfig({
     testDir: 'tests/demo/shots',
     globalSetup: './tests/demo/harness/global-setup.ts',
     globalTeardown: './tests/demo/harness/global-teardown.ts',
-    // The dashboard shot waits out a soak so the sampler has a series to draw.
+    // A shot waits on a cluster that is still settling: pods starting, events arriving.
     timeout: 300_000,
     retries: 0,
     // One app at a time: two would fight over the port a forward listens on and over the window.
