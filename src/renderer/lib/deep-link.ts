@@ -17,6 +17,19 @@ export function linkablePath(router: AnyRouter, path: string): string | null {
     return path;
 }
 
+/**
+ * The namespace to select before opening `path`, or `undefined` to leave the selection alone. A link
+ * to a namespaced object selects that object's namespace, so the selector and the list Back returns
+ * to name the namespace the page is in; under "All namespaces" (`active` null) the object is already
+ * in scope, and switching would narrow lists nobody asked to narrow.
+ */
+export function namespaceForLink(router: AnyRouter, path: string, active: string | null): string | undefined {
+    const [, params] = router.getMatchedRoutes(path);
+    const namespace: string | undefined = params.namespace;
+    if (namespace === undefined || active === null || namespace === active) return undefined;
+    return namespace;
+}
+
 /** What opening a link comes to, decided before anything is shown or switched. */
 export type LinkPlan =
     | { kind: 'refused'; message: string }
@@ -37,7 +50,8 @@ interface LinkContext {
  * the kubeconfig alone. It only ever navigates: straight away when the current context reaches that
  * cluster, only once the user has agreed to switch when other contexts do (every one is offered, since
  * two contexts on one cluster usually differ in who they act as), and not at all when none does. The
- * namespace in the path is the object's own, so the namespace selection is never part of the plan.
+ * namespace is not part of the plan: a context switch can change the selection, so it is settled
+ * after the context is (`namespaceForLink`).
  */
 export function planDeepLink(
     link: DeepLink,

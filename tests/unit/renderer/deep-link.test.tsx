@@ -26,7 +26,7 @@ vi.mock('sonner', async () => ({
 }));
 
 const { routeTree } = await import('@/routeTree.gen');
-const { copyablePath, linkablePath, planDeepLink } = await import('@/lib/deep-link');
+const { copyablePath, linkablePath, namespaceForLink, planDeepLink } = await import('@/lib/deep-link');
 
 const DEV = 'https://dev.example.com:6443';
 const PROD = 'https://prod.example.com:6443';
@@ -56,6 +56,7 @@ function answer(channel: string): Promise<unknown> {
 }
 
 const setCalls = () => invoke.mock.calls.filter(([channel]) => channel === 'context.set');
+const namespaceCalls = () => invoke.mock.calls.filter(([channel]) => channel === 'namespace.set');
 
 describe('linkablePath', () => {
     const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/'] }) });
@@ -95,6 +96,28 @@ describe('linkablePath', () => {
         ['segments past a screen with none', '/overview/summary/advanced'],
     ])('opens nothing for %s', (_name, path) => {
         expect(linkablePath(router, path)).toBeNull();
+    });
+});
+
+describe('namespaceForLink', () => {
+    const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/'] }) });
+
+    it('selects the namespace of an object in another one', () => {
+        expect(namespaceForLink(router, '/workloads/pods/team-a/web-1/logs', 'default')).toBe('team-a');
+        expect(namespaceForLink(router, '/addons/instances/widgets.example.com/team-a/w1', 'default')).toBe('team-a');
+    });
+
+    it('leaves the selection alone when it is already that namespace', () => {
+        expect(namespaceForLink(router, '/workloads/pods/default/web-1', 'default')).toBeUndefined();
+    });
+
+    it('leaves “All namespaces” alone, which already holds the object', () => {
+        expect(namespaceForLink(router, '/workloads/pods/team-a/web-1', null)).toBeUndefined();
+    });
+
+    it('leaves the selection alone for a path naming no namespace', () => {
+        expect(namespaceForLink(router, '/overview/nodes/worker-1', 'default')).toBeUndefined();
+        expect(namespaceForLink(router, '/workloads/pods', 'default')).toBeUndefined();
     });
 });
 
@@ -183,6 +206,46 @@ describe('opening a link', () => {
         await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/deployments'));
         expect(screen.queryByTestId('deep-link-confirm')).toBeNull();
         expect(setCalls()).toHaveLength(0);
+    });
+
+    it('selects the namespace of an object in another one before opening it', async () => {
+        held = { ok: true, server: DEV, path: '/workloads/pods/team-a/web-1' };
+        const { router } = renderRoutes(routeTree, '/workloads/pods');
+        await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/pods/team-a/web-1'));
+        expect(namespaceCalls()).toEqual([['namespace.set', { namespace: 'team-a' }]]);
+    });
+
+    it('keeps the namespace selection when the object is in it', async () => {
+        held = { ok: true, server: DEV, path: '/workloads/pods/default/web-1' };
+        const { router } = renderRoutes(routeTree, '/workloads/pods');
+        await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/pods/default/web-1'));
+        expect(namespaceCalls()).toHaveLength(0);
+    });
+
+    it('keeps “All namespaces”, which already holds the object', async () => {
+        data['namespace.active'] = { name: null };
+        try {
+            held = { ok: true, server: DEV, path: '/workloads/pods/team-a/web-1' };
+            const { router } = renderRoutes(routeTree, '/workloads/pods');
+            await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/pods/team-a/web-1'));
+            expect(namespaceCalls()).toHaveLength(0);
+        } finally {
+            data['namespace.active'] = { name: 'default' };
+        }
+    });
+
+    it('selects the namespace after switching context, reading the selection the new context has', async () => {
+        held = { ok: true, server: PROD, path: '/workloads/pods/team-a/web-1' };
+        const { router } = renderRoutes(routeTree, '/workloads/pods');
+        const dialog = await screen.findByTestId('deep-link-confirm');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Switch and open' }));
+        await waitFor(() => expect(router.state.location.pathname).toBe('/workloads/pods/team-a/web-1'));
+        const order = invoke.mock.calls.map(([channel]) => channel as string);
+        expect(order.indexOf('namespace.set')).toBeGreaterThan(order.indexOf('context.set'));
+        expect(order.lastIndexOf('namespace.active', order.indexOf('namespace.set'))).toBeGreaterThan(
+            order.indexOf('context.set'),
+        );
+        expect(namespaceCalls()).toEqual([['namespace.set', { namespace: 'team-a' }]]);
     });
 
     it('takes a link again when main pushes that one is waiting', async () => {

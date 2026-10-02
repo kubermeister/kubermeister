@@ -93,6 +93,9 @@ Opening a link only ever opens a page:
   pick one in the dialog. Switching ends your port forwards, shells and log follows, as any context
   switch does. **Stay** leaves everything as it was.
 - When no context reaches it, Kubermeister says so, naming the address, and switches nothing.
+- A link to an object in a namespace other than the one selected selects the object's namespace
+  as it opens, once any context switch is done. Under **All namespaces** the selection stays, since
+  the object is already in it.
 - A link naming a page this version does not have, or one that is not a Kubermeister link at all,
   opens nothing and says why.
 
