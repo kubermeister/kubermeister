@@ -1,6 +1,6 @@
 ---
 title: Install Kubermeister
-description: Install the Kubermeister desktop Kubernetes client on macOS with Homebrew or the .dmg, on Windows with the installer, and on Linux from the AppImage, .deb or .rpm, and check a download against SHA256SUMS.
+description: Install Kubermeister on macOS with Homebrew or the .dmg, on Windows, and on Linux from the AppImage, .deb or .rpm, and verify the download.
 sidebar:
   order: 1
 ---

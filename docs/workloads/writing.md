@@ -1,6 +1,6 @@
 ---
 title: Writing to the cluster
-description: How Kubermeister makes writes to a Kubernetes cluster safe — context stamping, namespace rules, replaces that carry a resourceVersion, confirmations, the kinds that ask you to type their name, bulk delete, and how failures are reported.
+description: How Kubermeister keeps writes to a Kubernetes cluster safe — context checks, namespace rules, confirmations, typed-name deletes, and bulk delete.
 sidebar:
   order: 4
 ---

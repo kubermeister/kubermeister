@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Fixing Kubermeister connection problems — kubeconfig errors, unusable contexts, credential plugin failures, timeouts, certificate trouble behind a proxy, empty list screens, and how to report a bug.
+description: Fixing Kubermeister connection problems — kubeconfig errors, credential plugin failures, timeouts, certificates behind a proxy, and empty lists.
 sidebar:
   order: 4
 ---

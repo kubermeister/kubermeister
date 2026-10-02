@@ -120,6 +120,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
   Starlight's own components from `@astrojs/starlight/components` (the landing page uses
   `CardGrid` and `LinkCard`); and root-relative links with a trailing slash
   (`/docs/browse/lists/`). Nothing else is provided.
+- A page's `description` is the snippet a search result shows, which is cut at about 155
+  characters, so it stays within 155: what the page covers, with the words somebody would search
+  for.
 - **Screenshots are committed** in `docs/screenshots/<theme>/<shot>.webp`, both themes of every
   shot the harness takes. A pull request that changes a screen a shot shows re-shoots it
   (`npm run build && npm run screenshots`) and commits **only that shot**:

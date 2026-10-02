@@ -1,6 +1,6 @@
 ---
 title: Accessibility
-description: Using Kubermeister from the keyboard and with a screen reader — the skip link, the focus outline, what is announced for status, logs, shells, port forwards and drains, and reduced motion.
+description: Using Kubermeister from the keyboard and with a screen reader — the skip link, focus outline, what is announced, and reduced motion.
 sidebar:
   order: 7
 ---
