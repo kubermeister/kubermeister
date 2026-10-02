@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-02
+
 ### Added
 
 - **Settings › Appearance** has a **Text size** picker that makes all the text in the app smaller or larger without zooming the rest of the window.
@@ -593,7 +595,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.9.5...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/kubermeister/kubermeister/compare/v0.9.5...v0.10.0
 [0.9.5]: https://github.com/kubermeister/kubermeister/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/kubermeister/kubermeister/compare/v0.9.3...v0.9.4
 [0.9.3]: https://github.com/kubermeister/kubermeister/compare/v0.9.2...v0.9.3
