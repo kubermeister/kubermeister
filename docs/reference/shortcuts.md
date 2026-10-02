@@ -1,6 +1,6 @@
 ---
 title: Keyboard shortcuts and menus
-description: Every Kubermeister keyboard shortcut and menu item on macOS, Windows and Linux — the cheat sheet, moving between domains, refreshing, searching, back and forward, the command palette, where the keys work, the YAML editor and the edit fields.
+description: Every Kubermeister keyboard shortcut and menu item on macOS, Windows and Linux — navigation, search, the command palette and the YAML editor.
 sidebar:
   order: 6
 ---

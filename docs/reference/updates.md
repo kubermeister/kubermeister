@@ -1,6 +1,6 @@
 ---
 title: Updates
-description: How Kubermeister finds and installs new versions — the three update modes, the check interval, the top-bar pill, the menu's Check for Updates dialog, and why a .deb or .rpm install does not update itself.
+description: How Kubermeister finds and installs new versions — the three update modes, the check interval, and why a .deb or .rpm does not update itself.
 sidebar:
   order: 3
 ---

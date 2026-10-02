@@ -1,6 +1,6 @@
 ---
 title: Connecting to a cluster
-description: Which kubeconfig Kubermeister reads, how it authenticates with exec credential plugins for EKS, GKE and AKS, the checks it runs at startup, and what to do when a kubeconfig will not load.
+description: Which kubeconfig Kubermeister reads, exec credential plugins for EKS, GKE and AKS, the startup checks, and fixing a kubeconfig that will not load.
 sidebar:
   order: 1
 ---
