@@ -44,14 +44,18 @@ command palette opens **Updates**. Moving between sections does not add to the h
 
 ## Appearance
 
-| Setting      | Field     | Options             | Default |
-| ------------ | --------- | ------------------- | ------- |
-| **Theme**    |           | Light, Dark, System | Dark    |
-| **Terminal** | Font size | 11, 12, 14 or 16 pt | 12 pt   |
+| Setting      | Field     | Options                       | Default |
+| ------------ | --------- | ----------------------------- | ------- |
+| **Theme**    |           | Light, Dark, System           | Dark    |
+| **Text**     | Text size | Small, Default, Large, Larger | Default |
+| **Terminal** | Font size | 11, 12, 14 or 16 pt           | 12 pt   |
 
 - **Theme** switches the whole window between **Light**, **Dark** and **System**, which follows your
   operating system's preference and changes with it. The theme is not in the settings file: it is
   kept in the window's own local storage.
+- **Text size** makes all the text in the app smaller or larger, applying at once; spacing and icons
+  stay as they are, so it is not the same as **View › Zoom In**, which scales the whole window. Like
+  the theme, it is kept in the window's own local storage, not in the settings file.
 - **Font size** is the size of the [shell](/docs/sessions/shell/) terminal on a pod. A shell already
   open keeps its size; the next one uses the new one.
 
