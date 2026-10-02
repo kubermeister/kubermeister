@@ -16,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - Turning a toggle on or off, such as the log console's **Live** or its wrap and timestamp switches, no longer nudges the buttons beside it sideways.
+- Opening a link to an object in another namespace than the one selected selects the object's namespace, so the namespace selector and the list you go back to match the page; under **All namespaces** the selection stays.
 
 ## [0.9.4] - 2026-10-01
 

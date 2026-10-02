@@ -92,14 +92,19 @@ export async function selectNamespace(namespace: string | null): Promise<void> {
     await invalidateClusterQueries();
 }
 
-/** Select a namespace from a screen, closing an open detail page first: its object lives in the namespace being left. A failed switch reports itself. */
-export function useSelectNamespace(): (namespace: string | null) => Promise<void> {
+/**
+ * Select a namespace from a screen, closing an open detail page first: its object lives in the
+ * namespace being left. Resolves false when the page refused to close or the switch failed, which it
+ * reports itself.
+ */
+export function useSelectNamespace(): (namespace: string | null) => Promise<boolean> {
     const router = useRouter();
     return useCallback(
         async (namespace: string | null) => {
-            if (!(await closeDetail(router))) return;
+            if (!(await closeDetail(router))) return false;
             try {
                 await selectNamespace(namespace);
+                return true;
             } catch (error) {
                 reportFailure(
                     namespace === null
@@ -107,6 +112,7 @@ export function useSelectNamespace(): (namespace: string | null) => Promise<void
                         : `Could not select namespace “${namespace}”`,
                     error,
                 );
+                return false;
             }
         },
         [router],

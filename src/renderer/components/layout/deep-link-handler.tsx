@@ -13,9 +13,9 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { linkablePath, planDeepLink, type LinkPlan } from '@/lib/deep-link';
+import { linkablePath, namespaceForLink, planDeepLink, type LinkPlan } from '@/lib/deep-link';
 import { invoke, subscribe } from '@/lib/ipc';
-import { useSwitchContext } from '@/lib/scope';
+import { useSelectNamespace, useSwitchContext } from '@/lib/scope';
 
 type Confirm = Extract<LinkPlan, { kind: 'confirm' }>;
 
@@ -30,13 +30,23 @@ function failed(error: unknown): void {
  * gate, so a link that arrived with the launch waits in main until there is a screen to open it on.
  * A link only ever navigates: a link for a cluster the current context does not reach asks before
  * switching to one that does, and one for a cluster no context reaches says so and switches nothing.
+ * A link to an object in another namespace than the one selected selects the object's.
  */
 export function DeepLinkHandler() {
     const router = useRouter();
     const navigateTo = useNavigateTo();
     const switchContext = useSwitchContext();
+    const selectNamespace = useSelectNamespace();
     const [confirm, setConfirm] = useState<Confirm | null>(null);
     const [choice, setChoice] = useState<string | undefined>();
+
+    // Read once the context is settled, since a context switch can change the selection too.
+    const go = async (path: string) => {
+        const active = await invoke('namespace.active', {});
+        const namespace = namespaceForLink(router, path, active.name);
+        if (namespace !== undefined && !(await selectNamespace(namespace))) return;
+        navigateTo(path);
+    };
 
     const open = useEffectEvent(async () => {
         const { link } = await invoke('deepLink.take', {});
@@ -56,7 +66,7 @@ export function DeepLinkHandler() {
                 return;
             case 'navigate':
                 setConfirm(null);
-                navigateTo(plan.path);
+                await go(plan.path);
                 return;
             case 'confirm':
                 setChoice(plan.candidates[0]);
@@ -75,7 +85,7 @@ export function DeepLinkHandler() {
     const accept = async (plan: Confirm, to: string) => {
         setConfirm(null);
         try {
-            if (await switchContext(to)) navigateTo(plan.path);
+            if (await switchContext(to)) await go(plan.path);
         } catch (error) {
             failed(error);
         }
@@ -91,7 +101,7 @@ export function DeepLinkHandler() {
                         The link opens a screen on the cluster at {confirm?.server}, which{' '}
                         {several ? 'these contexts reach' : `context “${choice}” reaches`}, and you are on{' '}
                         {confirm?.from ? `“${confirm.from}”` : 'no context'}. Switching ends every port forward, shell
-                        and log follow open now. The namespace selection stays as it is.
+                        and log follow open now.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 {several && (
