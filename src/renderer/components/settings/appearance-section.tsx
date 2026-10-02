@@ -3,6 +3,7 @@ import { MonitorIcon, MoonIcon, SunIcon, type LucideIcon } from 'lucide-react';
 import { TERMINAL_FONT_SIZES } from '../../../shared/settings';
 import { Field, FormCard, FormSelect } from '@/components/templates/settings-form';
 import { useTheme, type Theme } from '@/components/theme-provider';
+import { FONT_SIZES, useFontSize } from '@/lib/font-size';
 import { updateSettings, useSettings } from '@/lib/settings';
 import { cn } from '@/lib/utils';
 
@@ -12,9 +13,10 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: LucideIcon; desc: stri
     { value: 'system', label: 'System', icon: MonitorIcon, desc: 'Match OS preference' },
 ];
 
-/** How the window looks: the theme and the shell terminal's type. */
+/** How the window looks: the theme, the size of the app's type and the shell terminal's. */
 export function AppearanceSection() {
     const { theme, setTheme } = useTheme();
+    const [fontSize, setFontSize] = useFontSize();
     const client = useQueryClient();
     const { data: settings } = useSettings();
     const terminalFont = settings?.data.terminalFontSize ?? 12;
@@ -47,6 +49,19 @@ export function AppearanceSection() {
                         );
                     })}
                 </div>
+            </FormCard>
+
+            <FormCard title="Text" desc="Size of the text across the app; spacing and icons stay as they are.">
+                <Field label="Text size">
+                    <FormSelect
+                        value={FONT_SIZES.find((size) => size.id === fontSize)?.label ?? 'Default'}
+                        options={FONT_SIZES.map((size) => size.label)}
+                        onValueChange={(label) => {
+                            const picked = FONT_SIZES.find((size) => size.label === label);
+                            if (picked) setFontSize(picked.id);
+                        }}
+                    />
+                </Field>
             </FormCard>
 
             <FormCard title="Terminal" desc="Font size of the shell terminal on a pod.">

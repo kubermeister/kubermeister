@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Settings › Appearance** has a **Text size** picker that makes all the text in the app smaller or larger without zooming the rest of the window.
+
 ## [0.9.5] - 2026-10-02
 
 ### Fixed

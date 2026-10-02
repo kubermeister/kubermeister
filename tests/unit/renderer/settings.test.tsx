@@ -294,6 +294,27 @@ describe('settings screen', () => {
         expect(within(group).getByRole('radio', { name: /Light/ })).toHaveAttribute('aria-checked', 'true');
     });
 
+    it('sets the text size from Appearance and keeps it in this window alone', async () => {
+        const { resetFontSize } = await import('@/lib/font-size');
+        localStorage.removeItem('km-font-size');
+        resetFontSize();
+        renderRoutes(routeTree, '/settings/appearance');
+        const size = await screen.findByRole('combobox', { name: 'Text size' });
+        expect(size).toHaveTextContent('Default');
+        await userEvent.click(size);
+        const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+        expect(options).toEqual(['Small', 'Default', 'Large', 'Larger']);
+        await userEvent.click(screen.getByRole('option', { name: 'Large' }));
+        await waitFor(() => expect(size).toHaveTextContent('Large'));
+        expect(localStorage.getItem('km-font-size')).toBe('large');
+        expect(document.documentElement.style.getPropertyValue('--font-scale')).toBe('1.08');
+        // A preference about the window, like the theme, so the settings file never hears of it.
+        expect(invoke).not.toHaveBeenCalledWith('settings.set', expect.anything());
+        localStorage.removeItem('km-font-size');
+        resetFontSize();
+        document.documentElement.style.removeProperty('--font-scale');
+    });
+
     it('picks a kubeconfig through the native dialog and resets to the default', async () => {
         let path: string | null = null;
         invoke.mockImplementation(async (channel: string) => {
