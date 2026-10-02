@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Turning a toggle on or off, such as the log console's **Live** or its wrap and timestamp switches, no longer nudges the buttons beside it sideways.
+
 ## [0.9.4] - 2026-10-01
 
 ### Added
