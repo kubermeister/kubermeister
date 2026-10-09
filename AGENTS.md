@@ -132,6 +132,23 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - `tests/unit/repo/docs.test.ts` fails on a figure with no image in either theme and on a link to a
   page or heading that does not exist, since nothing can fix a page once its tag is cut.
 
+### Promo videos
+
+- **Promo videos are generated from the `kubermeister/screencasts` repository**, checked out next to
+  this one as `../screencasts`. They are rendered on the maintainer's machine only and never
+  committed anywhere, here or there.
+- **An important feature gets a video script in the pull request that ships it.** Important means a
+  user would want it shown: a new screen, a new action, a visible change to a workflow. A fix, a
+  small tweak or a setting nobody would film gets none.
+- For such a feature, also open a pull request in `../screencasts` adding `features/<id>/`
+  (`npm run new -- <id>` there scaffolds it), with `script.yml` and `scene.ts` written from the code,
+  the `CHANGELOG.md` line and the `docs/` page. Render it (`npm run video -- <id> --frames`), check
+  that every beat's frame shows what its text says, and fix the scene until it does. Each pull
+  request links the other.
+- The test ids and labels a scene relies on are part of what a UI change must keep working, as the
+  screenshot harness's are: a change that breaks one updates the scene in `../screencasts` in the
+  same piece of work.
+
 ## Architecture rules (load-bearing)
 
 ### Processes and boundaries
