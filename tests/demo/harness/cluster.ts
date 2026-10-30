@@ -4,6 +4,20 @@ import { resolve } from 'node:path';
 import { K3sContainer, type StartedK3sContainer } from '@testcontainers/k3s';
 
 /**
+ * k3s in Docker on a cgroup v2 host (OrbStack, Docker Desktop) needs a cgroup namespace of its own.
+ * With the host's, which `K3sContainer` asks for along with the host's cgroup tree, the kubelet loses
+ * every pod's cgroup: pods restart every few minutes and metrics-server never reports.
+ */
+class DemoK3sContainer extends K3sContainer {
+    constructor(image: string) {
+        super(image);
+        // Assigned, not set: the option is newer than the HostConfig type testcontainers uses.
+        Object.assign(this.hostConfig, { CgroupnsMode: 'private' });
+        delete this.hostConfig.Binds;
+    }
+}
+
+/**
  * The demo cluster the screenshots are taken against: a second disposable k3s container, kept apart
  * from the end-to-end one by its own name, kubeconfig and state file so a screenshot run and a test
  * run can never reach into each other's cluster.
@@ -75,7 +89,7 @@ export async function ensureCluster(): Promise<void> {
     // The command has to be given in full: `K3sContainer` disables traefik in its own default.
     // `--node-name` because a k3s node otherwise takes the container's id, and every shot of the
     // Nodes list, a node's page and the drain dialog would be headed by a docker hash.
-    const container = new K3sContainer(K3S_IMAGE)
+    const container = new DemoK3sContainer(K3S_IMAGE)
         .withCommand(['server', `--node-name=${NODE_NAME}`])
         .withName(CONTAINER_NAME)
         .withReuse();

@@ -140,8 +140,9 @@ Body: why the change is needed, what a reader of the history cannot learn from t
 - **An important feature gets a video script in the pull request that ships it.** Important means a
   user would want it shown: a new screen, a new action, a visible change to a workflow. A fix, a
   small tweak or a setting nobody would film gets none.
-- For such a feature, also open a pull request in `../screencasts` adding `features/<id>/`
-  (`npm run new -- <id>` there scaffolds it), with `script.yml` and `scene.ts` written from the code,
+- For such a feature, also open a pull request in `../screencasts` adding `features/<group>/<id>/`
+  (`npm run new -- <group>/<id>` there scaffolds it and names the groups), with `script.yml` and
+  `scene.ts` written from the code,
   the `CHANGELOG.md` line and the `docs/` page. Render it (`npm run video -- <id> --frames`), check
   that every beat's frame shows what its text says, and fix the scene until it does. Each pull
   request links the other.
