@@ -30,13 +30,21 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 /**
- * jsdom lays nothing out, so every element reports an offset size of zero and anything that renders
- * only what fits on screen — the virtualised log console — renders nothing at all. These stand in
- * for layout; no test asserts on real geometry, which jsdom never had.
+ * jsdom lays nothing out, so every element reports an offset and a client size of zero and anything
+ * that renders only what fits on screen — the virtualised log console and lists — renders nothing
+ * at all. These stand in for layout; no test asserts on real geometry, which jsdom never had. The
+ * virtualizer measures its scroll element by client size (`@tanstack/virtual-core` 3.19 moved
+ * there from the offset size), so both pairs answer with the same viewport.
  */
 const VIEWPORT = { width: 900, height: 600 };
-Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, value: VIEWPORT.width });
-Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, value: VIEWPORT.height });
+for (const [property, value] of [
+    ['offsetWidth', VIEWPORT.width],
+    ['offsetHeight', VIEWPORT.height],
+    ['clientWidth', VIEWPORT.width],
+    ['clientHeight', VIEWPORT.height],
+] as const) {
+    Object.defineProperty(HTMLElement.prototype, property, { configurable: true, value });
+}
 
 Element.prototype.scrollIntoView ??= () => {};
 Element.prototype.hasPointerCapture ??= () => false;
