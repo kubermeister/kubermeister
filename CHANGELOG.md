@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-02
+
+The first stable release. The app is the same as 0.10.0; from here on, a change that breaks how it is used waits for 2.0.0.
+
 ## [0.10.0] - 2026-10-07
 
 ### Added
@@ -595,7 +599,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/kubermeister/kubermeister/compare/v0.10.0...v1.0.0
 [0.10.0]: https://github.com/kubermeister/kubermeister/compare/v0.9.5...v0.10.0
 [0.9.5]: https://github.com/kubermeister/kubermeister/compare/v0.9.4...v0.9.5
 [0.9.4]: https://github.com/kubermeister/kubermeister/compare/v0.9.3...v0.9.4
