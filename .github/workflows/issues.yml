@@ -3,10 +3,12 @@ name: Issues
 # Two triage rules, no bot comments. A new issue from anyone without write access is marked
 # needs-triage; when the reporter answers on an issue marked needs-info, the mark goes back to
 # needs-triage so the answer is not missed. Everything else about an issue is a maintainer's call.
+# issue_comment runs with a token that can write, which is safe here because the job checks nothing
+# out and runs no code from the issue: it only reads labels and the commenter's login.
 on:
   issues:
     types: [opened]
-  issue_comment:
+  issue_comment: # zizmor: ignore[dangerous-triggers]
     types: [created]
 
 permissions:
