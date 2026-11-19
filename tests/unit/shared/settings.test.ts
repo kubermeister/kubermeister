@@ -7,6 +7,8 @@ import {
     mergeSettings,
     parseSettings,
     readSettings,
+    RECENT_NAMESPACES_PER_CONTEXT,
+    rememberNamespace,
     STATE_KEYS,
     settingsInputSchema,
     settingsPatchSchema,
@@ -17,7 +19,12 @@ describe('parseSettings', () => {
         const valid = {
             version: SETTINGS_VERSION,
             general: { confirmQuit: false },
-            session: { lastContext: 'prod', lastNamespace: 'default', restoreOnLaunch: true },
+            session: {
+                lastContext: 'prod',
+                lastNamespace: 'default',
+                recentNamespaces: [{ context: 'prod', namespace: 'default' }],
+                restoreOnLaunch: true,
+            },
             connection: { kubeconfigPath: '/tmp/kubeconfig' },
             data: {
                 refreshIntervalSec: 30,
@@ -99,6 +106,7 @@ describe('parseSettings', () => {
         expect(readSettings(config, state).settings.session).toEqual({
             lastContext: 'new',
             lastNamespace: 'web',
+            recentNamespaces: [],
             restoreOnLaunch: false,
         });
         expect(readSettings(config).settings.session.lastContext).toBe('old');
@@ -106,9 +114,9 @@ describe('parseSettings', () => {
         expect(readSettings({}, { session: { restoreOnLaunch: false } }).settings.session.restoreOnLaunch).toBe(true);
     });
 
-    it('marks exactly the last context, namespace, forwards and window bounds as state', () => {
+    it('marks exactly the last context, namespace, recent namespaces, forwards and window bounds as state', () => {
         expect(STATE_KEYS).toEqual({
-            session: ['lastContext', 'lastNamespace'],
+            session: ['lastContext', 'lastNamespace', 'recentNamespaces'],
             data: ['forwards'],
             window: ['bounds'],
         });
@@ -121,7 +129,7 @@ describe('parseSettings', () => {
         expect(parseSettings(partial)).toEqual({
             version: SETTINGS_VERSION,
             general: { confirmQuit: true },
-            session: { lastContext: 'staging', lastNamespace: null, restoreOnLaunch: true },
+            session: { lastContext: 'staging', lastNamespace: null, recentNamespaces: [], restoreOnLaunch: true },
             connection: { kubeconfigPath: null },
             data: {
                 refreshIntervalSec: 12,
@@ -197,7 +205,7 @@ describe('parseSettings', () => {
             };
             const parsed = parseSettings(v1);
             expect(parsed.version).toBe(SETTINGS_VERSION);
-            expect(parsed.session).toEqual(v1.session);
+            expect(parsed.session).toEqual({ ...v1.session, recentNamespaces: [] });
             expect(parsed.connection).toEqual(v1.connection);
             expect(parsed.window).toEqual(v1.window);
         });
@@ -324,6 +332,34 @@ describe('isProxyUrl', () => {
         expect(isProxyUrl('ws://proxy:3128')).toBe(false);
         expect(isProxyUrl('proxy:3128')).toBe(false);
         expect(isProxyUrl('')).toBe(false);
+    });
+});
+
+describe('rememberNamespace', () => {
+    it('puts a new selection first and moves a repeated one there instead of repeating it', () => {
+        const once = rememberNamespace([], 'prod', 'web');
+        expect(once).toEqual([{ context: 'prod', namespace: 'web' }]);
+        const twice = rememberNamespace(once, 'prod', 'api');
+        expect(rememberNamespace(twice, 'prod', 'web')).toEqual([
+            { context: 'prod', namespace: 'web' },
+            { context: 'prod', namespace: 'api' },
+        ]);
+    });
+
+    it('caps one context without touching another', () => {
+        let recent = [{ context: 'staging', namespace: 'kept' }];
+        for (let i = 0; i < RECENT_NAMESPACES_PER_CONTEXT + 3; i++)
+            recent = rememberNamespace(recent, 'prod', `ns-${i}`);
+        const prod = recent.filter((entry) => entry.context === 'prod');
+        expect(prod).toHaveLength(RECENT_NAMESPACES_PER_CONTEXT);
+        expect(prod[0]?.namespace).toBe(`ns-${RECENT_NAMESPACES_PER_CONTEXT + 2}`);
+        expect(prod.at(-1)?.namespace).toBe('ns-3');
+        expect(recent).toContainEqual({ context: 'staging', namespace: 'kept' });
+    });
+
+    it('drops a remembered entry that is not a namespace name when the state is read', () => {
+        const state = { session: { recentNamespaces: [{ context: 'prod', namespace: 'Not Valid' }] } };
+        expect(readSettings({}, state).settings.session.recentNamespaces).toEqual([]);
     });
 });
 

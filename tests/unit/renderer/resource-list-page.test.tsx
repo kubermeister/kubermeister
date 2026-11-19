@@ -224,6 +224,39 @@ describe('ResourceListPage', () => {
             expect(screen.queryByTestId('all-namespaces-hint')).not.toBeInTheDocument();
             expect(screen.queryByTestId('read-timeout-hint')).not.toBeInTheDocument();
         });
+
+        describe('a refusal', () => {
+            const refused = () =>
+                ({
+                    data: undefined,
+                    isPending: false,
+                    isError: true,
+                    refetch: vi.fn(),
+                    error: new IpcError({ kind: 'forbidden', detail: 'denied', op: 'x' }),
+                }) as Props['query'];
+
+            it('points at the namespace selector under All namespaces, where one namespace may be allowed', async () => {
+                scoped(null);
+                renderPage({ query: refused() });
+                const hint = await screen.findByTestId('forbidden-namespace-hint');
+                expect(hint).toHaveTextContent('allowed only inside particular ones');
+                expect(hint).toHaveTextContent('type its name');
+            });
+
+            it('says nothing more inside a namespace, where the refusal is already about one', async () => {
+                scoped('team-a');
+                renderPage({ query: refused() });
+                expect(await screen.findByText('Access denied')).toBeInTheDocument();
+                expect(screen.queryByTestId('forbidden-namespace-hint')).not.toBeInTheDocument();
+            });
+
+            it('says nothing more for a cluster-scoped kind, which no namespace holds', async () => {
+                scoped(null);
+                renderPage({ query: refused(), clusterScoped: true });
+                expect(await screen.findByText('Access denied')).toBeInTheDocument();
+                expect(screen.queryByTestId('forbidden-namespace-hint')).not.toBeInTheDocument();
+            });
+        });
     });
 
     it.each([

@@ -56,6 +56,24 @@ Internally, "All namespaces" is the absence of a namespace — the label is the 
 value handed to a cluster call. The selection is held by the app itself rather than asked of the
 cluster, so it is known immediately and stays known while the cluster is down.
 
+## When the namespaces cannot be listed
+
+An account may be allowed to read inside particular namespaces without being allowed to list
+namespaces. The selector then says so above its list, with the reason (**Access denied** for a
+refusal), and its box reads **Type a namespace…**: type the whole name of a namespace you can reach
+and choose **Use “name”**.
+
+Kubernetes has no call for the namespaces an account can reach, so the app cannot look them up. What
+the selector lists instead is what the app already knows: the namespaces you selected before on this
+context, newest first and ten at most, then the namespace of every kubeconfig context on the same
+API server. A name is listed because it was used or written down, not because the cluster confirmed
+it, so a mistyped one stays in the list until newer ones replace it.
+
+While nothing is selected, a namespaced list asks for the whole cluster and reads **Access denied**,
+with a line pointing at the selector. The cluster summary shows the selected namespace's events when
+the cluster-wide ones are refused, and its node count stays at 0 for an account that may not list
+nodes.
+
 ## Where it reopens
 
 The app remembers the last context and namespace you selected, in its own settings. With **Restore

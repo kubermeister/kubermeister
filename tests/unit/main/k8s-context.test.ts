@@ -112,8 +112,67 @@ describe('contexts', () => {
         const { setNamespace, getActiveNamespace } = await load();
         expect(setNamespace('kube-system')).toEqual({ namespace: 'kube-system' });
         expect(getActiveNamespace()).toBe('kube-system');
-        expect(updateSettings).toHaveBeenCalledWith({ session: { lastNamespace: 'kube-system' } });
+        expect(updateSettings).toHaveBeenCalledWith({
+            session: {
+                lastNamespace: 'kube-system',
+                recentNamespaces: [{ context: 'alpha', namespace: 'kube-system' }],
+            },
+        });
         expect(setNamespace(null)).toEqual({ namespace: null });
+        // "All namespaces" is a selection, not a namespace, so it is not one to offer again.
+        expect(updateSettings).toHaveBeenLastCalledWith({ session: { lastNamespace: null } });
+    });
+
+    it('remembers a selected namespace under its context, newest first and once', async () => {
+        settings.session.recentNamespaces = [
+            { context: 'alpha', namespace: 'team-a' },
+            { context: 'beta', namespace: 'team-a' },
+            { context: 'alpha', namespace: 'kube-system' },
+        ];
+        try {
+            const { setNamespace } = await load();
+            setNamespace('kube-system');
+            expect(updateSettings).toHaveBeenCalledWith({
+                session: {
+                    lastNamespace: 'kube-system',
+                    recentNamespaces: [
+                        { context: 'alpha', namespace: 'kube-system' },
+                        { context: 'alpha', namespace: 'team-a' },
+                        { context: 'beta', namespace: 'team-a' },
+                    ],
+                },
+            });
+        } finally {
+            settings.session.recentNamespaces = [];
+        }
+    });
+
+    it('does not remember a name that selected nothing', async () => {
+        const { setNamespace } = await load();
+        setNamespace('Not Valid');
+        expect(updateSettings).toHaveBeenCalledWith({ session: { lastNamespace: 'Not Valid' } });
+    });
+
+    it('knows the namespaces used under this context and the ones the kubeconfig names on its server', async () => {
+        settings.connection.kubeconfigPath = resolve('tests/unit/fixtures/kubeconfig-shared-server.yaml');
+        settings.session.recentNamespaces = [
+            { context: 'reader', namespace: 'team-c' },
+            { context: 'elsewhere', namespace: 'team-y' },
+            { context: 'reader', namespace: 'team-a' },
+        ];
+        try {
+            const { listKnownNamespaces } = await load();
+            // Remembered first, then the kubeconfig's, each once; another server's contexts say nothing here.
+            expect(listKnownNamespaces()).toEqual(['team-c', 'team-a', 'team-b']);
+        } finally {
+            settings.connection.kubeconfigPath = resolve('tests/unit/fixtures/kubeconfig.yaml');
+            settings.session.recentNamespaces = [];
+        }
+    });
+
+    it('knows only the context own namespace when nothing was selected before', async () => {
+        const { listKnownNamespaces } = await load();
+        expect(listKnownNamespaces()).toEqual(['team-a']);
     });
 
     it('treats a malformed namespace as no selection rather than activating it', async () => {

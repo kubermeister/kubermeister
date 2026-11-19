@@ -14,6 +14,7 @@ import { RefreshButton } from '@/components/refresh-button';
 import { ReadErrorHints } from '@/components/templates/read-error-hints';
 import { describeError } from '@/lib/k8s-error';
 import { useIpcQuery } from '@/lib/query';
+import { useScope } from '@/lib/scope';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { CLUSTER_TONE } from '@/lib/status';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ const PANEL_CARD = 'flex min-h-0 flex-col gap-0 rounded-card py-0 shadow-none';
 function DashboardPage() {
     const queryClient = useQueryClient();
     const refetchInterval = useRefreshIntervalMs();
+    const { allNamespaces } = useScope();
     const clusterQuery = useIpcQuery('cluster.active', {}, { refetchInterval });
     const eventsQuery = useIpcQuery('events.recent', {}, { refetchInterval });
     const alertsQuery = useIpcQuery('metrics.alerts', {}, { refetchInterval });
@@ -99,8 +101,15 @@ function DashboardPage() {
                         {failure && failure.detail !== failure.title && (
                             <span className="max-w-xl text-meta text-text-dim">{failure.detail}</span>
                         )}
-                        {/* The summary's reads are cluster-wide by design, so no namespace would narrow them. */}
-                        {failure && <ReadErrorHints kind={failure.kind} noun="the cluster overview" />}
+                        {/* The summary's reads are cluster-wide by design, so no namespace makes them smaller;
+                            a refused one is the exception, since the events then come from the selected namespace. */}
+                        {failure && (
+                            <ReadErrorHints
+                                kind={failure.kind}
+                                noun="the cluster overview"
+                                restrictable={allNamespaces}
+                            />
+                        )}
                     </div>
                     <Button variant="outline" size="sm" onClick={retry}>
                         Retry

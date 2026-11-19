@@ -135,6 +135,25 @@ describe('cluster dashboard', () => {
         expect(await screen.findByTestId('dashboard-metrics')).toBeInTheDocument();
     });
 
+    it('points a refused summary at the namespace selector only under All namespaces', async () => {
+        const { IpcError } = await vi.importActual<typeof import('@/lib/ipc')>('@/lib/ipc');
+        const refuse = (namespace: string | null) =>
+            invoke.mockImplementation(async (channel: string) => {
+                if (channel === 'events.recent')
+                    throw new IpcError({ kind: 'forbidden', detail: 'events denied', op: 'events.recent' });
+                return channel === 'namespace.active' ? { name: namespace } : data[channel];
+            });
+        refuse(null);
+        const first = renderRoutes(routeTree, '/overview/summary');
+        const error = await screen.findByTestId('dashboard-error');
+        expect(await within(error).findByTestId('forbidden-namespace-hint')).toHaveTextContent('Select a namespace');
+        first.unmount();
+        refuse('team-a');
+        renderRoutes(routeTree, '/overview/summary');
+        expect(await screen.findByTestId('dashboard-error')).toHaveTextContent('Access denied');
+        expect(screen.queryByTestId('forbidden-namespace-hint')).not.toBeInTheDocument();
+    });
+
     it('names the ceiling when a core read timed out', async () => {
         const { IpcError } = await vi.importActual<typeof import('@/lib/ipc')>('@/lib/ipc');
         invoke.mockImplementation(async (channel: string) => {

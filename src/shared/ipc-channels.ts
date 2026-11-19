@@ -26,6 +26,7 @@ export const IPC_CHANNELS = [
     'caBundle.clear',
     'manifest.pick',
     'namespaces.list',
+    'namespaces.known',
     'namespace.active',
     'cluster.active',
     'clusters.list',

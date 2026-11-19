@@ -74,8 +74,12 @@ export async function stopCluster(): Promise<void> {
     await started?.stop();
 }
 
-/** Run kubectl inside the test cluster's container from a spec, e.g. to mutate seeded objects. */
-export function clusterKubectl(args: string[]): string {
+/**
+ * Run kubectl inside the test cluster's container from a spec, e.g. to mutate seeded objects. `input`
+ * is what it reads on stdin, for `apply -f -`.
+ */
+export function clusterKubectl(args: string[], input?: string): string {
     const { containerId } = JSON.parse(readFileSync(CLUSTER_STATE_PATH, 'utf8')) as { containerId: string };
-    return execFileSync('docker', ['exec', containerId, 'kubectl', ...args], { encoding: 'utf8' });
+    const exec = input === undefined ? ['exec'] : ['exec', '-i'];
+    return execFileSync('docker', [...exec, containerId, 'kubectl', ...args], { encoding: 'utf8', input });
 }

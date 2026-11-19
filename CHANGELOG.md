@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- An account that may read inside namespaces but not list them can now select one: the namespace selector says the list was refused, takes a namespace name as typed, and offers the namespaces used before on that context. The cluster summary then shows that namespace's events instead of **Access denied**, and a refused list under **All namespaces** points at the selector.
+
 ## [1.0.0] - 2026-11-02
 
 The first stable release. The app is the same as 0.10.0; from here on, a change that breaks how it is used waits for 2.0.0.

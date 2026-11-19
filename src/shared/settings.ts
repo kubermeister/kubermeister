@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { chartRepositorySchema, MAX_CHART_REPOSITORIES } from './charts.js';
+import { namespaceNameSchema } from './k8s/names.js';
 
 /**
  * Persisted application settings: the app's own durable state, written to a JSON file the main
@@ -7,10 +8,21 @@ import { chartRepositorySchema, MAX_CHART_REPOSITORIES } from './charts.js';
  * here never mutates the kubeconfig on disk, so the kubeconfig stays read-only.
  */
 
+/** How many namespaces are remembered for one context before the oldest is dropped. */
+export const RECENT_NAMESPACES_PER_CONTEXT = 10;
+
+/** One namespace selected under one context, worth offering there again. */
+export const recentNamespaceSchema = z.object({ context: z.string().min(1), namespace: namespaceNameSchema });
+
 const sessionSchema = z.object({
     /** The context the app reopens on: its own pointer, not the kubeconfig's current-context. */
     lastContext: z.string().nullable(),
     lastNamespace: z.string().nullable(),
+    /**
+     * Namespaces selected before, newest first. An account that may not list namespaces has no
+     * other list to pick from, since the cluster has no call for the ones an account can reach.
+     */
+    recentNamespaces: z.array(recentNamespaceSchema).max(500),
     /** When false, launch follows the kubeconfig's current-context instead of `lastContext`. */
     restoreOnLaunch: z.boolean(),
 });
@@ -197,6 +209,7 @@ export const settingsInputSchema = settingsPatchSchema
 
 export type GeneralSettings = z.infer<typeof generalSchema>;
 export type RememberedForward = z.infer<typeof rememberedForwardSchema>;
+export type RecentNamespace = z.infer<typeof recentNamespaceSchema>;
 export type ChartSettings = z.infer<typeof chartsSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -208,7 +221,7 @@ export type ProxyMode = (typeof PROXY_MODES)[number];
 export const DEFAULT_SETTINGS: Settings = {
     version: SETTINGS_VERSION,
     general: { confirmQuit: true },
-    session: { lastContext: null, lastNamespace: null, restoreOnLaunch: true },
+    session: { lastContext: null, lastNamespace: null, recentNamespaces: [], restoreOnLaunch: true },
     connection: { kubeconfigPath: null },
     data: { refreshIntervalSec: 12, readTimeoutSec: 60, logBufferLines: 2_000, terminalFontSize: 12, forwards: [] },
     updates: { mode: null, checkIntervalHours: 4 },
@@ -216,6 +229,16 @@ export const DEFAULT_SETTINGS: Settings = {
     charts: { repositories: [] },
     window: { bounds: null },
 };
+
+/**
+ * The remembered namespaces with one more selection, newest first: an entry selected again moves
+ * to the front rather than repeating, and a context keeps only its newest few.
+ */
+export function rememberNamespace(recent: RecentNamespace[], context: string, namespace: string): RecentNamespace[] {
+    const others = recent.filter((entry) => entry.context !== context);
+    const own = recent.filter((entry) => entry.context === context && entry.namespace !== namespace);
+    return [{ context, namespace }, ...own.slice(0, RECENT_NAMESPACES_PER_CONTEXT - 1), ...others];
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -243,7 +266,7 @@ export const SETTINGS_SECTIONS = Object.keys(SECTION_SCHEMAS) as SettingsSection
  * settings file holds only what a user would write by hand, copy between machines or provision.
  */
 export const STATE_KEYS: { readonly [S in SettingsSection]?: readonly (keyof Settings[S])[] } = {
-    session: ['lastContext', 'lastNamespace'],
+    session: ['lastContext', 'lastNamespace', 'recentNamespaces'],
     data: ['forwards'],
     window: ['bounds'],
 };
