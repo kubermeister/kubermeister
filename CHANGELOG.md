@@ -13,6 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-19
+
 ### Fixed
 
 - An account that may read inside namespaces but not list them can now select one: the namespace selector says the list was refused, takes a namespace name as typed, and offers the namespaces used before on that context. The cluster summary then shows that namespace's events instead of **Access denied**, and a refused list under **All namespaces** points at the selector.
@@ -603,7 +605,8 @@ The first stable release. The app is the same as 0.10.0; from here on, a change 
 - The first release: the application window, packaged for macOS, Windows and Linux, updating
   itself in the background and installing a new version when it quits.
 
-[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/kubermeister/kubermeister/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/kubermeister/kubermeister/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/kubermeister/kubermeister/compare/v0.10.0...v1.0.0
 [0.10.0]: https://github.com/kubermeister/kubermeister/compare/v0.9.5...v0.10.0
 [0.9.5]: https://github.com/kubermeister/kubermeister/compare/v0.9.4...v0.9.5
