@@ -1,8 +1,8 @@
 import type { CoreV1Event } from '@kubernetes/client-node';
 import type { ClusterEvent, EventType, ObjectEventsInput } from '../../../shared/k8s/events.js';
 import { isClusterScopedKindName } from '../../../shared/k8s/registry.js';
-import { apis, isSafeSelectorValue, listItems, resolveObjectNamespace } from '../client.js';
-import { withK8s } from '../errors.js';
+import { apis, getActiveNamespace, isSafeSelectorValue, listItems, resolveObjectNamespace } from '../client.js';
+import { toK8sError, withK8s } from '../errors.js';
 
 /**
  * The most recent of the timestamps an event may carry, as ISO; undefined when it has none. An
@@ -52,13 +52,28 @@ export function sortedByTimeDesc(events: CoreV1Event[]): CoreV1Event[] {
 // events carry a short TTL, so this caps the fetch rather than guaranteeing the globally newest N.
 const EVENT_LIST_LIMIT = 500;
 export const RECENT_EVENTS = 20;
+const RECENT_OP = 'events.recent';
 
-/** The newest events across all namespaces, for the cluster summary. Cluster-wide by design. */
+/**
+ * The newest events across all namespaces, for the cluster summary. Cluster-wide by design, with one
+ * exception: an account that may not read events cluster-wide gets the selected namespace's, since
+ * a summary of the one namespace it can see says more than a refusal.
+ */
 export function listRecentEvents(): Promise<ClusterEvent[]> {
-    return withK8s('events.recent', async () => {
-        const result = await apis().core.listEventForAllNamespaces({ limit: EVENT_LIST_LIMIT });
-        return sortedByTimeDesc(result.items).slice(0, RECENT_EVENTS).map(toClusterEvent);
+    return withK8s(RECENT_OP, async () => {
+        const items = await recentEventItems();
+        return sortedByTimeDesc(items).slice(0, RECENT_EVENTS).map(toClusterEvent);
     });
+}
+
+async function recentEventItems(): Promise<CoreV1Event[]> {
+    try {
+        return (await apis().core.listEventForAllNamespaces({ limit: EVENT_LIST_LIMIT })).items;
+    } catch (error) {
+        const namespace = getActiveNamespace();
+        if (!namespace || toK8sError(RECENT_OP, error).kind !== 'forbidden') throw error;
+        return (await apis().core.listNamespacedEvent({ namespace, limit: EVENT_LIST_LIMIT })).items;
+    }
 }
 
 /** Every event in the explicit, active or all namespaces, newest first. */

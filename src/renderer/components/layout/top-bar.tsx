@@ -32,12 +32,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDetailTabLabel } from '@/lib/detail-tab';
+import { describeError } from '@/lib/k8s-error';
 import { SETTINGS_NAV, breadcrumbsForPath, isActivePath } from '@/lib/nav';
 import { shortcutPlatform } from '@/lib/platform';
 import { useIpcQuery } from '@/lib/query';
 import { useSelectNamespace, useSwitchContext } from '@/lib/scope';
 import { useRefreshIntervalMs } from '@/lib/settings';
 import { CLUSTER_TONE, type StatusTone } from '@/lib/status';
+import { isNamespaceName } from '../../../shared/k8s/names';
 import { cn } from '@/lib/utils';
 import { chordKeys, shortcutById } from '../../../shared/shortcuts';
 import { ConnectionNotice } from './connection-notice';
@@ -249,26 +251,43 @@ export function ContextSelector() {
 
 const ALL_NAMESPACES = 'All namespaces';
 
-/** Scope namespaced lists to one namespace or all, with a filter box. Names only: a pod count beside
- * each would be a whole-cluster pod list dressed as a label. */
+/**
+ * Scope namespaced lists to one namespace or all, with a filter box. Names only: a pod count beside
+ * each would be a whole-cluster pod list dressed as a label.
+ *
+ * An account may read inside namespaces without being allowed to list them, and the cluster has no
+ * call for the ones an account can reach. So a refused list is said to be refused rather than drawn
+ * as an empty one, the box takes a name as typed, and the rows are the names the app already knows.
+ */
 export function NamespaceSelector() {
     const namespaces = useIpcQuery('namespaces.list', {});
     const active = useIpcQuery('namespace.active', {});
+    const listRefused = namespaces.isError;
+    const known = useIpcQuery('namespaces.known', {}, { enabled: listRefused });
     const [open, setOpen] = useState(false);
+    const [typed, setTyped] = useState('');
     // A null name is the all-namespaces selection; undefined means the selection is not known yet.
     const activeName = active.data?.name ?? undefined;
     const allSelected = active.data?.name === null;
     const selectNamespace = useSelectNamespace();
     // Every scope switch resets both queries, so this is the state after each switch, not only at launch.
     const loading = active.isPending || namespaces.isPending;
+    const names = listRefused ? (known.data ?? []) : (namespaces.data ?? []).map((ns) => ns.name);
+    const candidate = typed.trim();
+    const offerTyped = listRefused && isNamespaceName(candidate) && !names.includes(candidate);
+
+    const changeOpen = (next: boolean) => {
+        setOpen(next);
+        if (!next) setTyped('');
+    };
 
     const select = async (namespace: string | null) => {
-        setOpen(false);
+        changeOpen(false);
         await selectNamespace(namespace);
     };
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={changeOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -297,9 +316,26 @@ export function NamespaceSelector() {
             </PopoverTrigger>
             <PopoverContent align="start" className="w-64 p-0">
                 <Command>
-                    <CommandInput placeholder="Filter namespaces…" />
+                    <CommandInput
+                        placeholder={listRefused ? 'Type a namespace…' : 'Filter namespaces…'}
+                        value={typed}
+                        onValueChange={setTyped}
+                    />
+                    {listRefused && (
+                        <div
+                            className="border-b border-border px-3 py-2 text-meta text-text-muted"
+                            data-testid="namespaces-refused"
+                        >
+                            <span className="font-medium text-foreground">
+                                {describeError(namespaces.error).title}.
+                            </span>{' '}
+                            The namespaces could not be listed. Type the name of one to select it.
+                        </div>
+                    )}
                     <CommandList>
-                        <CommandEmpty>No namespaces found.</CommandEmpty>
+                        <CommandEmpty>
+                            {listRefused ? 'Type a whole namespace name.' : 'No namespaces found.'}
+                        </CommandEmpty>
                         <CommandGroup heading="Namespaces">
                             <CommandItem value={ALL_NAMESPACES} onSelect={() => void select(null)} className="gap-1.5">
                                 <CheckIcon className={cn('size-3 text-primary', !allSelected && 'invisible')} />
@@ -314,19 +350,30 @@ export function NamespaceSelector() {
                                     </span>
                                 </CommandLoading>
                             )}
-                            {(namespaces.data ?? []).map((ns) => (
+                            {names.map((name) => (
                                 <CommandItem
-                                    key={ns.name}
-                                    value={ns.name}
-                                    onSelect={() => void select(ns.name)}
+                                    key={name}
+                                    value={name}
+                                    onSelect={() => void select(name)}
                                     className="gap-1.5"
                                 >
                                     <CheckIcon
-                                        className={cn('size-3 text-primary', ns.name !== activeName && 'invisible')}
+                                        className={cn('size-3 text-primary', name !== activeName && 'invisible')}
                                     />
-                                    <span className="flex-1">{ns.name}</span>
+                                    <span className="flex-1">{name}</span>
                                 </CommandItem>
                             ))}
+                            {offerTyped && (
+                                <CommandItem
+                                    value={candidate}
+                                    onSelect={() => void select(candidate)}
+                                    className="gap-1.5"
+                                    data-testid="use-typed-namespace"
+                                >
+                                    <CheckIcon className="invisible size-3" />
+                                    <span className="flex-1">Use “{candidate}”</span>
+                                </CommandItem>
+                            )}
                         </CommandGroup>
                     </CommandList>
                 </Command>

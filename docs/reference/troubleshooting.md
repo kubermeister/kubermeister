@@ -71,6 +71,20 @@ Under **All namespaces**, the cluster is asked for that kind in every namespace 
 namespace from the selector. The app suggests exactly this when it happens, and cluster-scoped
 screens never do, because narrowing does not apply to them.
 
+## Every list reads "Access denied" and the namespace selector is empty
+
+Your account is probably allowed inside particular namespaces and nowhere cluster-wide. Under **All
+namespaces** every list asks for the whole cluster, which such an account is refused, and so is the
+list of namespaces itself, so the selector has nothing to offer.
+
+Open the namespace selector, type the name of a namespace you can reach and choose **Use
+“name”**. The app cannot find those names for you, because Kubernetes has no call for the
+namespaces an account can reach. See
+[when the namespaces cannot be listed](/docs/clusters/contexts-namespaces/#when-the-namespaces-cannot-be-listed).
+
+If a namespace is selected and a list still reads **Access denied**, your role does not allow
+listing that kind there.
+
 ## A list is empty but kubectl shows rows
 
 Check the namespace selector first — a list asks for its kind _in its namespace_, and the search box

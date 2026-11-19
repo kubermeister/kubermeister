@@ -153,6 +153,35 @@ describe('listEventsForObject', () => {
 describe('listRecentEvents', () => {
     beforeEach(() => {
         core.listEventForAllNamespaces.mockReset();
+        core.listNamespacedEvent.mockReset();
+        client.getActiveNamespace.mockReset();
+    });
+
+    it('reads the selected namespace when the account may not read events cluster-wide', async () => {
+        client.getActiveNamespace.mockReturnValue('team-a');
+        core.listEventForAllNamespaces.mockRejectedValue({ code: 403 });
+        core.listNamespacedEvent.mockResolvedValue({ items: [event({ reason: 'Pulled' })] });
+        const result = await events.listRecentEvents();
+        expect(core.listNamespacedEvent).toHaveBeenCalledWith({ namespace: 'team-a', limit: 500 });
+        expect(result.map((e) => e.reason)).toEqual(['Pulled']);
+    });
+
+    it('stays refused when no namespace is selected, or when that namespace is refused too', async () => {
+        client.getActiveNamespace.mockReturnValue(null);
+        core.listEventForAllNamespaces.mockRejectedValue({ code: 403 });
+        await expect(events.listRecentEvents()).rejects.toMatchObject({ kind: 'forbidden', op: 'events.recent' });
+        expect(core.listNamespacedEvent).not.toHaveBeenCalled();
+
+        client.getActiveNamespace.mockReturnValue('team-a');
+        core.listNamespacedEvent.mockRejectedValue({ code: 403 });
+        await expect(events.listRecentEvents()).rejects.toMatchObject({ kind: 'forbidden', op: 'events.recent' });
+    });
+
+    it('does not fall back on a failure that is not a refusal', async () => {
+        client.getActiveNamespace.mockReturnValue('team-a');
+        core.listEventForAllNamespaces.mockRejectedValue({ code: 500 });
+        await expect(events.listRecentEvents()).rejects.toMatchObject({ op: 'events.recent' });
+        expect(core.listNamespacedEvent).not.toHaveBeenCalled();
     });
 
     it('reads a bounded page across all namespaces and keeps the newest twenty', async () => {

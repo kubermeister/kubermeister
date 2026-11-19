@@ -287,6 +287,70 @@ describe('NamespaceSelector', () => {
         ).toHaveClass('invisible');
     });
 
+    describe('when the account may not list namespaces', () => {
+        const refuseList = (known: string[] = []) =>
+            invoke.mockImplementation(async (channel: string) => {
+                if (channel === 'namespaces.list')
+                    throw new IpcError({ kind: 'forbidden', detail: 'Access denied (RBAC).', op: 'namespaces.list' });
+                if (channel === 'namespaces.known') return known;
+                return channel === 'namespace.active' ? { name: null } : data[channel];
+            });
+        const openList = async () => {
+            renderInRouter(<NamespaceSelector />);
+            await waitFor(() => expect(screen.getByTestId('active-namespace')).toHaveTextContent('All namespaces'));
+            await userEvent.click(screen.getByTestId('namespace-selector'));
+            return screen.findByRole('listbox');
+        };
+
+        it('says the list was refused instead of showing an empty one', async () => {
+            refuseList();
+            const list = await openList();
+            const notice = await screen.findByTestId('namespaces-refused');
+            expect(notice).toHaveTextContent('Access denied');
+            expect(notice).toHaveTextContent('Type the name of one');
+            expect(within(list).getAllByRole('option')).toHaveLength(1);
+        });
+
+        it('selects a namespace by the name typed', async () => {
+            refuseList();
+            const list = await openList();
+            await userEvent.type(await screen.findByPlaceholderText('Type a namespace…'), 'team-b');
+            await userEvent.click(await within(list).findByRole('option', { name: 'Use “team-b”' }));
+            await waitFor(() => expect(invoke).toHaveBeenCalledWith('namespace.set', { namespace: 'team-b' }));
+            await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+        });
+
+        it('offers nothing for text that is not a namespace name', async () => {
+            refuseList();
+            await openList();
+            await userEvent.type(await screen.findByPlaceholderText('Type a namespace…'), 'Team B');
+            expect(await screen.findByText('Type a whole namespace name.')).toBeInTheDocument();
+            expect(screen.queryByTestId('use-typed-namespace')).not.toBeInTheDocument();
+        });
+
+        it('lists the namespaces the app already knows, and offers no duplicate of one typed in full', async () => {
+            refuseList(['team-a', 'team-c']);
+            const list = await openList();
+            expect(await within(list).findByRole('option', { name: 'team-c' })).toBeInTheDocument();
+            await userEvent.type(screen.getByPlaceholderText('Type a namespace…'), 'team-c');
+            await waitFor(() => expect(within(list).getAllByRole('option')).toHaveLength(1));
+            expect(screen.queryByTestId('use-typed-namespace')).not.toBeInTheDocument();
+            await userEvent.click(within(list).getByRole('option', { name: 'team-c' }));
+            await waitFor(() => expect(invoke).toHaveBeenCalledWith('namespace.set', { namespace: 'team-c' }));
+        });
+    });
+
+    it('takes no typed name and asks for no known names while the list loads', async () => {
+        renderInRouter(<NamespaceSelector />);
+        await waitFor(() => expect(screen.getByTestId('active-namespace')).toHaveTextContent('team-a'));
+        await userEvent.click(screen.getByTestId('namespace-selector'));
+        await userEvent.type(await screen.findByPlaceholderText('Filter namespaces…'), 'team-b');
+        expect(await screen.findByText('No namespaces found.')).toBeInTheDocument();
+        expect(screen.queryByTestId('use-typed-namespace')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('namespaces-refused')).not.toBeInTheDocument();
+        expect(invoke).not.toHaveBeenCalledWith('namespaces.known', expect.anything());
+    });
+
     it('filters the list and selects a namespace through the bridge', async () => {
         renderInRouter(<NamespaceSelector />);
         await waitFor(() => expect(screen.getByTestId('active-namespace')).toHaveTextContent('team-a'));

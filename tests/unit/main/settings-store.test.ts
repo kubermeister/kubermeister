@@ -183,7 +183,12 @@ describe('settings store', () => {
             }),
         );
         const { getSettings, updateSettings } = await loadStore();
-        expect(getSettings().session).toEqual({ lastContext: 'k3s', lastNamespace: null, restoreOnLaunch: false });
+        expect(getSettings().session).toEqual({
+            lastContext: 'k3s',
+            lastNamespace: null,
+            recentNamespaces: [],
+            restoreOnLaunch: false,
+        });
         updateSettings({ data: { terminalFontSize: 14 } });
         // Brought to the current version on the way: the `check` a version 1 file carries was nobody's choice.
         expect(readJson(configFile)).toEqual({
@@ -196,7 +201,7 @@ describe('settings store', () => {
     it('moves an old whole-object file over once, keeping only what somebody changed', async () => {
         const legacy = {
             ...DEFAULT_SETTINGS,
-            session: { lastContext: 'prod', lastNamespace: 'web', restoreOnLaunch: true },
+            session: { lastContext: 'prod', lastNamespace: 'web', recentNamespaces: [], restoreOnLaunch: true },
             data: { ...DEFAULT_SETTINGS.data, readTimeoutSec: 300 },
             window: { bounds: { x: 0, y: 0, width: 1000, height: 700 } },
         };
@@ -209,7 +214,7 @@ describe('settings store', () => {
             data: { readTimeoutSec: 300 },
         });
         expect(readJson(join(userData, 'state.json'))).toEqual({
-            session: { lastContext: 'prod', lastNamespace: 'web' },
+            session: { lastContext: 'prod', lastNamespace: 'web', recentNamespaces: [] },
             data: { forwards: [] },
             window: { bounds: { x: 0, y: 0, width: 1000, height: 700 } },
         });

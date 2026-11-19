@@ -81,7 +81,7 @@ describe('moving a whole-object file over', () => {
 
     it('carries every state key into the state file', () => {
         expect(stateFromLegacy(legacy)).toEqual({
-            session: { lastContext: 'prod', lastNamespace: null },
+            session: { lastContext: 'prod', lastNamespace: null, recentNamespaces: [] },
             data: { forwards: [] },
             window: { bounds: null },
         });

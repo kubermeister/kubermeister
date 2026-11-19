@@ -5,7 +5,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import type { IpcChannel, IpcInput, IpcOutput, IpcResult } from '../../shared/ipc.js';
 import { ipcSchemas } from '../../shared/ipc.js';
 import { reloadKubeConfig } from '../k8s/client.js';
-import { getCurrentContext, listContexts, setContext, setNamespace } from '../k8s/context.js';
+import { getCurrentContext, listContexts, listKnownNamespaces, setContext, setNamespace } from '../k8s/context.js';
 import { K8sError, setReadTimeoutSec } from '../k8s/errors.js';
 import { listAlerts } from '../k8s/alerts.js';
 import { resetHistory } from '../k8s/sampler.js';
@@ -277,6 +277,7 @@ const handlers: Handlers = {
     'manifest.pick': () => pickManifestFile(),
     'manifest.read': ({ path }) => readManifestFile(path),
     'namespaces.list': () => listNamespaces(),
+    'namespaces.known': async () => listKnownNamespaces(),
     'namespace.active': () => getActiveNamespaceInfo(),
     'cluster.active': () => getActiveCluster(),
     'clusters.list': () => listClusters(),

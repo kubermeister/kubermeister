@@ -217,6 +217,8 @@ export const ipcSchemas = {
     // really dragged in, so no path the renderer made up is ever read.
     'manifest.read': { input: manifestReadInputSchema, output: manifestFileSchema },
     'namespaces.list': { input: noInput, output: z.array(namespaceSchema) },
+    /** Namespace names known without asking the cluster, for when the list itself is refused. */
+    'namespaces.known': { input: noInput, output: z.array(namespaceNameSchema) },
     'namespace.active': { input: noInput, output: activeNamespaceSchema },
     'cluster.active': { input: noInput, output: clusterSchema.nullable() },
     'clusters.list': { input: noInput, output: z.array(clusterSchema) },
