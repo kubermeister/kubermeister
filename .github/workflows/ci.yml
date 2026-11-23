@@ -38,7 +38,7 @@ jobs:
       # publishing jobs, dangerous triggers). A finding fails the job; a deliberate exception carries
       # an inline `# zizmor: ignore[audit]` with a comment saying why.
       - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
-      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
           min-severity: medium
           advanced-security: false
@@ -83,7 +83,7 @@ jobs:
       # The app renders a chart with the user's own `helm`, and the chart install spec reads the
       # release back with it, so the job needs one on the PATH. Pinned, so a Helm release cannot
       # change what the suite renders between two runs of the same commit.
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
         with:
           version: v4.3.0
       - run: npm run build
